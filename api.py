@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from datetime import datetime
+from flask_cors import CORS
 import mysql.connector, signal
 
 def parse_time_string(time_string) -> datetime | None:
@@ -40,7 +41,16 @@ conn = mysql.connector.connect(
 )
 app = Flask(__name__)
 
-@app.route('/user_login', methods=['GET'])
+# Enable CORS for the Flask app with specific origins and methods
+
+CORS_ORIGINS = ["http://localhost:3000",]  # Add permitted origins here
+CORS_METHODS = ["GET", "POST", "PUT", "DELETE"]  # Specify allowed methods
+
+cors = CORS(app, 
+            resources={r"/api/*": {"origins": CORS_ORIGINS, "methods": CORS_METHODS}}, 
+            supports_credentials=True)
+
+@app.route('/api/user_login', methods=['GET'])
 def user_login():
 
     # Gather GET parameters
@@ -59,7 +69,7 @@ def user_login():
     # Return that the user exists
     return jsonify({"outcome": "user with provided credentials exists"})
 
-@app.route('/user_register', methods=['GET'])
+@app.route('/api/user_register', methods=['GET'])
 def user_register():
 
     # Gather GET parameters
@@ -82,7 +92,7 @@ def user_register():
     cursor.execute('INSERT INTO users (email, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)', (email, password, name, surname, int(type)))
     return jsonify({"outcome": "user successfully created"})
 
-@app.route('/user_update', methods=['GET'])
+@app.route('/api/user_update', methods=['GET'])
 def user_update():
     
     # Gather GET parameters
@@ -107,7 +117,7 @@ def user_update():
     cursor.execute(f'UPDATE users SET {toModify} = %s WHERE email = %s', (newValue, email))
     return jsonify({'outcome': 'user successfully updated'})
 
-@app.route('/user_delete', methods=['GET'])
+@app.route('/api/user_delete', methods=['GET'])
 def user_delete():
     
     # Gather GET parameters
@@ -126,7 +136,7 @@ def user_delete():
     cursor.execute('DELETE FROM users WHERE email = %s', (email,))
     return jsonify({'outcome': 'user successfully deleted'})
 
-@app.route('/class_register', methods=['GET'])
+@app.route('/api/class_register', methods=['GET'])
 def class_register():
     # Gather GET parameters
     classe = request.args.get('classe')
@@ -145,7 +155,7 @@ def class_register():
         cursor.execute('INSERT INTO classi (classe, anno, emailResponsabile) VALUES (%s, %s, %s)', (classe, anno, emailResponsabile))
         return jsonify({"outcome": "class successfully created"})
 
-@app.route('/class_delete', methods=['GET'])
+@app.route('/api/class_delete', methods=['GET'])
 def class_delete():
     # Gather GET parameters
     idClasse = request.args.get('idClasse')
@@ -163,7 +173,7 @@ def class_delete():
     cursor.execute('DELETE FROM classi WHERE idClasse = %s', (idClasse,))
     return jsonify({'outcome': 'class successfully deleted'})
 
-@app.route('/class_update', methods=['GET'])
+@app.route('/api/class_update', methods=['GET'])
 def class_update():
     # Gather GET parameters
     idClasse = request.args.get('idClasse')
@@ -187,7 +197,7 @@ def class_update():
     cursor.execute(f'UPDATE classi SET {toModify} = %s WHERE idClasse = %s', (newValue, idClasse))
     return jsonify({'outcome': 'class successfully updated'})
 
-@app.route('/student_register', methods=['GET'])
+@app.route('/api/student_register', methods=['GET'])
 def student_register():
     # Gather GET parameters
     matricola = request.args.get('matricola')
@@ -207,7 +217,7 @@ def student_register():
         cursor.execute('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
         return jsonify({"outcome": "student successfully created"})
 
-@app.route('/student_delete', methods=['GET'])
+@app.route('/api/student_delete', methods=['GET'])
 def student_delete():
     # Gather GET parameters
     matricola = request.args.get('matricola')
@@ -225,7 +235,7 @@ def student_delete():
     cursor.execute('DELETE FROM studenti WHERE matricola = %s', (matricola,))
     return jsonify({'outcome': 'student successfully deleted'})
 
-@app.route('/student_update', methods=['GET'])
+@app.route('/api/student_update', methods=['GET'])
 def student_update():
     # Gather GET parameters
     matricola = request.args.get('matricola')
@@ -249,7 +259,7 @@ def student_update():
     cursor.execute(f'UPDATE studenti SET {toModify} = %s WHERE matricola = %s', (newValue, matricola))
     return jsonify({'outcome': 'student successfully updated'})
 
-@app.route('/turn_register', methods=['GET'])
+@app.route('/api/turn_register', methods=['GET'])
 def turn_register():
 
     # Gather GET parameters
@@ -296,7 +306,7 @@ def turn_register():
                    (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine))
     return jsonify({'outcome': 'turn successfully created'})
 
-@app.route('/turn_delete', methods=['GET'])
+@app.route('/api/turn_delete', methods=['GET'])
 def turn_delete():
     
     # Gather GET parameters
@@ -315,7 +325,7 @@ def turn_delete():
     cursor.execute('DELETE FROM turni WHERE idTurno = %s', (idTurno,))
     return jsonify({'outcome': 'turn successfully deleted'})
 
-@app.route('/turn_update', methods=['GET'])
+@app.route('/api/turn_update', methods=['GET'])
 def turn_update():
 
     # Gather GET parameters
@@ -348,7 +358,7 @@ def turn_update():
     cursor.execute(f'UPDATE turni SET {toModify} = %s WHERE idTurno = %s', (newValue, idTurno))
     return jsonify({'outcome': 'turn successfully updated'})
 
-@app.route('/address_register', methods=['GET'])
+@app.route('/api/address_register', methods=['GET'])
 def address_register():
 
     #Gather GET parameters
@@ -373,7 +383,7 @@ def address_register():
                    (stato, provincia, comune, cap, indirizzo, idAzienda))
     return jsonify({'outcome': 'address successfully created'})
 
-@app.route('/address_delete', methods=['GET'])
+@app.route('/api/address_delete', methods=['GET'])
 def address_delete():
     
     # Gather GET parameters
@@ -392,7 +402,7 @@ def address_delete():
     cursor.execute('DELETE FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
     return jsonify({'outcome': 'address successfully deleted'})
 
-@app.route('/address_update', methods=['GET'])
+@app.route('/api/address_update', methods=['GET'])
 def address_update():
 
     # Gather GET parameters
@@ -417,7 +427,7 @@ def address_update():
     cursor.execute(f'UPDATE indirizzi SET {toModify} = %s WHERE idIndirizzo = %s', (newValue, idIndirizzo))
     return jsonify({'outcome': 'address successfully updated'})
 
-@app.route('/contact_register', methods=['GET'])
+@app.route('/api/contact_register', methods=['GET'])
 def contact_register():
 
     # Gather GET parameters
@@ -441,7 +451,7 @@ def contact_register():
     cursor.execute('INSERT INTO contatti (nome, cognome, telefono, email, ruolo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)', 
                    (nome, cognome, telefono, email, ruolo, idAzienda))
 
-@app.route('/contact_delete', methods=['GET'])
+@app.route('/api/contact_delete', methods=['GET'])
 def contact_delete():
 
     # Gather GET parameters
@@ -460,7 +470,7 @@ def contact_delete():
     cursor.execute('DELETE FROM contatti WHERE idContatto = %s', (idContatto,))
     return jsonify({'outcome': 'contact successfully deleted'})
 
-@app.route('/contact_update', methods=['GET'])
+@app.route('/api/contact_update', methods=['GET'])
 def contact_update():
 
     # Gather GET parameters
@@ -489,7 +499,7 @@ def contact_update():
     cursor.execute(f'UPDATE contatti SET {toModify} = %s WHERE idContatto = %s', (newValue, idContatto))
     return jsonify({'outcome': 'contact successfully updated'})
 
-@app.route('/sector_register', methods=['GET'])
+@app.route('/api/sector_register', methods=['GET'])
 def sector_register():
     
     # Gather GET parameters
@@ -508,7 +518,7 @@ def sector_register():
     cursor.execute('INSERT INTO settori (settore) VALUES (%s)', (settore,))
     return jsonify({'outcome': 'sector successfully created'})
 
-@app.route('/sector_delete', methods=['GET'])
+@app.route('/api/sector_delete', methods=['GET'])
 def sector_delete():
     
     # Gather GET parameters
@@ -527,7 +537,7 @@ def sector_delete():
     cursor.execute('DELETE FROM settori WHERE settore = %s', (settore,))
     return jsonify({'outcome': 'sector successfully deleted'})
 
-@app.route('/sector_update', methods=['GET'])
+@app.route('/api/sector_update', methods=['GET'])
 def sector_update():
 
     # Gather GET parameters
@@ -547,7 +557,7 @@ def sector_update():
     cursor.execute('UPDATE settori SET settore = %s WHERE settore = %s', (newValue, settore))
     return jsonify({'outcome': 'sector successfully updated'})
 
-@app.route('/subject_register', methods=['GET'])
+@app.route('/api/subject_register', methods=['GET'])
 def subject_register():
     
     # Gather GET parameters
@@ -567,7 +577,7 @@ def subject_register():
     cursor.execute('INSERT INTO materie (materia, descr) VALUES (%s)', (materia,descrizione))
     return jsonify({'outcome': 'subject successfully created'})
 
-@app.route('/subject_delete', methods=['GET'])
+@app.route('/api/subject_delete', methods=['GET'])
 def subject_delete():
 
     # Gather GET parameters
@@ -586,7 +596,7 @@ def subject_delete():
     cursor.execute('DELETE FROM materie WHERE materia = %s', (materia,))
     return jsonify({'outcome': 'subject successfully deleted'})
 
-@app.route('/subject_update', methods=['GET'])
+@app.route('/api/subject_update', methods=['GET'])
 def subject_update():
     
     # Gather GET parameters
@@ -611,7 +621,7 @@ def subject_update():
     cursor.execute(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
     return jsonify({'outcome': 'subject successfully updated'})
 
-@app.route('/tutor_register', methods=['GET'])
+@app.route('/api/tutor_register', methods=['GET'])
 def tutor_register():
 
     # Gather GET parameters
@@ -634,7 +644,7 @@ def tutor_register():
                    (nome, cognome, telefono, email))
     return jsonify({'outcome': 'tutor successfully created'})
 
-@app.route('/tutor_delete', methods=['GET'])
+@app.route('/api/tutor_delete', methods=['GET'])
 def tutor_delete():
     # Gather GET parameters
     idTutor = int(request.args.get('idTutor'))
@@ -652,7 +662,7 @@ def tutor_delete():
     cursor.execute('DELETE FROM tutor WHERE idTutor = %s', (idTutor,))
     return jsonify({'outcome': 'tutor successfully deleted'})
 
-@app.route('/tutor_update', methods=['GET'])
+@app.route('/api/tutor_update', methods=['GET'])
 def tutor_update():
     
     # Gather GET parameters
@@ -681,7 +691,7 @@ def tutor_update():
     cursor.execute(f'UPDATE tutor SET {toModify} = %s WHERE idTutor = %s', (newValue, idTutor))
     return jsonify({'outcome': 'tutor successfully updated'})
 
-@app.route('/company_register', methods=['GET'])
+@app.route('/api/company_register', methods=['GET'])
 def company_register():
 
     # Gather GET parameters
@@ -715,7 +725,7 @@ def company_register():
                    (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, partitaIVA, telefonoAzienda, fax, emailAzienda, pec, formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria))
     return jsonify({'outcome': 'company successfully created'})
 
-@app.route('/company_delete', methods=['GET'])
+@app.route('/api/company_delete', methods=['GET'])
 def company_delete():
     # Gather GET parameters
     idAzienda = int(request.args.get('idAzienda'))
@@ -733,7 +743,7 @@ def company_delete():
     cursor.execute('DELETE FROM aziende WHERE idAzienda = %s', (idAzienda,))
     return jsonify({'outcome': 'company successfully deleted'})
 
-@app.route('/company_update', methods=['GET'])
+@app.route('/api/company_update', methods=['GET'])
 def company_update():
 
     # Gather GET parameters
@@ -771,4 +781,7 @@ def close_api(signal, frame):  # Parameters are necessary even if not used becau
 signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
 
 if __name__ == '__main__':
-    app.run(host='172.16.1.98', port=12345, debug=True)  # Bind to the specific IP address
+    app.run(host='172.16.1.98', 
+            port=12345, 
+            ssl_context=('test_cert.pem', 'test_key.pem'),
+            debug=True)  # Bind to the specific IP address
