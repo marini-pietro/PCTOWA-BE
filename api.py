@@ -1,9 +1,9 @@
 from flask import Flask, jsonify, request
 from datetime import datetime
-from flask_cors import CORS
+#from flask_cors import CORS
 import mysql.connector, signal
 
-def parse_time_string(time_string) -> datetime | None:
+def parse_time_string(time_string) -> datetime:
     """
     Parse a time string in the format HH:MM and return a datetime object.
     
@@ -18,7 +18,7 @@ def parse_time_string(time_string) -> datetime | None:
     try: return datetime.strptime(time_string, '%H:%M').time()
     except ValueError: return None
 
-def parse_date_string(date_string) -> datetime | None:
+def parse_date_string(date_string) -> datetime:
     """
     Parse a date string in the format YYYY-MM-DD and return a datetime object.
     
@@ -46,9 +46,9 @@ app = Flask(__name__)
 CORS_ORIGINS = ["http://localhost:3000",]  # Add permitted origins here
 CORS_METHODS = ["GET", "POST", "PUT", "DELETE"]  # Specify allowed methods
 
-cors = CORS(app, 
-            resources={r"/api/*": {"origins": CORS_ORIGINS, "methods": CORS_METHODS}}, 
-            supports_credentials=True)
+# cors = CORS(app, 
+#             resources={r"/api/*": {"origins": CORS_ORIGINS, "methods": CORS_METHODS}}, 
+#             supports_credentials=True)
 
 @app.route('/api/user_login', methods=['GET'])
 def user_login():
@@ -61,7 +61,7 @@ def user_login():
     cursor = conn.cursor(dictionary=True)
     
     # Check if user exists
-    cursor.execute('SELECT * FROM users WHERE emailUtente = %s AND password = %s', (username, password))
+    cursor.execute('SELECT * FROM utenti WHERE emailUtente = %s AND password = %s', (username, password))
     user = cursor.fetchone()
     if user is None:
         return jsonify({"outcome": "error, user with provided credentials does not exist"})
@@ -83,13 +83,13 @@ def user_register():
     cursor = conn.cursor(dictionary=True)
     
     # Find out if user already exists
-    cursor.execute('SELECT * FROM users WHERE email = %s', (email,))
+    cursor.execute('SELECT * FROM utenti WHERE emailUtente = %s', (email,))
     user = cursor.fetchone()
     if user is not None:
         return jsonify({"outcome": "error, user with provided credentials already exists"})  # If it does return error data
     
     # If not insert the user
-    cursor.execute('INSERT INTO users (email, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)', (email, password, name, surname, int(type)))
+    cursor.execute('INSERT INTO utente (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)', (email, password, name, surname, int(type)))
     return jsonify({"outcome": "user successfully created"})
 
 @app.route('/api/user_update', methods=['GET'])
@@ -108,13 +108,13 @@ def user_update():
     cursor = conn.cursor(dictionary=True)
 
     # Check if user exists
-    cursor.execute('SELECT * FROM users WHERE email = %s', (email,))
+    cursor.execute('SELECT * FROM utente WHERE emailUtente = %s', (email,))
     user = cursor.fetchone()
     if user is None:
         return jsonify({'outcome': 'error, user with provided email does not exist'})
     
     # Update the user
-    cursor.execute(f'UPDATE users SET {toModify} = %s WHERE email = %s', (newValue, email))
+    cursor.execute(f'UPDATE utente SET {toModify} = %s WHERE emailUtente = %s', (newValue, email))
     return jsonify({'outcome': 'user successfully updated'})
 
 @app.route('/api/user_delete', methods=['GET'])
@@ -782,6 +782,5 @@ signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
 
 if __name__ == '__main__':
     app.run(host='172.16.1.98', 
-            port=12345, 
-            ssl_context=('test_cert.pem', 'test_key.pem'),
+            port=12345,
             debug=True)  # Bind to the specific IP address
