@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, request
 from datetime import datetime
-#from flask_cors import CORS
 import mysql.connector, signal
 
 def parse_time_string(time_string) -> datetime:
@@ -40,15 +39,6 @@ conn = mysql.connector.connect(
     database='pctowa'
 )
 app = Flask(__name__)
-
-# Enable CORS for the Flask app with specific origins and methods
-
-CORS_ORIGINS = ["http://localhost:3000",]  # Add permitted origins here
-CORS_METHODS = ["GET", "POST", "PUT", "DELETE"]  # Specify allowed methods
-
-# cors = CORS(app, 
-#             resources={r"/api/*": {"origins": CORS_ORIGINS, "methods": CORS_METHODS}}, 
-#             supports_credentials=True)
 
 @app.route('/api/user_login', methods=['GET'])
 def user_login():
