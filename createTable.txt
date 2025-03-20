@@ -1,0 +1,132 @@
+CREATE TABLE tutor (
+    idTutor INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(255) NOT NULL,
+    cognome VARCHAR(255) NOT NULL,
+    emailTutor VARCHAR(255) NOT NULL,
+    telefonoTutor VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE settori (
+    settore VARCHAR(255) PRIMARY KEY
+);
+
+CREATE TABLE materie (
+    materia VARCHAR(255) PRIMARY KEY,
+    descr VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE utenti (
+    emailUtente VARCHAR(255) PRIMARY KEY,
+    password VARCHAR(255) NOT NULL,
+    nome VARCHAR(255) NOT NULL,
+    cognome VARCHAR(255) NOT NULL,
+    tipo INT NOT NULL
+);
+
+CREATE TABLE classi (
+    idClasse INT PRIMARY KEY AUTO_INCREMENT,
+    classe VARCHAR(255) NOT NULL,
+    anno INT(4) NOT NULL,
+    emailResponsabile VARCHAR(255) NOT NULL,
+    FOREIGN KEY (emailResponsabile) REFERENCES utenti(emailUtente) ON DELETE CASCADE
+);
+
+CREATE TABLE aziende (
+    idAzienda INT PRIMARY KEY AUTO_INCREMENT,
+    ragioneSociale VARCHAR(255) NOT NULL,
+    nome VARCHAR(255) NOT NULL,
+    sitoWeb VARCHAR(255),
+    indirizzoLogo VARCHAR(255),
+    codiceAteco VARCHAR(10) NOT NULL CHECK (CHAR_LENGTH(codiceAteco) BETWEEN 4 AND 10),
+    partitaIVA CHAR(11) NOT NULL,
+    telefonoAzienda VARCHAR(255) NOT NULL,
+    fax VARCHAR(255) NOT NULL,
+    emailAzienda VARCHAR(255) NOT NULL,
+    pec VARCHAR(255) NOT NULL,
+    formaGiuridica VARCHAR(255) NOT NULL,
+    dataConvenzione DATE,
+    scadenzaConvenzione DATE,
+    settore VARCHAR(255) NOT NULL,
+    categoria VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE contatti (
+    idContatto INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(255) NOT NULL,
+    cognome VARCHAR(255) NOT NULL,
+    telefono VARCHAR(255),
+    email VARCHAR(255),
+    ruolo VARCHAR(255),
+    idAzienda INT NOT NULL,
+    FOREIGN KEY (idAzienda) REFERENCES aziende(idAzienda) ON DELETE CASCADE
+);
+
+CREATE TABLE indirizzi (
+    idIndirizzo INT PRIMARY KEY AUTO_INCREMENT,
+    stato VARCHAR(255) NOT NULL,
+    provincia VARCHAR(255) NOT NULL,
+    comune VARCHAR(255) NOT NULL,
+    cap VARCHAR(255) NOT NULL,
+    indirizzo VARCHAR(255) NOT NULL,
+    idAzienda INT NOT NULL,
+    FOREIGN KEY (idAzienda) REFERENCES aziende(idAzienda) ON DELETE CASCADE
+);
+
+CREATE TABLE docenteReferente (
+    emailDocente VARCHAR(255) NOT NULL,
+    anno CHAR(4) NOT NULL,
+    idAzienda INT NOT NULL,
+    FOREIGN KEY (emailDocente) REFERENCES utenti(emailUtente) ON DELETE CASCADE,
+    FOREIGN KEY (idAzienda) REFERENCES aziende(idAzienda) ON DELETE CASCADE,
+    PRIMARY KEY (emailDocente, idAzienda)
+);
+
+CREATE TABLE studenti (
+    matricola INT(5) PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    cognome VARCHAR(255) NOT NULL,
+    idClasse INT NOT NULL,
+    FOREIGN KEY (idClasse) REFERENCES classi(idClasse) ON DELETE CASCADE
+);
+
+CREATE TABLE turni (
+    idTurno INT PRIMARY KEY AUTO_INCREMENT,
+    dataInizio DATE NOT NULL,
+    dataFine DATE NOT NULL,
+    settore VARCHAR(255) NOT NULL,
+    posti INT NOT NULL CHECK (posti > 0),
+    postiOccupati INT NOT NULL DEFAULT 0 CHECK (postiOccupati >= 0),
+    ore INT NOT NULL,
+    idAzienda INT NOT NULL,
+    idTutor INT NOT NULL,
+    idIndirizzo INT NOT NULL,
+    oraInizio TIME NOT NULL,
+    oraFine TIME NOT NULL,
+    FOREIGN KEY (idAzienda) REFERENCES aziende(idAzienda) ON DELETE CASCADE,
+    FOREIGN KEY (idTutor) REFERENCES tutor(idTutor) ON DELETE CASCADE,
+    FOREIGN KEY (idIndirizzo) REFERENCES indirizzi(idIndirizzo) ON DELETE CASCADE
+);
+
+CREATE TABLE studenteTurno (
+    matricola INT(5) NOT NULL,
+    idTurno INT NOT NULL,
+    FOREIGN KEY (matricola) REFERENCES studenti(matricola) ON DELETE CASCADE,
+    FOREIGN KEY (idTurno) REFERENCES turni(idTurno) ON DELETE CASCADE,
+    PRIMARY KEY (matricola, idTurno)
+);
+
+CREATE TABLE turnoSettore (
+    settore VARCHAR(255) NOT NULL,
+    idTurno INT NOT NULL,
+    FOREIGN KEY (settore) REFERENCES settori(settore) ON DELETE CASCADE,
+    FOREIGN KEY (idTurno) REFERENCES turni(idTurno) ON DELETE CASCADE,
+    PRIMARY KEY (settore, idTurno)
+);
+
+CREATE TABLE turnoMateria (
+    materia VARCHAR(255) NOT NULL,
+    idTurno INT NOT NULL,
+    FOREIGN KEY (materia) REFERENCES materie(materia) ON DELETE CASCADE,
+    FOREIGN KEY (idTurno) REFERENCES turni(idTurno) ON DELETE CASCADE,
+    PRIMARY KEY (materia, idTurno)
+);
