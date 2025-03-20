@@ -764,6 +764,125 @@ def company_update():
     cursor.execute(f'UPDATE aziende SET {toModify} = %s WHERE idAzienda = %s', (newValue, idAzienda))
     return jsonify({'outcome': 'company successfully updated'})
 
+@app.route('/api/bind_turn_to_student', methods = ['GET'])
+def bind_turn_to_student():
+
+    # Gather GET parameters
+    matricola = int(request.args.get('matricola'))
+    idTurno = int(request.args.get('idTurno'))
+
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if student exists
+    cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
+    student = cursor.fetchone()
+    if student is None:
+        return jsonify({'outcome': 'error, specified student does not exist'})
+    
+    # Check if turn exists
+    cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
+    turn = cursor.fetchone()
+    if turn is None:
+        return jsonify({'outcome': 'error, specified turn does not exist'})
+    
+    # Check if the turn is full
+    cursor.execute('SELECT posti, postiOccupati WHERE idTurno = %s', (idTurno,))
+    data = cursor.fecthone()
+    ci_sono_posti = data["posti"] != data["postiOccupati"]
+    if not ci_sono_posti:
+        return jsonify({'outcome': 'error, no available spots for the specified turn'})
+
+    # Bind the turn to the student
+    cursor.execute('INSERT INTO studenteTurno (matricola, idTurno) VALUES (%s, %s)', (matricola, idTurno))
+    return jsonify({'outcome': 'success, student binded to turn successfully'})
+
+@app.route('/api/bind_company_to_user', methods = ['GET'])
+def bind_company_to_user():
+
+    # Gather GET parameters
+    email = request.args.get('email')
+    anno = request.args.get('anno')
+    idAzienda = request.args.get('idAzienda')
+
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if user exists
+    cursor.execute('SELECT * FROM utenti WHERE emailUtente = %s', (email,))
+    user = cursor.fetchone()
+    if user is None:
+        return jsonify({'outcome': 'error, specified user does not exist'})
+    
+    # Check if company exists
+    cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
+    company = cursor.fetchone()
+    if company is None:
+        return jsonify({'outcome': 'error, specified company does not exist'})
+    
+    # Bind the company to the user
+    cursor.execute('INSERT INTO utenteAzienda (emailUtente, idAzienda, anno) VALUES (%s, %s, %s)', (email, idAzienda, anno))
+    return jsonify({'outcome': 'success, company binded to user successfully'})
+
+def bind_turn_to_sector_logic(idTurno, settore):
+    """
+    Logic to bind a turn to a sector.
+    """
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if turn exists
+    cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
+    turn = cursor.fetchone()
+    if turn is None:
+        return {'outcome': 'error, specified turn does not exist'}
+    
+    # Check if sector exists
+    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
+    sector = cursor.fetchone()
+    if sector is None:
+        return {'outcome': 'error, specified sector does not exist'}
+    
+    # Bind the turn to the sector
+    cursor.execute('INSERT INTO turnoSectore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
+    return {'outcome': 'success, turn binded to sector successfully'}
+
+@app.route('/api/bind_turn_to_sector', methods=['GET'])
+def bind_turn_to_sector():
+    # Gather GET parameters
+    idTurno = int(request.args.get('idTurno'))
+    settore = request.args.get('settore')
+
+    # Call the reusable logic
+    result = bind_turn_to_sector_logic(idTurno, settore)
+    return jsonify(result)
+
+@app.route('/api/bind_turn_to_subject', methods = ['GET'])
+def bind_turn_to_subject():
+
+    # Gather GET parameters
+    idTurno = int(request.args.get('idTurno'))
+    materia = request.args.get('materia')
+
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if turn exists
+    cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
+    turn = cursor.fetchone()
+    if turn is None:
+        return jsonify({'outcome': 'error, specified turn does not exist'})
+    
+    # Check if subject exists
+    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
+    subject = cursor.fetchone()
+    if subject is None:
+        return jsonify({'outcome': 'error, specified subject does not exist'})
+    
+    # Bind the turn to the subject
+    cursor.execute('INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)', (idTurno, materia))
+    return jsonify({'outcome': 'success, turn binded to subject successfully'})
+
 def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature
     conn.close()
     exit(0)  # Close the API
