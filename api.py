@@ -1,6 +1,20 @@
 from flask import Flask, jsonify, request
-from datetime import datetime
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from datetime import datetime, timedelta
 import mysql.connector, signal
+
+conn = mysql.connector.connect(
+    host='localhost',
+    user='pctowa',
+    password='pctowa2025',
+    database='pctowa'
+)
+app = Flask(__name__)
+
+# Configure JWT
+app.config['JWT_SECRET_KEY'] = 'your_secret_key'  # Replace with a secure key
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Token expiration time
+jwt = JWTManager(app)
 
 def parse_time_string(time_string) -> datetime:
     """
@@ -32,55 +46,54 @@ def parse_date_string(date_string) -> datetime:
     try: return datetime.strptime(date_string, '%Y-%m-%d').date()
     except ValueError: return None
 
-conn = mysql.connector.connect(
-    host='localhost',
-    user='pctowa',
-    password='pctowa2025',
-    database='pctowa'
-)
-app = Flask(__name__)
-
 @app.route('/api/user_login', methods=['GET'])
-def user_login():
-
+def login():
+    """
+    Authenticate the user and return a JWT token.
+    """
     # Gather parameters
-    username = request.args.get('email')
-    password = request.args.get('password')
+    email = request.json.get('email')
+    password = request.json.get('password')
 
     # Create new cursor
     cursor = conn.cursor(dictionary=True)
     
     # Check if user exists
-    cursor.execute('SELECT * FROM utenti WHERE emailUtente = %s AND password = %s', (username, password))
+    cursor.execute('SELECT * FROM utenti WHERE emailUtente = %s AND password = %s', (email, password))
     user = cursor.fetchone()
     if user is None:
-        return jsonify({"outcome": "error, user with provided credentials does not exist"})
-    
-    # Return that the user exists
-    return jsonify({"outcome": "user with provided credentials exists"})
+        return jsonify({"outcome": "error, invalid credentials"}), 401
+
+    # Generate access token
+    access_token = create_access_token(identity={'email': email, 'type': user['tipo']})
+    return jsonify({"access_token": access_token}), 200
 
 @app.route('/api/user_register', methods=['POST'])
-def user_register():
-
+def register():
+    """
+    Register a new user.
+    """
     # Gather parameters
-    email = request.args.get('email')
-    password = request.args.get('password')
-    name = request.args.get('nome')
-    surname = request.args.get('cognome')
-    type = request.args.get('tipo')
+    email = request.json.get('email')
+    password = request.json.get('password')
+    name = request.json.get('nome')
+    surname = request.json.get('cognome')
+    user_type = request.json.get('tipo')
     
     # Create new cursor
     cursor = conn.cursor(dictionary=True)
     
     # Insert the user
     try:
-        cursor.execute('INSERT INTO utente (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)', (email, password, name, surname, int(type)))
+        cursor.execute('INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)', 
+                       (email, password, name, surname, int(user_type)))
         conn.commit()
-        return jsonify({"outcome": "user successfully created"})
-    except mysql.connector.IntegrityError as ex:
-        return jsonify({'outcome': 'error, user with provided credentials already exists'})
+        return jsonify({"outcome": "user successfully created"}), 201
+    except mysql.connector.IntegrityError:
+        return jsonify({'outcome': 'error, user with provided credentials already exists'}), 400
 
 @app.route('/api/user_update', methods=['PATCH'])
+@jwt_required()
 def user_update():
     
     # Gather parameters
@@ -107,6 +120,7 @@ def user_update():
     return jsonify({'outcome': 'user successfully updated'})
 
 @app.route('/api/user_delete', methods=['DELETE'])
+@jwt_required()
 def user_delete():
     
     # Gather parameters
@@ -127,6 +141,7 @@ def user_delete():
     return jsonify({'outcome': 'user successfully deleted'})
 
 @app.route('/api/class_register', methods=['POST'])
+@jwt_required()
 def class_register():
     # Gather parameters
     classe = request.args.get('classe')
@@ -144,6 +159,7 @@ def class_register():
         return jsonify({'outcome': 'error, class with provided credentials already exists'})
 
 @app.route('/api/class_delete', methods=['DELETE'])
+@jwt_required()
 def class_delete():
     # Gather parameters
     idClasse = request.args.get('idClasse')
@@ -163,6 +179,7 @@ def class_delete():
     return jsonify({'outcome': 'class successfully deleted'})
 
 @app.route('/api/class_update', methods=['PATCH'])
+@jwt_required()
 def class_update():
     # Gather parameters
     idClasse = request.args.get('idClasse')
@@ -188,6 +205,7 @@ def class_update():
     return jsonify({'outcome': 'class successfully updated'})
 
 @app.route('/api/class_read', methods = ['GET'])
+@jwt_required()
 def class_read():
     # Gather parameters
     try:
@@ -206,6 +224,7 @@ def class_read():
         return jsonify({"error": str(err)}), 500
 
 @app.route('/api/student_register', methods=['POST'])
+@jwt_required()
 def student_register():
     # Gather parameters
     matricola = request.args.get('matricola')
@@ -224,6 +243,7 @@ def student_register():
         return jsonify({'outcome': 'student with provided matricola already exists'})
 
 @app.route('/api/student_delete', methods=['DELETE'])
+@jwt_required()
 def student_delete():
     # Gather parameters
     matricola = request.args.get('matricola')
@@ -243,6 +263,7 @@ def student_delete():
     return jsonify({'outcome': 'student successfully deleted'})
 
 @app.route('/api/student_update', methods=['PATCH'])
+@jwt_required()
 def student_update():
     # Gather parameters
     matricola = request.args.get('matricola')
@@ -268,6 +289,7 @@ def student_update():
     return jsonify({'outcome': 'student successfully updated'})
 
 @app.route('/api/student_read', methods = ['GET'])
+@jwt_required()
 def student_read():
     # Gather parameters
     try:
@@ -286,6 +308,7 @@ def student_read():
         return jsonify({'error': str(err)}), 500
 
 @app.route('/api/turn_register', methods=['POST'])
+@jwt_required()
 def turn_register():
 
     # Gather parameters
@@ -337,6 +360,7 @@ def turn_register():
     return jsonify({'outcome': 'turn successfully created'}), 201
 
 @app.route('/api/turn_delete', methods=['DELETE'])
+@jwt_required()
 def turn_delete():
     
     # Gather parameters
@@ -357,6 +381,7 @@ def turn_delete():
     return jsonify({'outcome': 'turn successfully deleted'})
 
 @app.route('/api/turn_update', methods=['PATCH'])
+@jwt_required()
 def turn_update():
 
     # Gather parameters
@@ -391,6 +416,7 @@ def turn_update():
     return jsonify({'outcome': 'turn successfully updated'})
 
 @app.route('/api/turn_read', methods=['GET'])
+@jwt_required()
 def turn_read():
     # Gather parameters
     try:
@@ -409,6 +435,7 @@ def turn_read():
         return jsonify({'error': str(err)}), 500
 
 @app.route('/api/address_register', methods=['POST'])
+@jwt_required()
 def address_register():
 
     #Gather GET parameters
@@ -435,6 +462,7 @@ def address_register():
     return jsonify({'outcome': 'address successfully created'})
 
 @app.route('/api/address_delete', methods=['DELETE'])
+@jwt_required()
 def address_delete():
     
     # Gather parameters
@@ -455,6 +483,7 @@ def address_delete():
     return jsonify({'outcome': 'address successfully deleted'})
 
 @app.route('/api/address_update', methods=['PATCH'])
+@jwt_required()
 def address_update():
 
     # Gather parameters
@@ -481,6 +510,7 @@ def address_update():
     return jsonify({'outcome': 'address successfully updated'})
 
 @app.route('/api/address_read', methods = ['GET'])
+@jwt_required()
 def address_read():
     #Gather parameters
     try:
@@ -499,6 +529,7 @@ def address_read():
         return jsonify({'error': str(err)}), 500
 
 @app.route('/api/contact_register', methods=['POST'])
+@jwt_required()
 def contact_register():
 
     # Gather parameters
@@ -525,6 +556,7 @@ def contact_register():
     return jsonify({'outcome': 'success, company inserted'})
 
 @app.route('/api/contact_delete', methods=['DELETE'])
+@jwt_required()
 def contact_delete():
 
     # Gather parameters
@@ -545,6 +577,7 @@ def contact_delete():
     return jsonify({'outcome': 'contact successfully deleted'})
 
 @app.route('/api/contact_update', methods=['PATCH'])
+@jwt_required()
 def contact_update():
 
     # Gather parameters
@@ -575,6 +608,7 @@ def contact_update():
     return jsonify({'outcome': 'contact successfully updated'})
 
 @app.route('/api/contact_read', methods = ['GET'])
+@jwt_required()
 def contact_read():
     # Gather parameters
     try:
@@ -592,135 +626,8 @@ def contact_read():
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
 
-@app.route('/api/sector_register', methods=['POST'])
-def sector_register():
-    
-    # Gather parameters
-    settore = request.args.get('settore')
-
-    # Create new cursor
-    cursor = conn.cursor(dictionary=True)
-
-    # Check if sector exists
-    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
-    sector = cursor.fetchone()
-    if sector is None:
-        return jsonify({'outcome': 'error, specified sector already exists'})
-    
-    # Insert the sector
-    cursor.execute('INSERT INTO settori (settore) VALUES (%s)', (settore,))
-    conn.commit()
-    return jsonify({'outcome': 'sector successfully created'})
-
-@app.route('/api/sector_delete', methods=['DELETE'])
-def sector_delete():
-    
-    # Gather parameters
-    settore = request.args.get('settore')
-
-    # Create new cursor
-    cursor = conn.cursor(dictionary=True)
-
-    # Check if sector exists
-    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
-    sector = cursor.fetchone()
-    if sector is None:
-        return jsonify({'outcome': 'error, specified sector does not exist'})
-    
-    # Delete the sector
-    cursor.execute('DELETE FROM settori WHERE settore = %s', (settore,))
-    conn.commit()
-    return jsonify({'outcome': 'sector successfully deleted'})
-
-@app.route('/api/sector_update', methods=['PATCH'])
-def sector_update():
-
-    # Gather parameters
-    settore = request.args.get('settore')
-    newValue = request.args.get('newValue')
-
-    # Create new cursor
-    cursor = conn.cursor(dictionary=True)
-
-    # Check if sector exists
-    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
-    sector = cursor.fetchone()
-    if sector is None:
-        return jsonify({'outcome': 'error, specified sector does not exist'})
-    
-    # Update the sector
-    cursor.execute('UPDATE settori SET settore = %s WHERE settore = %s', (newValue, settore))
-    conn.commit()
-    return jsonify({'outcome': 'sector successfully updated'})
-
-@app.route('/api/subject_register', methods=['POST'])
-def subject_register():
-    
-    # Gather parameters
-    materia = request.args.get('materia')
-    descrizione = request.args.get('descrizione')
-
-    # Create new cursor
-    cursor = conn.cursor(dictionary=True)
-
-    # Check if subject exists
-    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
-    subject = cursor.fetchone()
-    if subject is None:
-        return jsonify({'outcome': 'error, specified subject already exists'})
-    
-    # Insert the subject
-    cursor.execute('INSERT INTO materie (materia, descr) VALUES (%s)', (materia,descrizione))
-    conn.commit()
-    return jsonify({'outcome': 'subject successfully created'})
-
-@app.route('/api/subject_delete', methods=['DELETE'])
-def subject_delete():
-
-    # Gather parameters
-    materia = request.args.get('materia')
-
-    # Create new cursor
-    cursor = conn.cursor(dictionary=True)
-
-    # Check if subject exists
-    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
-    subject = cursor.fetchone()
-    if subject is None:
-        return jsonify({'outcome': 'error, specified subject does not exist'})
-    
-    # Delete the subject
-    cursor.execute('DELETE FROM materie WHERE materia = %s', (materia,))
-    conn.commit()
-    return jsonify({'outcome': 'subject successfully deleted'})
-
-@app.route('/api/subject_update', methods=['PATCH'])
-def subject_update():
-    
-    # Gather parameters
-    materia = request.args.get('materia')
-    toModify = request.args.get('toModify')
-    newValue = request.args.get('newValue')
-
-    # Check if the field to modify is allowed
-    if toModify in ['materia']:
-        return jsonify({'outcome': 'error, specified field cannot be modified'})
-    
-    # Create new cursor
-    cursor = conn.cursor(dictionary=True)
-
-    # Check if subject exists
-    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia))
-    subject = cursor.fetchone()
-    if subject is None:
-        return jsonify({'outcome': 'error, specified subject does not exist'})
-    
-    # Update the subject
-    cursor.execute(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
-    conn.commit()
-    return jsonify({'outcome': 'subject successfully updated'})
-
 @app.route('/api/tutor_register', methods=['POST'])
+@jwt_required()
 def tutor_register():
 
     # Gather parameters
@@ -745,6 +652,7 @@ def tutor_register():
     return jsonify({'outcome': 'tutor successfully created'})
 
 @app.route('/api/tutor_delete', methods=['DELETE'])
+@jwt_required()
 def tutor_delete():
     # Gather parameters
     idTutor = int(request.args.get('idTutor'))
@@ -764,6 +672,7 @@ def tutor_delete():
     return jsonify({'outcome': 'tutor successfully deleted'})
 
 @app.route('/api/tutor_update', methods=['PATCH'])
+@jwt_required()
 def tutor_update():
     
     # Gather parameters
@@ -793,7 +702,27 @@ def tutor_update():
     conn.commit()
     return jsonify({'outcome': 'tutor successfully updated'})
 
+@app.route('/api/tutor_read', methods = ['GET'])
+@jwt_required()
+def tutor_read():
+    # Gather parameters
+    try:
+        idTutor = int(request.args.get('idTutor'))
+    except (ValueError, TypeError):
+        return jsonify({'error': 'invalid idTutor parameter'}), 400
+    
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Execute query
+    try:
+        cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
+        return jsonify(cursor.fetchall()), 200
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+
 @app.route('/api/company_register', methods=['POST'])
+@jwt_required()
 def company_register():
 
     # Gather parameters
@@ -826,6 +755,7 @@ def company_register():
         return jsonify({'outcome': 'error, company already exists, integrity error: {ex}'})
 
 @app.route('/api/company_delete', methods=['DELETE'])
+@jwt_required()
 def company_delete():
     # Gather parameters
     idAzienda = int(request.args.get('idAzienda'))
@@ -845,6 +775,7 @@ def company_delete():
     return jsonify({'outcome': 'company successfully deleted'})
 
 @app.route('/api/company_update', methods=['PATCH'])
+@jwt_required()
 def company_update():
     # Gather parameters
     idAzienda = int(request.args.get('idAzienda'))
@@ -875,7 +806,161 @@ def company_update():
     conn.commit()
     return jsonify({'outcome': 'company successfully updated'})
 
+@app.route('/api/company_read', methods = ['GET'])
+@jwt_required()
+def company_read():
+    # Gather parameters
+    try:
+        idAzienda = int(request.args.get('idAzienda'))
+    except (ValueError, TypeError):
+        return jsonify({'error': 'invalid idAzienda parameter'}), 400
+    
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Execute query
+    try:
+        cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
+        return jsonify(cursor.fetchall()), 200
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+
+@app.route('/api/sector_register', methods=['POST'])
+@jwt_required()
+def sector_register():
+    
+    # Gather parameters
+    settore = request.args.get('settore')
+
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if sector exists
+    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
+    sector = cursor.fetchone()
+    if sector is None:
+        return jsonify({'outcome': 'error, specified sector already exists'})
+    
+    # Insert the sector
+    cursor.execute('INSERT INTO settori (settore) VALUES (%s)', (settore,))
+    conn.commit()
+    return jsonify({'outcome': 'sector successfully created'})
+
+@app.route('/api/sector_delete', methods=['DELETE'])
+@jwt_required()
+def sector_delete():
+    
+    # Gather parameters
+    settore = request.args.get('settore')
+
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if sector exists
+    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
+    sector = cursor.fetchone()
+    if sector is None:
+        return jsonify({'outcome': 'error, specified sector does not exist'})
+    
+    # Delete the sector
+    cursor.execute('DELETE FROM settori WHERE settore = %s', (settore,))
+    conn.commit()
+    return jsonify({'outcome': 'sector successfully deleted'})
+
+@app.route('/api/sector_update', methods=['PATCH'])
+@jwt_required()
+def sector_update():
+
+    # Gather parameters
+    settore = request.args.get('settore')
+    newValue = request.args.get('newValue')
+
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if sector exists
+    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
+    sector = cursor.fetchone()
+    if sector is None:
+        return jsonify({'outcome': 'error, specified sector does not exist'})
+    
+    # Update the sector
+    cursor.execute('UPDATE settori SET settore = %s WHERE settore = %s', (newValue, settore))
+    conn.commit()
+    return jsonify({'outcome': 'sector successfully updated'})
+
+@app.route('/api/subject_register', methods=['POST'])
+@jwt_required()
+def subject_register():
+    
+    # Gather parameters
+    materia = request.args.get('materia')
+    descrizione = request.args.get('descrizione')
+
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if subject exists
+    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
+    subject = cursor.fetchone()
+    if subject is None:
+        return jsonify({'outcome': 'error, specified subject already exists'})
+    
+    # Insert the subject
+    cursor.execute('INSERT INTO materie (materia, descr) VALUES (%s)', (materia,descrizione))
+    conn.commit()
+    return jsonify({'outcome': 'subject successfully created'})
+
+@app.route('/api/subject_delete', methods=['DELETE'])
+@jwt_required()
+def subject_delete():
+
+    # Gather parameters
+    materia = request.args.get('materia')
+
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if subject exists
+    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
+    subject = cursor.fetchone()
+    if subject is None:
+        return jsonify({'outcome': 'error, specified subject does not exist'})
+    
+    # Delete the subject
+    cursor.execute('DELETE FROM materie WHERE materia = %s', (materia,))
+    conn.commit()
+    return jsonify({'outcome': 'subject successfully deleted'})
+
+@app.route('/api/subject_update', methods=['PATCH'])
+@jwt_required()
+def subject_update():
+    
+    # Gather parameters
+    materia = request.args.get('materia')
+    toModify = request.args.get('toModify')
+    newValue = request.args.get('newValue')
+
+    # Check if the field to modify is allowed
+    if toModify in ['materia']:
+        return jsonify({'outcome': 'error, specified field cannot be modified'})
+    
+    # Create new cursor
+    cursor = conn.cursor(dictionary=True)
+
+    # Check if subject exists
+    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia))
+    subject = cursor.fetchone()
+    if subject is None:
+        return jsonify({'outcome': 'error, specified subject does not exist'})
+    
+    # Update the subject
+    cursor.execute(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
+    conn.commit()
+    return jsonify({'outcome': 'subject successfully updated'})
+
 @app.route('/api/bind_turn_to_student', methods = ['GET'])
+@jwt_required()
 def bind_turn_to_student():
 
     # Gather parameters
@@ -884,6 +969,7 @@ def bind_turn_to_student():
 
     return bind_turn_to_student_logic    
 
+@jwt_required()
 def bind_turn_to_student_logic(matricola, idTurno):
     # Create new cursor
     cursor = conn.cursor(dictionary=True)
@@ -913,6 +999,7 @@ def bind_turn_to_student_logic(matricola, idTurno):
     return jsonify({'outcome': 'success, student binded to turn successfully'})
 
 @app.route('/api/bind_company_to_user', methods = ['POST'])
+@jwt_required()
 def bind_company_to_user():
 
     # Gather parameters
@@ -922,6 +1009,7 @@ def bind_company_to_user():
 
     return bind_company_to_user_logic(email, anno, idAzienda)
     
+@jwt_required()
 def bind_company_to_user_logic(email, anno, idAzienda):
     # Create new cursor
     cursor = conn.cursor(dictionary=True)
@@ -944,6 +1032,7 @@ def bind_company_to_user_logic(email, anno, idAzienda):
     return jsonify({'outcome': 'success, company binded to user successfully'})
 
 @app.route('/api/bind_turn_to_sector', methods=['POST'])
+@jwt_required()
 def bind_turn_to_sector():
     # Gather parameters
     idTurno = int(request.args.get('idTurno'))
@@ -953,6 +1042,7 @@ def bind_turn_to_sector():
     result = bind_turn_to_sector_logic(idTurno, settore)
     return jsonify(result)
 
+@jwt_required()
 def bind_turn_to_sector_logic(idTurno, settore):
     """
     Logic to bind a turn to a sector.
@@ -978,6 +1068,7 @@ def bind_turn_to_sector_logic(idTurno, settore):
     return {'outcome': 'success, turn binded to sector successfully'}
 
 @app.route('/api/bind_turn_to_subject', methods = ['POST'])
+@jwt_required()
 def bind_turn_to_subject():
 
     # Gather parameters
@@ -986,6 +1077,7 @@ def bind_turn_to_subject():
 
     return bind_turn_to_subject_logic(idTurno, materia)
 
+@jwt_required()
 def bind_turn_to_subject_logic(idTurno, materia):
     # Create new cursor
     cursor = conn.cursor(dictionary=True)
@@ -1007,6 +1099,7 @@ def bind_turn_to_subject_logic(idTurno, materia):
     conn.commit()
     return jsonify({'outcome': 'success, turn binded to subject successfully'})
 
+# Graceful shutdown
 def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature
     conn.close()
     exit(0)  # Close the API
