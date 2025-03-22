@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
+from logger import Logger
 import mysql.connector, signal
 
 conn = mysql.connector.connect(
@@ -15,6 +16,9 @@ app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your_secret_key'  # Replace with a secure key
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Token expiration time
 jwt = JWTManager(app)
+
+# Create a logger object
+logger = Logger()
 
 def parse_time_string(time_string) -> datetime:
     """
@@ -66,6 +70,11 @@ def login():
 
     # Generate access token
     access_token = create_access_token(identity={'email': email, 'type': user['tipo']})
+    
+    # Log the login
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} logged in')
+
     return jsonify({"access_token": access_token}), 200
 
 @app.route('/api/user_register', methods=['POST'])
@@ -88,6 +97,7 @@ def register():
         cursor.execute('INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)', 
                        (email, password, name, surname, int(user_type)))
         conn.commit()
+        logger.log('info', f'User {email} registered')
         return jsonify({"outcome": "user successfully created"}), 201
     except mysql.connector.IntegrityError:
         return jsonify({'outcome': 'error, user with provided credentials already exists'}), 400
@@ -117,6 +127,11 @@ def user_update():
     # Update the user
     cursor.execute(f'UPDATE utente SET {toModify} = %s WHERE emailUtente = %s', (newValue, email))
     conn.commit()
+
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated')
+
     return jsonify({'outcome': 'user successfully updated'})
 
 @app.route('/api/user_delete', methods=['DELETE'])
@@ -138,6 +153,11 @@ def user_delete():
     # Delete the user
     cursor.execute('DELETE FROM users WHERE email = %s', (email,))
     conn.commit()
+
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted')
+
     return jsonify({'outcome': 'user successfully deleted'})
 
 @app.route('/api/class_register', methods=['POST'])
@@ -154,6 +174,11 @@ def class_register():
     try:
         cursor.execute('INSERT INTO classi (classe, anno, emailResponsabile) VALUES (%s, %s, %s)', (classe, anno, emailResponsabile))
         conn.commit()
+
+        # Log the class creation
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} created class {classe}')
+
         return jsonify({"outcome": "class successfully created"})
     except mysql.connector.IntegrityError as ex:
         return jsonify({'outcome': 'error, class with provided credentials already exists'})
@@ -176,6 +201,11 @@ def class_delete():
     # Delete the class
     cursor.execute('DELETE FROM classi WHERE idClasse = %s', (idClasse,))
     conn.commit()
+
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted class')
+
     return jsonify({'outcome': 'class successfully deleted'})
 
 @app.route('/api/class_update', methods=['PATCH'])
@@ -202,6 +232,11 @@ def class_update():
     # Update the class
     cursor.execute(f'UPDATE classi SET {toModify} = %s WHERE idClasse = %s', (newValue, idClasse))
     conn.commit()
+    
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated class')
+
     return jsonify({'outcome': 'class successfully updated'})
 
 @app.route('/api/class_read', methods = ['GET'])
@@ -219,6 +254,11 @@ def class_read():
     # Execute query
     try:
         cursor.execute('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
+
+        # Log the read
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} read class')
+
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
@@ -238,6 +278,11 @@ def student_register():
     try:
         cursor.execute('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
         conn.commit()
+
+        # Log the student creation
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} created student {matricola}')
+
         return jsonify({"outcome": "student successfully created"})
     except mysql.connector.IntegrityError as ex:
         return jsonify({'outcome': 'student with provided matricola already exists'})
@@ -260,6 +305,11 @@ def student_delete():
     # Delete the student
     cursor.execute('DELETE FROM studenti WHERE matricola = %s', (matricola,))
     conn.commit()
+
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted student {matricola}')
+
     return jsonify({'outcome': 'student successfully deleted'})
 
 @app.route('/api/student_update', methods=['PATCH'])
@@ -286,6 +336,11 @@ def student_update():
     # Update the student
     cursor.execute(f'UPDATE studenti SET {toModify} = %s WHERE matricola = %s', (newValue, matricola))
     conn.commit()
+    
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated student {matricola}')
+
     return jsonify({'outcome': 'student successfully updated'})
 
 @app.route('/api/student_read', methods = ['GET'])
@@ -303,6 +358,11 @@ def student_read():
     # Execute query
     try:
         cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
+        
+        # Log the read
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} read student {matricola}')
+
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
@@ -357,6 +417,11 @@ def turn_register():
     cursor.execute('INSERT INTO turni (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', 
                    (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine))
     conn.commit()
+    
+    # Log the turn creation
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} created turn')
+
     return jsonify({'outcome': 'turn successfully created'}), 201
 
 @app.route('/api/turn_delete', methods=['DELETE'])
@@ -378,6 +443,11 @@ def turn_delete():
     # Delete the turn
     cursor.execute('DELETE FROM turni WHERE idTurno = %s', (idTurno,))
     conn.commit()
+    
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted turn')
+
     return jsonify({'outcome': 'turn successfully deleted'})
 
 @app.route('/api/turn_update', methods=['PATCH'])
@@ -413,6 +483,11 @@ def turn_update():
     # Update the turn
     cursor.execute(f'UPDATE turni SET {toModify} = %s WHERE idTurno = %s', (newValue, idTurno))
     conn.commit()
+    
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated turn')
+
     return jsonify({'outcome': 'turn successfully updated'})
 
 @app.route('/api/turn_read', methods=['GET'])
@@ -430,6 +505,11 @@ def turn_read():
     # Execute query
     try:
         cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
+
+        # Log the read
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} read turn')
+
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
@@ -459,6 +539,11 @@ def address_register():
     cursor.execute('INSERT INTO indirizzi (stato, provincia, comune, cap, indirizzo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)', 
                    (stato, provincia, comune, cap, indirizzo, idAzienda))
     conn.commit()
+    
+    # Log the address creation
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} created address')
+
     return jsonify({'outcome': 'address successfully created'})
 
 @app.route('/api/address_delete', methods=['DELETE'])
@@ -480,6 +565,11 @@ def address_delete():
     # Delete the address
     cursor.execute('DELETE FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
     conn.commit()
+    
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted address')
+
     return jsonify({'outcome': 'address successfully deleted'})
 
 @app.route('/api/address_update', methods=['PATCH'])
@@ -507,6 +597,11 @@ def address_update():
     # Update the address
     cursor.execute(f'UPDATE indirizzi SET {toModify} = %s WHERE idIndirizzo = %s', (newValue, idIndirizzo))
     conn.commit()
+    
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated address')
+
     return jsonify({'outcome': 'address successfully updated'})
 
 @app.route('/api/address_read', methods = ['GET'])
@@ -524,6 +619,11 @@ def address_read():
     # Execute query
     try:
         cursor.execute('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
+        
+        # Log the read
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} read address')
+
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
@@ -553,6 +653,11 @@ def contact_register():
     cursor.execute('INSERT INTO contatti (nome, cognome, telefono, email, ruolo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)', 
                    (nome, cognome, telefono, email, ruolo, idAzienda))
     conn.commit()
+    
+    # Log the contact creation
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} created contact')
+
     return jsonify({'outcome': 'success, company inserted'})
 
 @app.route('/api/contact_delete', methods=['DELETE'])
@@ -574,6 +679,11 @@ def contact_delete():
     # Delete the contact
     cursor.execute('DELETE FROM contatti WHERE idContatto = %s', (idContatto,))
     conn.commit()
+
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted contact')
+
     return jsonify({'outcome': 'contact successfully deleted'})
 
 @app.route('/api/contact_update', methods=['PATCH'])
@@ -605,6 +715,11 @@ def contact_update():
     # Update the contact
     cursor.execute(f'UPDATE contatti SET {toModify} = %s WHERE idContatto = %s', (newValue, idContatto))
     conn.commit()
+
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated contact')
+
     return jsonify({'outcome': 'contact successfully updated'})
 
 @app.route('/api/contact_read', methods = ['GET'])
@@ -622,6 +737,11 @@ def contact_read():
     # Execute query
     try:
         cursor.execute('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
+        
+        # Log the read
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} read contact')
+
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
@@ -649,6 +769,11 @@ def tutor_register():
     cursor.execute('INSERT INTO tutor (nome, cognome, telefonoTutor, emailTutor) VALUES (%s, %s, %s, %s)', 
                    (nome, cognome, telefono, email))
     conn.commit()
+    
+    # Log the tutor creation
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} created tutor')
+
     return jsonify({'outcome': 'tutor successfully created'})
 
 @app.route('/api/tutor_delete', methods=['DELETE'])
@@ -669,6 +794,11 @@ def tutor_delete():
     # Delete the tutor
     cursor.execute('DELETE FROM tutor WHERE idTutor = %s', (idTutor,))
     conn.commit()
+    
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted tutor')
+
     return jsonify({'outcome': 'tutor successfully deleted'})
 
 @app.route('/api/tutor_update', methods=['PATCH'])
@@ -700,6 +830,11 @@ def tutor_update():
     # Update the tutor
     cursor.execute(f'UPDATE tutor SET {toModify} = %s WHERE idTutor = %s', (newValue, idTutor))
     conn.commit()
+    
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated tutor')
+
     return jsonify({'outcome': 'tutor successfully updated'})
 
 @app.route('/api/tutor_read', methods = ['GET'])
@@ -717,6 +852,11 @@ def tutor_read():
     # Execute query
     try:
         cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
+        
+        # Log the read
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} read tutor')
+
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
@@ -750,6 +890,11 @@ def company_register():
         cursor.execute('INSERT INTO aziende (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, partitaIVA, telefonoAzienda, fax, emailAzienda, pec, formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', 
                     (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, partitaIVA, telefonoAzienda, fax, emailAzienda, pec, formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria))
         conn.commit()
+        
+        # Log the company creation
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} created')
+
         return jsonify({'outcome': 'company successfully created'})
     except mysql.connector.IntegrityError as ex:
         return jsonify({'outcome': 'error, company already exists, integrity error: {ex}'})
@@ -772,6 +917,11 @@ def company_delete():
     # Delete the company (cascade delete will handle related rows)
     cursor.execute('DELETE FROM aziende WHERE idAzienda = %s', (idAzienda,))
     conn.commit()
+    
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted company')
+
     return jsonify({'outcome': 'company successfully deleted'})
 
 @app.route('/api/company_update', methods=['PATCH'])
@@ -804,6 +954,11 @@ def company_update():
     # Update the company
     cursor.execute(f'UPDATE aziende SET {toModify} = %s WHERE idAzienda = %s', (newValue, idAzienda))
     conn.commit()
+    
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated company')
+
     return jsonify({'outcome': 'company successfully updated'})
 
 @app.route('/api/company_read', methods = ['GET'])
@@ -821,6 +976,11 @@ def company_read():
     # Execute query
     try:
         cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
+        
+        # Log the read
+        current_user = get_jwt_identity()
+        logger.log('info', f'User {current_user} read company')
+
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
@@ -844,6 +1004,11 @@ def sector_register():
     # Insert the sector
     cursor.execute('INSERT INTO settori (settore) VALUES (%s)', (settore,))
     conn.commit()
+    
+    # Log the sector creation
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} created sector')
+
     return jsonify({'outcome': 'sector successfully created'})
 
 @app.route('/api/sector_delete', methods=['DELETE'])
@@ -864,6 +1029,11 @@ def sector_delete():
     
     # Delete the sector
     cursor.execute('DELETE FROM settori WHERE settore = %s', (settore,))
+    
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted sector')
+
     conn.commit()
     return jsonify({'outcome': 'sector successfully deleted'})
 
@@ -887,6 +1057,11 @@ def sector_update():
     # Update the sector
     cursor.execute('UPDATE settori SET settore = %s WHERE settore = %s', (newValue, settore))
     conn.commit()
+    
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated sector')
+
     return jsonify({'outcome': 'sector successfully updated'})
 
 @app.route('/api/subject_register', methods=['POST'])
@@ -909,6 +1084,11 @@ def subject_register():
     # Insert the subject
     cursor.execute('INSERT INTO materie (materia, descr) VALUES (%s)', (materia,descrizione))
     conn.commit()
+
+    # Log the subject creation
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} created subject')
+
     return jsonify({'outcome': 'subject successfully created'})
 
 @app.route('/api/subject_delete', methods=['DELETE'])
@@ -930,6 +1110,11 @@ def subject_delete():
     # Delete the subject
     cursor.execute('DELETE FROM materie WHERE materia = %s', (materia,))
     conn.commit()
+
+    # Log the deletion
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} deleted subject')
+
     return jsonify({'outcome': 'subject successfully deleted'})
 
 @app.route('/api/subject_update', methods=['PATCH'])
@@ -957,6 +1142,11 @@ def subject_update():
     # Update the subject
     cursor.execute(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
     conn.commit()
+    
+    # Log the update
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} updated subject')
+
     return jsonify({'outcome': 'subject successfully updated'})
 
 @app.route('/api/bind_turn_to_student', methods = ['GET'])
@@ -969,7 +1159,6 @@ def bind_turn_to_student():
 
     return bind_turn_to_student_logic    
 
-@jwt_required()
 def bind_turn_to_student_logic(matricola, idTurno):
     # Create new cursor
     cursor = conn.cursor(dictionary=True)
@@ -996,6 +1185,11 @@ def bind_turn_to_student_logic(matricola, idTurno):
     # Bind the turn to the student
     cursor.execute('INSERT INTO studenteTurno (matricola, idTurno) VALUES (%s, %s)', (matricola, idTurno))
     conn.commit()
+    
+    # Log the binding
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} binded student {matricola} to turn {idTurno}')
+
     return jsonify({'outcome': 'success, student binded to turn successfully'})
 
 @app.route('/api/bind_company_to_user', methods = ['POST'])
@@ -1009,7 +1203,6 @@ def bind_company_to_user():
 
     return bind_company_to_user_logic(email, anno, idAzienda)
     
-@jwt_required()
 def bind_company_to_user_logic(email, anno, idAzienda):
     # Create new cursor
     cursor = conn.cursor(dictionary=True)
@@ -1029,6 +1222,11 @@ def bind_company_to_user_logic(email, anno, idAzienda):
     # Bind the company to the user
     cursor.execute('INSERT INTO utenteAzienda (emailUtente, idAzienda, anno) VALUES (%s, %s, %s)', (email, idAzienda, anno))
     conn.commit()
+    
+    # Log the binding
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} binded company {idAzienda} to user {email}')
+
     return jsonify({'outcome': 'success, company binded to user successfully'})
 
 @app.route('/api/bind_turn_to_sector', methods=['POST'])
@@ -1042,7 +1240,6 @@ def bind_turn_to_sector():
     result = bind_turn_to_sector_logic(idTurno, settore)
     return jsonify(result)
 
-@jwt_required()
 def bind_turn_to_sector_logic(idTurno, settore):
     """
     Logic to bind a turn to a sector.
@@ -1065,6 +1262,11 @@ def bind_turn_to_sector_logic(idTurno, settore):
     # Bind the turn to the sector
     cursor.execute('INSERT INTO turnoSectore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
     conn.commit()
+    
+    # Log the binding
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} binded turn {idTurno} to sector {settore}')
+
     return {'outcome': 'success, turn binded to sector successfully'}
 
 @app.route('/api/bind_turn_to_subject', methods = ['POST'])
@@ -1077,7 +1279,6 @@ def bind_turn_to_subject():
 
     return bind_turn_to_subject_logic(idTurno, materia)
 
-@jwt_required()
 def bind_turn_to_subject_logic(idTurno, materia):
     # Create new cursor
     cursor = conn.cursor(dictionary=True)
@@ -1097,11 +1298,17 @@ def bind_turn_to_subject_logic(idTurno, materia):
     # Bind the turn to the subject
     cursor.execute('INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)', (idTurno, materia))
     conn.commit()
+    
+    # Log the binding
+    current_user = get_jwt_identity()
+    logger.log('info', f'User {current_user} binded turn {idTurno} to subject {materia}')
+    
     return jsonify({'outcome': 'success, turn binded to subject successfully'})
 
 # Graceful shutdown
 def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature
     conn.close()
+    logger.close()
     exit(0)  # Close the API
 
 signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
