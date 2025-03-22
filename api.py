@@ -1,15 +1,18 @@
 from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
-from logger import Logger
-import mysql.connector, signal
+from json import dumps as json_dumps
+import mysql.connector, signal, socket
 
+# Create a connection to the database
 conn = mysql.connector.connect(
     host='localhost',
     user='pctowa',
     password='pctowa2025',
     database='pctowa'
 )
+
+# Create a Flask app
 app = Flask(__name__)
 
 # Configure JWT
@@ -17,8 +20,42 @@ app.config['JWT_SECRET_KEY'] = 'your_secret_key'  # Replace with a secure key
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Token expiration time
 jwt = JWTManager(app)
 
-# Create a logger object
-logger = Logger()
+# Define log server host, port and server name in log files
+LOG_SERVER_HOST = 'localhost' # The host of the log server (should match to HOST in logger.py)
+LOG_SERVER_PORT = 9999 # The port of the log server (should match to PORT in logger.py)
+SERVER_NAME_IN_LOG = 'api-server' # The name of the server in the log messages
+
+# Create a socket object at the start of the program
+log_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+log_socket.connect((LOG_SERVER_HOST, LOG_SERVER_PORT))
+
+# Define host and port for the API server
+API_SERVER_HOST = '172.16.1.98' # The host of the API server
+API_SERVER_PORT = 12345 # The port of the API server
+
+def log(type, message) -> None:
+    """
+    Log a message to the log server.
+        
+    params:
+        type - The type of the log message
+        message - The message to log
+        
+    returns: 
+        None
+    """
+    try:
+        # Create a dictionary with the log message data
+        log_data = {
+            'type': type,
+            'message': message,
+            'origin': SERVER_NAME_IN_LOG + ':' + str(API_SERVER_PORT)
+        }
+            
+        # Send the log message data to the log server
+        log_socket.sendall(json_dumps(log_data).encode('utf-8'))
+    except Exception as e:
+        print(f"Failed to send log: {e}")
 
 def parse_time_string(time_string) -> datetime:
     """
@@ -73,7 +110,7 @@ def login():
     
     # Log the login
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} logged in')
+    log('info', f'User {current_user} logged in')
 
     return jsonify({"access_token": access_token}), 200
 
@@ -97,7 +134,7 @@ def register():
         cursor.execute('INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)', 
                        (email, password, name, surname, int(user_type)))
         conn.commit()
-        logger.log('info', f'User {email} registered')
+        log('info', f'User {email} registered')
         return jsonify({"outcome": "user successfully created"}), 201
     except mysql.connector.IntegrityError:
         return jsonify({'outcome': 'error, user with provided credentials already exists'}), 400
@@ -130,7 +167,7 @@ def user_update():
 
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated')
+    log('info', f'User {current_user} updated')
 
     return jsonify({'outcome': 'user successfully updated'})
 
@@ -156,7 +193,7 @@ def user_delete():
 
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted')
+    log('info', f'User {current_user} deleted')
 
     return jsonify({'outcome': 'user successfully deleted'})
 
@@ -177,7 +214,7 @@ def class_register():
 
         # Log the class creation
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} created class {classe}')
+        log('info', f'User {current_user} created class {classe}')
 
         return jsonify({"outcome": "class successfully created"})
     except mysql.connector.IntegrityError as ex:
@@ -204,7 +241,7 @@ def class_delete():
 
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted class')
+    log('info', f'User {current_user} deleted class')
 
     return jsonify({'outcome': 'class successfully deleted'})
 
@@ -235,7 +272,7 @@ def class_update():
     
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated class')
+    log('info', f'User {current_user} updated class')
 
     return jsonify({'outcome': 'class successfully updated'})
 
@@ -257,7 +294,7 @@ def class_read():
 
         # Log the read
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} read class')
+        log('info', f'User {current_user} read class')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -281,7 +318,7 @@ def student_register():
 
         # Log the student creation
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} created student {matricola}')
+        log('info', f'User {current_user} created student {matricola}')
 
         return jsonify({"outcome": "student successfully created"})
     except mysql.connector.IntegrityError as ex:
@@ -308,7 +345,7 @@ def student_delete():
 
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted student {matricola}')
+    log('info', f'User {current_user} deleted student {matricola}')
 
     return jsonify({'outcome': 'student successfully deleted'})
 
@@ -339,7 +376,7 @@ def student_update():
     
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated student {matricola}')
+    log('info', f'User {current_user} updated student {matricola}')
 
     return jsonify({'outcome': 'student successfully updated'})
 
@@ -361,7 +398,7 @@ def student_read():
         
         # Log the read
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} read student {matricola}')
+        log('info', f'User {current_user} read student {matricola}')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -420,7 +457,7 @@ def turn_register():
     
     # Log the turn creation
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} created turn')
+    log('info', f'User {current_user} created turn')
 
     return jsonify({'outcome': 'turn successfully created'}), 201
 
@@ -446,7 +483,7 @@ def turn_delete():
     
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted turn')
+    log('info', f'User {current_user} deleted turn')
 
     return jsonify({'outcome': 'turn successfully deleted'})
 
@@ -486,7 +523,7 @@ def turn_update():
     
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated turn')
+    log('info', f'User {current_user} updated turn')
 
     return jsonify({'outcome': 'turn successfully updated'})
 
@@ -508,7 +545,7 @@ def turn_read():
 
         # Log the read
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} read turn')
+        log('info', f'User {current_user} read turn')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -542,7 +579,7 @@ def address_register():
     
     # Log the address creation
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} created address')
+    log('info', f'User {current_user} created address')
 
     return jsonify({'outcome': 'address successfully created'})
 
@@ -568,7 +605,7 @@ def address_delete():
     
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted address')
+    log('info', f'User {current_user} deleted address')
 
     return jsonify({'outcome': 'address successfully deleted'})
 
@@ -600,7 +637,7 @@ def address_update():
     
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated address')
+    log('info', f'User {current_user} updated address')
 
     return jsonify({'outcome': 'address successfully updated'})
 
@@ -622,7 +659,7 @@ def address_read():
         
         # Log the read
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} read address')
+        log('info', f'User {current_user} read address')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -656,7 +693,7 @@ def contact_register():
     
     # Log the contact creation
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} created contact')
+    log('info', f'User {current_user} created contact')
 
     return jsonify({'outcome': 'success, company inserted'})
 
@@ -682,7 +719,7 @@ def contact_delete():
 
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted contact')
+    log('info', f'User {current_user} deleted contact')
 
     return jsonify({'outcome': 'contact successfully deleted'})
 
@@ -718,7 +755,7 @@ def contact_update():
 
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated contact')
+    log('info', f'User {current_user} updated contact')
 
     return jsonify({'outcome': 'contact successfully updated'})
 
@@ -740,7 +777,7 @@ def contact_read():
         
         # Log the read
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} read contact')
+        log('info', f'User {current_user} read contact')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -772,7 +809,7 @@ def tutor_register():
     
     # Log the tutor creation
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} created tutor')
+    log('info', f'User {current_user} created tutor')
 
     return jsonify({'outcome': 'tutor successfully created'})
 
@@ -797,7 +834,7 @@ def tutor_delete():
     
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted tutor')
+    log('info', f'User {current_user} deleted tutor')
 
     return jsonify({'outcome': 'tutor successfully deleted'})
 
@@ -833,7 +870,7 @@ def tutor_update():
     
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated tutor')
+    log('info', f'User {current_user} updated tutor')
 
     return jsonify({'outcome': 'tutor successfully updated'})
 
@@ -855,7 +892,7 @@ def tutor_read():
         
         # Log the read
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} read tutor')
+        log('info', f'User {current_user} read tutor')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -893,7 +930,7 @@ def company_register():
         
         # Log the company creation
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} created')
+        log('info', f'User {current_user} created')
 
         return jsonify({'outcome': 'company successfully created'})
     except mysql.connector.IntegrityError as ex:
@@ -920,7 +957,7 @@ def company_delete():
     
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted company')
+    log('info', f'User {current_user} deleted company')
 
     return jsonify({'outcome': 'company successfully deleted'})
 
@@ -957,7 +994,7 @@ def company_update():
     
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated company')
+    log('info', f'User {current_user} updated company')
 
     return jsonify({'outcome': 'company successfully updated'})
 
@@ -979,7 +1016,7 @@ def company_read():
         
         # Log the read
         current_user = get_jwt_identity()
-        logger.log('info', f'User {current_user} read company')
+        log('info', f'User {current_user} read company')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -1007,7 +1044,7 @@ def sector_register():
     
     # Log the sector creation
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} created sector')
+    log('info', f'User {current_user} created sector')
 
     return jsonify({'outcome': 'sector successfully created'})
 
@@ -1032,7 +1069,7 @@ def sector_delete():
     
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted sector')
+    log('info', f'User {current_user} deleted sector')
 
     conn.commit()
     return jsonify({'outcome': 'sector successfully deleted'})
@@ -1060,7 +1097,7 @@ def sector_update():
     
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated sector')
+    log('info', f'User {current_user} updated sector')
 
     return jsonify({'outcome': 'sector successfully updated'})
 
@@ -1087,7 +1124,7 @@ def subject_register():
 
     # Log the subject creation
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} created subject')
+    log('info', f'User {current_user} created subject')
 
     return jsonify({'outcome': 'subject successfully created'})
 
@@ -1113,7 +1150,7 @@ def subject_delete():
 
     # Log the deletion
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} deleted subject')
+    log('info', f'User {current_user} deleted subject')
 
     return jsonify({'outcome': 'subject successfully deleted'})
 
@@ -1145,7 +1182,7 @@ def subject_update():
     
     # Log the update
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} updated subject')
+    log('info', f'User {current_user} updated subject')
 
     return jsonify({'outcome': 'subject successfully updated'})
 
@@ -1188,7 +1225,7 @@ def bind_turn_to_student_logic(matricola, idTurno):
     
     # Log the binding
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} binded student {matricola} to turn {idTurno}')
+    log('info', f'User {current_user} binded student {matricola} to turn {idTurno}')
 
     return jsonify({'outcome': 'success, student binded to turn successfully'})
 
@@ -1225,7 +1262,7 @@ def bind_company_to_user_logic(email, anno, idAzienda):
     
     # Log the binding
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} binded company {idAzienda} to user {email}')
+    log('info', f'User {current_user} binded company {idAzienda} to user {email}')
 
     return jsonify({'outcome': 'success, company binded to user successfully'})
 
@@ -1265,7 +1302,7 @@ def bind_turn_to_sector_logic(idTurno, settore):
     
     # Log the binding
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} binded turn {idTurno} to sector {settore}')
+    log('info', f'User {current_user} binded turn {idTurno} to sector {settore}')
 
     return {'outcome': 'success, turn binded to sector successfully'}
 
@@ -1301,19 +1338,18 @@ def bind_turn_to_subject_logic(idTurno, materia):
     
     # Log the binding
     current_user = get_jwt_identity()
-    logger.log('info', f'User {current_user} binded turn {idTurno} to subject {materia}')
+    log('info', f'User {current_user} binded turn {idTurno} to subject {materia}')
     
     return jsonify({'outcome': 'success, turn binded to subject successfully'})
 
 # Graceful shutdown
 def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature
     conn.close()
-    logger.close()
     exit(0)  # Close the API
 
 signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
 
 if __name__ == '__main__':
-    app.run(host='172.16.1.98', 
-            port=12345,
+    app.run(host=API_SERVER_HOST, 
+            port=API_SERVER_PORT,
             debug=True)  # Bind to the specific IP address
