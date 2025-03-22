@@ -87,6 +87,21 @@ def parse_date_string(date_string) -> datetime:
     try: return datetime.strptime(date_string, '%Y-%m-%d').date()
     except ValueError: return None
 
+@app.route('/api/endpoints', methods=['GET']) # Only used for testing purposes should be removed in production
+def list_endpoints():
+    endpoints = []
+    for rule in app.url_map.iter_rules():
+        endpoints.append({
+            "endpoint": rule.endpoint,
+            "methods": list(rule.methods),
+            "url": rule.rule
+        })
+    return {"endpoints": endpoints}
+
+@app.route('/api/shutdown', methods=['GET']) # Only used for testing purposes should be removed in production (used to remotely close the server while testing)
+def shutdown_endpoint():
+    close_api()
+
 @app.route('/api/user_login', methods=['GET'])
 def login():
     """
