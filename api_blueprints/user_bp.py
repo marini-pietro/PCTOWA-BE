@@ -1,0 +1,86 @@
+from flask import Blueprint, jsonify, request
+from flask_restful import Api, Resource
+from requests import post as requests_post
+import mysql.connector
+from utils import fetchone_query, execute_query, log, AUTH_SERVER_HOST, jwt_required_endpoint  # Import shared utilities
+
+# Create the blueprint and API
+users_bp = Blueprint('users', __name__)
+api = Api(users_bp)
+
+class UserRegister(Resource):
+    def post(self):
+        email = request.json.get('email')
+        password = request.json.get('password')
+        name = request.json.get('nome')
+        surname = request.json.get('cognome')
+        user_type = request.json.get('tipo')
+
+        try:
+            execute_query(
+                'INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)',
+                (email, password, name, surname, int(user_type))
+            )
+            log('info', f'User {email} registered')
+            return jsonify({"outcome": "user successfully created"}), 201
+        except mysql.connector.IntegrityError:
+            return jsonify({'outcome': 'error, user with provided credentials already exists'}), 400
+
+class UserLogin(Resource):
+    def post(self):
+        email = request.json.get('email')
+        password = request.json.get('password')
+
+        # Forward login request to the authentication service
+        response = requests_post(f'{AUTH_SERVER_HOST}/auth/login', json={'email': email, 'password': password})
+        if response.status_code == 200:
+            return jsonify(response.json()), 200
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+class UserUpdate(Resource):
+    @jwt_required_endpoint()
+    def patch(self):
+        email = request.args.get('email')
+        to_modify = request.args.get('toModify')
+        new_value = request.args.get('newValue')
+
+        # Check if the field to modify is allowed
+        if to_modify in ['email']:
+            return jsonify({'outcome': 'error, specified field cannot be modified'})
+
+        # Check if user exists
+        user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
+        if user is None:
+            return jsonify({'outcome': 'error, user with provided email does not exist'})
+
+        # Update the user
+        execute_query(f'UPDATE utente SET {to_modify} = %s WHERE emailUtente = %s', (new_value, email))
+
+        # Log the update
+        log('info', f'User {request.user_identity} updated')
+
+        return jsonify({'outcome': 'user successfully updated'})
+
+class UserDelete(Resource):
+    @jwt_required_endpoint()
+    def delete(self):
+        email = request.args.get('email')
+
+        # Check if user exists
+        user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
+        if user is None:
+            return jsonify({'outcome': 'error, user with provided email does not exist'})
+
+        # Delete the user
+        execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
+
+        # Log the deletion
+        log('info', f'User {request.user_identity} deleted')
+
+        return jsonify({'outcome': 'user successfully deleted'})
+
+# Add resources to the API
+api.add_resource(UserRegister, '/user_register')
+api.add_resource(UserLogin, '/user_login')
+api.add_resource(UserUpdate, '/user_update')
+api.add_resource(UserDelete, '/user_delete')
