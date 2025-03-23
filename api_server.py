@@ -1,24 +1,7 @@
-from functools import wraps
 from flask import Flask, jsonify, request # From Flask import the Flask object, jsonify function and request object
 from requests import post as requests_post # From requests import the post function
-from datetime import datetime
-from json import dumps as json_dumps
-import mysql.connector, signal, socket
-
-# Create a connection pool
-CONNECTION_POOL_SIZE = 10 # The maximum number of connections in the pool
-db_pool = mysql.connector.pooling.MySQLConnectionPool(
-    pool_name="pctowa_connection_pool",
-    pool_size=CONNECTION_POOL_SIZE,
-    host="localhost",
-    user="pctowa",
-    password="pctowa2025",
-    database="pctowa"
-)
-
-# Function to get a connection from the pool
-def get_db_connection():
-    return db_pool.get_connection()
+import mysql.connector, signal
+from utils import jwt_required_endpoint, fetchone_query, execute_query, log, close_log_socket, parse_date_string, parse_time_string, AUTH_SERVER_HOST
 
 # Create a Flask app
 app = Flask(__name__)
@@ -27,76 +10,19 @@ app = Flask(__name__)
 API_SERVER_HOST = '172.16.1.98' # The host of the API server
 API_SERVER_PORT = 5000 # The port of the API server
 
-# Define log server host, port and server name in log files
-LOG_SERVER_HOST = 'localhost' # The host of the log server (should match to HOST in logger.py)
-LOG_SERVER_PORT = 5001 # The port of the log server (should match to PORT in logger.py)
-SERVER_NAME_IN_LOG = 'api-server' # The name of the server in the log messages
-
-# Create a socket object at the start of the program
-log_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-log_socket.connect((LOG_SERVER_HOST, LOG_SERVER_PORT))
-
-# Define authentication server data
-AUTH_SERVER_HOST = 'localhost' # The host of the authentication server
-AUTH_SERVER_PORT = 5002 # The port of the authentication server
-AUTH_SERVER_VALIDATE_URL = f'http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate'
-
-def log(type, message) -> None:
+# Utility functions
+def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature
     """
-    Log a message to the log server.
-        
-    params:
-        type - The type of the log message
-        message - The message to log
-        
-    returns: 
-        None
+    Gracefully close the API server.
     """
-    try:
-        # Create a dictionary with the log message data
-        log_data = {
-            'type': type,
-            'message': message,
-            'origin': SERVER_NAME_IN_LOG + ':' + str(API_SERVER_PORT)
-        }
-            
-        # Send the log message data to the log server
-        log_socket.sendall(json_dumps(log_data).encode('utf-8'))
-    except Exception as e:
-        print(f"Failed to send log: {e}")
+    log('info', 'API server shutting down')
+    close_log_socket()  # Close the socket connection to the log server
+    exit(0)  # Close the API
 
-def parse_time_string(time_string) -> datetime:
-    """
-    Parse a time string in the format HH:MM and return a datetime object.
-    
-    params:
-        time_string - The time string to parse
-    
-    returns: 
-        A datetime object if the string is in the correct format, None otherwise
+signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
+signal.signal(signal.SIGTERM, close_api)  # Bind SIGTERM to close_api function
 
-    """
-
-    try: return datetime.strptime(time_string, '%H:%M').time()
-    except ValueError: return None
-
-def parse_date_string(date_string) -> datetime:
-    """
-    Parse a date string in the format YYYY-MM-DD and return a datetime object.
-    
-    params:
-        date_string - The date string to parse
-    
-    returns: 
-        A datetime object if the string is in the correct format, None otherwise
-
-    """
-
-    try: return datetime.strptime(date_string, '%Y-%m-%d').date()
-    except ValueError: return None
-
-# Function used for testing purposes, should be removed in production
-
+# Functions used for testing purposes, should be removed in production
 @app.route('/api/endpoints', methods=['GET']) # Only used for testing purposes should be removed in production
 def list_endpoints():
     endpoints = []
@@ -111,83 +37,6 @@ def list_endpoints():
 @app.route('/api/shutdown', methods=['GET']) # Only used for testing purposes should be removed in production (used to remotely close the server while testing)
 def shutdown_endpoint():
     close_api()
-
-# Utility functions
-
-def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature
-    """
-    Gracefully close the API server.
-    """
-    log('info', 'API server shutting down')
-    log_socket.close()  # Close the socket connection to the log server
-    db_pool._remove_connections() # Close all connections in the connection pool
-    exit(0)  # Close the API
-
-signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
-signal.signal(signal.SIGTERM, close_api)  # Bind SIGTERM to close_api function
-
-def jwt_required_endpoint(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        token = request.headers.get('Authorization', '').replace('Bearer ', '')
-        if not token:
-            return jsonify({'error': 'Missing token'}), 401
-
-        # Validate the token with the authentication server
-        response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
-        if response.status_code != 200 or not response.json().get('valid'):
-            return jsonify({'error': 'Invalid or expired token'}), 401
-
-        # Attach the user identity to the request context
-        request.user_identity = response.json().get('identity')
-        return func(*args, **kwargs)
-    return wrapper
-
-def fetchone_query(query, params):
-    """
-    Execute a query on the database and return the result.
-    
-    params:
-        query - The query to execute
-        params - The parameters to pass to the query
-        
-    returns: 
-        The result of the query
-    """
-    with get_db_connection().cursor(dictionary=True) as cursor: # Use a context manager to automatically close the cursor
-        cursor.execute(query, params)
-        return cursor.fetchone()
-
-def fetchall_query(query, params):
-    """
-    Execute a query on the database and return the result.
-    
-    params:
-        query - The query to execute
-        params - The parameters to pass to the query
-        
-    returns: 
-        The result of the query
-    """
-
-    with get_db_connection().cursor(dictionary=True) as cursor: # Use a context manager to automatically close the cursor
-        cursor.execute(query, params)
-        return cursor.fetchall()
-
-def execute_query(query, params):
-    """
-    Execute a query on the database and return the result.
-    
-    params:
-        query - The query to execute
-        params - The parameters to pass to the query
-        
-    returns: 
-        The result of the query
-    """
-    cursor = get_db_connection().cursor(dictionary=True)
-    cursor.execute(query, params)
-    get_db_connection().commit()
 
 # API endpoints
 
@@ -1030,9 +879,6 @@ def subject_delete():
 
     # Gather parameters
     materia = request.args.get('materia')
-
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if subject exists
     subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
