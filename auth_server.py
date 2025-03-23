@@ -1,9 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from datetime import timedelta
-
-AUTH_SERVER_PORT = 5002
-AUTH_SERVER_HOST = 'localhost'
+from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT
 
 app = Flask(__name__)
 

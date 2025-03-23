@@ -1,10 +1,7 @@
 import logging
 from json import loads as json_loads, JSONDecodeError
 from socketserver import BaseRequestHandler, TCPServer
-
-# Define host and port for the log server
-LOG_SERVER_HOST = 'localhost'
-LOG_SERVER_PORT = 5001
+from config import LOG_SERVER_HOST, LOG_SERVER_PORT
 
 class Logger:
     def __init__(self, log_file="PCTO_Webapp_backend.log", console_level=logging.INFO, file_level=logging.DEBUG):
