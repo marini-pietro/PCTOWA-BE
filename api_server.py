@@ -1,6 +1,6 @@
 from functools import wraps
-from flask import Flask, jsonify, request, g # From Flask import the Flask object, jsonify function, request object and global object
-from requests import post as requests_post
+from flask import Flask, jsonify, request # From Flask import the Flask object, jsonify function and request object
+from requests import post as requests_post # From requests import the post function
 from datetime import datetime
 from json import dumps as json_dumps
 import mysql.connector, signal, socket
@@ -125,14 +125,6 @@ def close_api(signal, frame):  # Parameters are necessary even if not used becau
 signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
 signal.signal(signal.SIGTERM, close_api)  # Bind SIGTERM to close_api function
 
-@app.before_request
-def validate_jwt():
-    if request.endpoint not in ['login', 'list_endpoints', 'shutdown_endpoint']: # Skip validation for login endpoint (for production remove list_endpoints and shutdown_endpoint)
-        token = request.headers.get('Authorization', '').replace('Bearer ', '')
-        response = requests_post(f'{AUTH_SERVER_HOST}/auth/validate', json={'token': token})
-        if response.status_code != 200 or not response.json().get('valid'):
-            return jsonify({'error': 'Invalid or missing token'}), 401
-
 def jwt_required_endpoint(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -149,30 +141,6 @@ def jwt_required_endpoint(func):
         request.user_identity = response.json().get('identity')
         return func(*args, **kwargs)
     return wrapper
-
-def get_user_identity_from_jwt():
-    """
-    Retrieve the user identity from the JWT by validating it with the authentication server.
-    If the identity is already set in the request context, return it directly.
-    """
-    # Check if the user identity is already set in the request context
-    if hasattr(request, 'user_identity') and request.user_identity:
-        return request.user_identity
-
-    # Retrieve the token from the Authorization header
-    token = request.headers.get('Authorization', '').replace('Bearer ', '')
-    if not token:
-        return None
-
-    # Validate the token with the authentication server
-    response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
-    if response.status_code == 200 and response.json().get('valid'):
-        # Extract and return the user identity
-        user_identity = response.json().get('identity')
-        request.user_identity = user_identity  # Cache the identity in the request context
-        return user_identity
-
-    return None
 
 # API endpoints
 
@@ -239,8 +207,8 @@ def user_update():
     get_db_connection().commit()
 
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated')
+    
+    log('info', f'User {request.user_identity} updated')
 
     return jsonify({'outcome': 'user successfully updated'})
 
@@ -265,8 +233,7 @@ def user_delete():
     get_db_connection().commit()
 
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted')
+    log('info', f'User {request.user_identity} deleted')
 
     return jsonify({'outcome': 'user successfully deleted'})
 
@@ -286,8 +253,7 @@ def class_register():
         get_db_connection().commit()
 
         # Log the class creation
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} created class {classe}')
+        log('info', f'User {request.user_identity} created class {classe}')
 
         return jsonify({"outcome": "class successfully created"})
     except mysql.connector.IntegrityError as ex:
@@ -313,8 +279,8 @@ def class_delete():
     get_db_connection().commit()
 
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted class')
+    
+    log('info', f'User {request.user_identity} deleted class')
 
     return jsonify({'outcome': 'class successfully deleted'})
 
@@ -344,8 +310,8 @@ def class_update():
     get_db_connection().commit()
     
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated class')
+    
+    log('info', f'User {request.user_identity} updated class')
 
     return jsonify({'outcome': 'class successfully updated'})
 
@@ -366,8 +332,8 @@ def class_read():
         cursor.execute('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
 
         # Log the read
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} read class')
+        
+        log('info', f'User {request.user_identity} read class')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -390,8 +356,8 @@ def student_register():
         get_db_connection().commit()
 
         # Log the student creation
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} created student {matricola}')
+        
+        log('info', f'User {request.user_identity} created student {matricola}')
 
         return jsonify({"outcome": "student successfully created"})
     except mysql.connector.IntegrityError as ex:
@@ -417,8 +383,8 @@ def student_delete():
     get_db_connection().commit()
 
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted student {matricola}')
+    
+    log('info', f'User {request.user_identity} deleted student {matricola}')
 
     return jsonify({'outcome': 'student successfully deleted'})
 
@@ -448,8 +414,8 @@ def student_update():
     get_db_connection().commit()
     
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated student {matricola}')
+    
+    log('info', f'User {request.user_identity} updated student {matricola}')
 
     return jsonify({'outcome': 'student successfully updated'})
 
@@ -470,8 +436,8 @@ def student_read():
         cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
         
         # Log the read
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} read student {matricola}')
+        
+        log('info', f'User {request.user_identity} read student {matricola}')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -529,8 +495,8 @@ def turn_register():
     get_db_connection().commit()
     
     # Log the turn creation
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} created turn')
+    
+    log('info', f'User {request.user_identity} created turn')
 
     return jsonify({'outcome': 'turn successfully created'}), 201
 
@@ -555,8 +521,8 @@ def turn_delete():
     get_db_connection().commit()
     
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted turn')
+    
+    log('info', f'User {request.user_identity} deleted turn')
 
     return jsonify({'outcome': 'turn successfully deleted'})
 
@@ -595,8 +561,8 @@ def turn_update():
     get_db_connection().commit()
     
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated turn')
+    
+    log('info', f'User {request.user_identity} updated turn')
 
     return jsonify({'outcome': 'turn successfully updated'})
 
@@ -617,8 +583,8 @@ def turn_read():
         cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
 
         # Log the read
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} read turn')
+        
+        log('info', f'User {request.user_identity} read turn')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -651,8 +617,7 @@ def address_register():
     get_db_connection().commit()
     
     # Log the address creation
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} created address')
+    log('info', f'User {request.user_identity} created address')
 
     return jsonify({'outcome': 'address successfully created'})
 
@@ -677,8 +642,8 @@ def address_delete():
     get_db_connection().commit()
     
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted address')
+    
+    log('info', f'User {request.user_identity} deleted address')
 
     return jsonify({'outcome': 'address successfully deleted'})
 
@@ -709,8 +674,8 @@ def address_update():
     get_db_connection().commit()
     
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated address')
+    
+    log('info', f'User {request.user_identity} updated address')
 
     return jsonify({'outcome': 'address successfully updated'})
 
@@ -731,8 +696,8 @@ def address_read():
         cursor.execute('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
         
         # Log the read
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} read address')
+        
+        log('info', f'User {request.user_identity} read address')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -765,8 +730,8 @@ def contact_register():
     get_db_connection().commit()
     
     # Log the contact creation
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} created contact')
+    
+    log('info', f'User {request.user_identity} created contact')
 
     return jsonify({'outcome': 'success, company inserted'})
 
@@ -791,8 +756,8 @@ def contact_delete():
     get_db_connection().commit()
 
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted contact')
+    
+    log('info', f'User {request.user_identity} deleted contact')
 
     return jsonify({'outcome': 'contact successfully deleted'})
 
@@ -827,8 +792,8 @@ def contact_update():
     get_db_connection().commit()
 
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated contact')
+    
+    log('info', f'User {request.user_identity} updated contact')
 
     return jsonify({'outcome': 'contact successfully updated'})
 
@@ -849,8 +814,8 @@ def contact_read():
         cursor.execute('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
         
         # Log the read
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} read contact')
+        
+        log('info', f'User {request.user_identity} read contact')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -881,8 +846,8 @@ def tutor_register():
     get_db_connection().commit()
     
     # Log the tutor creation
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} created tutor')
+    
+    log('info', f'User {request.user_identity} created tutor')
 
     return jsonify({'outcome': 'tutor successfully created'})
 
@@ -906,8 +871,8 @@ def tutor_delete():
     get_db_connection().commit()
     
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted tutor')
+    
+    log('info', f'User {request.user_identity} deleted tutor')
 
     return jsonify({'outcome': 'tutor successfully deleted'})
 
@@ -942,8 +907,8 @@ def tutor_update():
     get_db_connection().commit()
     
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated tutor')
+    
+    log('info', f'User {request.user_identity} updated tutor')
 
     return jsonify({'outcome': 'tutor successfully updated'})
 
@@ -964,8 +929,8 @@ def tutor_read():
         cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
         
         # Log the read
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} read tutor')
+        
+        log('info', f'User {request.user_identity} read tutor')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -1002,8 +967,8 @@ def company_register():
         get_db_connection().commit()
         
         # Log the company creation
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} created')
+        
+        log('info', f'User {request.user_identity} created')
 
         return jsonify({'outcome': 'company successfully created'})
     except mysql.connector.IntegrityError as ex:
@@ -1029,8 +994,8 @@ def company_delete():
     get_db_connection().commit()
     
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted company')
+    
+    log('info', f'User {request.user_identity} deleted company')
 
     return jsonify({'outcome': 'company successfully deleted'})
 
@@ -1066,8 +1031,8 @@ def company_update():
     get_db_connection().commit()
     
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated company')
+    
+    log('info', f'User {request.user_identity} updated company')
 
     return jsonify({'outcome': 'company successfully updated'})
 
@@ -1088,8 +1053,8 @@ def company_read():
         cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         
         # Log the read
-        current_user = get_user_identity_from_jwt()
-        log('info', f'User {current_user} read company')
+        
+        log('info', f'User {request.user_identity} read company')
 
         return jsonify(cursor.fetchall()), 200
     except mysql.connector.Error as err:
@@ -1116,8 +1081,8 @@ def sector_register():
     get_db_connection().commit()
     
     # Log the sector creation
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} created sector')
+    
+    log('info', f'User {request.user_identity} created sector')
 
     return jsonify({'outcome': 'sector successfully created'})
 
@@ -1141,8 +1106,8 @@ def sector_delete():
     cursor.execute('DELETE FROM settori WHERE settore = %s', (settore,))
     
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted sector')
+    
+    log('info', f'User {request.user_identity} deleted sector')
 
     get_db_connection().commit()
     return jsonify({'outcome': 'sector successfully deleted'})
@@ -1169,8 +1134,8 @@ def sector_update():
     get_db_connection().commit()
     
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated sector')
+    
+    log('info', f'User {request.user_identity} updated sector')
 
     return jsonify({'outcome': 'sector successfully updated'})
 
@@ -1196,8 +1161,8 @@ def subject_register():
     get_db_connection().commit()
 
     # Log the subject creation
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} created subject')
+    
+    log('info', f'User {request.user_identity} created subject')
 
     return jsonify({'outcome': 'subject successfully created'})
 
@@ -1222,8 +1187,8 @@ def subject_delete():
     get_db_connection().commit()
 
     # Log the deletion
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} deleted subject')
+    
+    log('info', f'User {request.user_identity} deleted subject')
 
     return jsonify({'outcome': 'subject successfully deleted'})
 
@@ -1254,8 +1219,8 @@ def subject_update():
     get_db_connection().commit()
     
     # Log the update
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} updated subject')
+    
+    log('info', f'User {request.user_identity} updated subject')
 
     return jsonify({'outcome': 'subject successfully updated'})
 
@@ -1297,8 +1262,8 @@ def bind_turn_to_student_logic(matricola, idTurno):
     get_db_connection().commit()
     
     # Log the binding
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} binded student {matricola} to turn {idTurno}')
+    
+    log('info', f'User {request.user_identity} binded student {matricola} to turn {idTurno}')
 
     return jsonify({'outcome': 'success, student binded to turn successfully'})
 
@@ -1334,8 +1299,8 @@ def bind_company_to_user_logic(email, anno, idAzienda):
     get_db_connection().commit()
     
     # Log the binding
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} binded company {idAzienda} to user {email}')
+    
+    log('info', f'User {request.user_identity} binded company {idAzienda} to user {email}')
 
     return jsonify({'outcome': 'success, company binded to user successfully'})
 
@@ -1374,8 +1339,8 @@ def bind_turn_to_sector_logic(idTurno, settore):
     get_db_connection().commit()
     
     # Log the binding
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} binded turn {idTurno} to sector {settore}')
+    
+    log('info', f'User {request.user_identity} binded turn {idTurno} to sector {settore}')
 
     return {'outcome': 'success, turn binded to sector successfully'}
 
@@ -1410,8 +1375,8 @@ def bind_turn_to_subject_logic(idTurno, materia):
     get_db_connection().commit()
     
     # Log the binding
-    current_user = get_user_identity_from_jwt()
-    log('info', f'User {current_user} binded turn {idTurno} to subject {materia}')
+    
+    log('info', f'User {request.user_identity} binded turn {idTurno} to subject {materia}')
     
     return jsonify({'outcome': 'success, turn binded to subject successfully'})
 
