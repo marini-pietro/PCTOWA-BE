@@ -6,9 +6,10 @@ from json import dumps as json_dumps
 import mysql.connector, signal, socket
 
 # Create a connection pool
+CONNECTION_POOL_SIZE = 10 # The maximum number of connections in the pool
 db_pool = mysql.connector.pooling.MySQLConnectionPool(
-    pool_name="mypool",
-    pool_size=10,  # Maximum number of connections in the pool
+    pool_name="pctowa_connection_pool",
+    pool_size=CONNECTION_POOL_SIZE,
     host="localhost",
     user="pctowa",
     password="pctowa2025",
@@ -142,6 +143,52 @@ def jwt_required_endpoint(func):
         return func(*args, **kwargs)
     return wrapper
 
+def fetchone_query(query, params):
+    """
+    Execute a query on the database and return the result.
+    
+    params:
+        query - The query to execute
+        params - The parameters to pass to the query
+        
+    returns: 
+        The result of the query
+    """
+    with get_db_connection().cursor(dictionary=True) as cursor: # Use a context manager to automatically close the cursor
+        cursor.execute(query, params)
+        return cursor.fetchone()
+
+def fetchall_query(query, params):
+    """
+    Execute a query on the database and return the result.
+    
+    params:
+        query - The query to execute
+        params - The parameters to pass to the query
+        
+    returns: 
+        The result of the query
+    """
+
+    with get_db_connection().cursor(dictionary=True) as cursor: # Use a context manager to automatically close the cursor
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
+def execute_query(query, params):
+    """
+    Execute a query on the database and return the result.
+    
+    params:
+        query - The query to execute
+        params - The parameters to pass to the query
+        
+    returns: 
+        The result of the query
+    """
+    cursor = get_db_connection().cursor(dictionary=True)
+    cursor.execute(query, params)
+    get_db_connection().commit()
+
 # API endpoints
 
 @app.route('/api/user_login', methods=['POST'])
@@ -167,14 +214,10 @@ def register():
     surname = request.json.get('cognome')
     user_type = request.json.get('tipo')
     
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-    
     # Insert the user
     try:
-        cursor.execute('INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)', 
-                       (email, password, name, surname, int(user_type)))
-        get_db_connection().commit()
+        execute_query('INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)',
+                      (email, password, name, surname, int(user_type)))
         log('info', f'User {email} registered')
         return jsonify({"outcome": "user successfully created"}), 201
     except mysql.connector.IntegrityError:
@@ -193,21 +236,15 @@ def user_update():
     if toModify in ['email']:
         return jsonify({'outcome': 'error, specified field cannot be modified'})
     
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if user exists
-    cursor.execute('SELECT * FROM utente WHERE emailUtente = %s', (email,))
-    user = cursor.fetchone()
+    user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
     if user is None:
         return jsonify({'outcome': 'error, user with provided email does not exist'})
     
     # Update the user
-    cursor.execute(f'UPDATE utente SET {toModify} = %s WHERE emailUtente = %s', (newValue, email))
-    get_db_connection().commit()
+    execute_query(f'UPDATE utente SET {toModify} = %s WHERE emailUtente = %s', (newValue, email))
 
     # Log the update
-    
     log('info', f'User {request.user_identity} updated')
 
     return jsonify({'outcome': 'user successfully updated'})
@@ -219,18 +256,13 @@ def user_delete():
     # Gather parameters
     email = request.args.get('email')
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if user exists
-    cursor.execute('SELECT * FROM users WHERE email = %s', (email,))
-    user = cursor.fetchone()
+    user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
     if user is None:
         return jsonify({'outcome': 'error, user with provided email does not exist'})
     
     # Delete the user
-    cursor.execute('DELETE FROM users WHERE email = %s', (email,))
-    get_db_connection().commit()
+    execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
 
     # Log the deletion
     log('info', f'User {request.user_identity} deleted')
@@ -243,14 +275,10 @@ def class_register():
     # Gather parameters
     classe = request.args.get('classe')
     anno = request.args.get('anno')
-    emailResponsabile = request.args.get('emailResponsabile')
-
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)          
+    emailResponsabile = request.args.get('emailResponsabile')     
     
     try:
-        cursor.execute('INSERT INTO classi (classe, anno, emailResponsabile) VALUES (%s, %s, %s)', (classe, anno, emailResponsabile))
-        get_db_connection().commit()
+        execute_query('INSERT INTO classi VALUES (%s, %s, %s)', (classe, anno, emailResponsabile))
 
         # Log the class creation
         log('info', f'User {request.user_identity} created class {classe}')
@@ -265,21 +293,15 @@ def class_delete():
     # Gather parameters
     idClasse = request.args.get('idClasse')
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if class exists
-    cursor.execute('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
-    classe = cursor.fetchone()
+    classe = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
     if classe is None:
         return jsonify({'outcome': 'error, specified class does not exist'})
     
     # Delete the class
-    cursor.execute('DELETE FROM classi WHERE idClasse = %s', (idClasse,))
-    get_db_connection().commit()
+    execute_query('DELETE FROM classi WHERE idClasse = %s', (idClasse,))
 
     # Log the deletion
-    
     log('info', f'User {request.user_identity} deleted class')
 
     return jsonify({'outcome': 'class successfully deleted'})
@@ -295,22 +317,16 @@ def class_update():
     # Check if the field to modify is allowed
     if toModify in ['idClasse']:
         return jsonify({'outcome': 'error, specified field cannot be modified'})
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if class exists
-    cursor.execute('SELECT * FROM classi WHERE idClasse = %s', (idClasse))
-    classe = cursor.fetchone()
+    classe = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
     if classe is None:
         return jsonify({'outcome': 'error, specified class does not exist'})
     
     # Update the class
-    cursor.execute(f'UPDATE classi SET {toModify} = %s WHERE idClasse = %s', (newValue, idClasse))
-    get_db_connection().commit()
+    execute_query(f'UPDATE classi SET {toModify} = %s WHERE idClasse = %s', (newValue, idClasse))
     
     # Log the update
-    
     log('info', f'User {request.user_identity} updated class')
 
     return jsonify({'outcome': 'class successfully updated'})
@@ -324,18 +340,17 @@ def class_read():
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid idClasse parameter"}), 400
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Execute query
     try:
-        cursor.execute('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
+        execute_query('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
+
+        # Execute query
+        class_ = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
 
         # Log the read
-        
         log('info', f'User {request.user_identity} read class')
 
-        return jsonify(cursor.fetchall()), 200
+        return jsonify(class_), 200
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
 
@@ -347,16 +362,11 @@ def student_register():
     nome = request.args.get('nome')
     cognome = request.args.get('cognome')
     idClasse = request.args.get('idClasse')
-
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
     
     try:
-        cursor.execute('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
-        get_db_connection().commit()
+        execute_query('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
 
         # Log the student creation
-        
         log('info', f'User {request.user_identity} created student {matricola}')
 
         return jsonify({"outcome": "student successfully created"})
@@ -369,21 +379,15 @@ def student_delete():
     # Gather parameters
     matricola = request.args.get('matricola')
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if student exists
-    cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
-    student = cursor.fetchone()
+    student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
     if student is None:
         return jsonify({'outcome': 'error, specified student does not exist'})
     
     # Delete the student
-    cursor.execute('DELETE FROM studenti WHERE matricola = %s', (matricola,))
-    get_db_connection().commit()
+    execute_query('DELETE FROM studenti WHERE matricola = %s', (matricola,))
 
     # Log the deletion
-    
     log('info', f'User {request.user_identity} deleted student {matricola}')
 
     return jsonify({'outcome': 'student successfully deleted'})
@@ -399,22 +403,16 @@ def student_update():
     # Check if the field to modify is allowed
     if toModify in ['matricola']:
         return jsonify({'outcome': 'error, specified field cannot be modified'})
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if student exists
-    cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola))
-    student = cursor.fetchone()
+    student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
     if student is None:
         return jsonify({'outcome': 'error, specified student does not exist'})
     
     # Update the student
-    cursor.execute(f'UPDATE studenti SET {toModify} = %s WHERE matricola = %s', (newValue, matricola))
-    get_db_connection().commit()
+    execute_query(f'UPDATE studenti SET {toModify} = %s WHERE matricola = %s', (newValue, matricola))
     
     # Log the update
-    
     log('info', f'User {request.user_identity} updated student {matricola}')
 
     return jsonify({'outcome': 'student successfully updated'})
@@ -427,19 +425,15 @@ def student_read():
         matricola = int(request.args.get('matricola'))
     except (ValueError, TypeError):
         return jsonify({'error': 'invalid matricola parameter'}), 400
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
-        cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
-        
+        student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
+    
         # Log the read
-        
         log('info', f'User {request.user_identity} read student {matricola}')
 
-        return jsonify(cursor.fetchall()), 200
+        return jsonify(student), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
 
@@ -459,44 +453,35 @@ def turn_register():
     oraInizio =  parse_time_string(time_string=request.args.get('oraInizio')) # Parse function will return None if string is incorrectly formatted or value is None to begin with
     oraFine = parse_time_string(time_string=request.args.get('oraFine')) # Parse function will return None if string is incorrectly formatted or value is None to begin with
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if idAzienda exists
-    cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda))
-    company = cursor.fetchone()
+    company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
     if company is None:
         return jsonify({'outcome': 'error, specified company does not exist'})
 
     # Check that idIndirizzo exist if an idIndirizzo is provided
     if idIndirizzo is not None: 
-        cursor.execute('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (int(idIndirizzo)))
-        address = cursor.fetchone()
+        address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (int(idIndirizzo)))
         if address is None:
             return jsonify({'outcome': 'error, specified address does not exist'})
         
     # Check that settore if one is provided
     if settore is not None: 
-        cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
-        sector = cursor.fetchone()
+        sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore))
         if sector is None:
             return jsonify({'outcome': 'error, specified sector does not exist'})
     
     # Check that idTutor exists if one is provided
     if idTutor is not None:
-        cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (int(idTutor)))
-        tutor = cursor.fetchone()
+        tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (int(idTutor)))
         if tutor is None:
             return jsonify({'outcome': 'error, specified tutor does not exist'})
     
     # Insert the turn
-    cursor.execute('INSERT INTO turni (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', 
+    execute_query('INSERT INTO turni (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', 
                    (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine))
-    get_db_connection().commit()
     
     # Log the turn creation
-    
-    log('info', f'User {request.user_identity} created turn')
+    log('info', f'User {request.user_identity} created a turn')
 
     return jsonify({'outcome': 'turn successfully created'}), 201
 
@@ -507,21 +492,15 @@ def turn_delete():
     # Gather parameters
     idTurno = int(request.args.get('idTurno'))
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if turn exists
-    cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-    turn = cursor.fetchone()
+    turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
     if turn is None:
         return jsonify({'outcome': 'error, specified turn does not exist'})
     
     # Delete the turn
-    cursor.execute('DELETE FROM turni WHERE idTurno = %s', (idTurno,))
-    get_db_connection().commit()
+    execute_query('DELETE FROM turni WHERE idTurno = %s', (idTurno,))
     
     # Log the deletion
-    
     log('info', f'User {request.user_identity} deleted turn')
 
     return jsonify({'outcome': 'turn successfully deleted'})
@@ -546,22 +525,16 @@ def turn_update():
         newValue = parse_date_string(date_string=newValue)
     elif toModify in ['oraInizio', 'oraFine']:
         newValue = parse_time_string(time_string=newValue)
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if turn exists
-    cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno))
-    turn = cursor.fetchone()
+    turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno))
     if turn is None:
         return jsonify({'outcome': 'error, specified turn does not exist'})
     
     # Update the turn
-    cursor.execute(f'UPDATE turni SET {toModify} = %s WHERE idTurno = %s', (newValue, idTurno))
-    get_db_connection().commit()
+    execute_query(f'UPDATE turni SET {toModify} = %s WHERE idTurno = %s', (newValue, idTurno))
     
     # Log the update
-    
     log('info', f'User {request.user_identity} updated turn')
 
     return jsonify({'outcome': 'turn successfully updated'})
@@ -574,19 +547,15 @@ def turn_read():
         idTurno = int(request.args.get('idTurno'))
     except (ValueError, TypeError):
         return jsonify({'error': 'invalid idTurno parameter'}), 400
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
-        cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
+        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
 
         # Log the read
-        
         log('info', f'User {request.user_identity} read turn')
 
-        return jsonify(cursor.fetchall()), 200
+        return jsonify(turn), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
 
@@ -602,19 +571,14 @@ def address_register():
     indirizzo = request.args.get('indirizzo')
     idAzienda = int(request.args.get('idAzienda'))
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if idAzienda exists
-    cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda))
-    company = cursor.fetchone()
+    company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
     if company is None:
         return jsonify({'outcome': 'error, specified company does not exist'})
     
     # Insert the address
-    cursor.execute('INSERT INTO indirizzi (stato, provincia, comune, cap, indirizzo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)', 
+    execute_query('INSERT INTO indirizzi (stato, provincia, comune, cap, indirizzo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)',
                    (stato, provincia, comune, cap, indirizzo, idAzienda))
-    get_db_connection().commit()
     
     # Log the address creation
     log('info', f'User {request.user_identity} created address')
@@ -628,21 +592,15 @@ def address_delete():
     # Gather parameters
     idIndirizzo = int(request.args.get('idIndirizzo'))
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if address exists
-    cursor.execute('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
-    address = cursor.fetchone()
+    address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
     if address is None:
         return jsonify({'outcome': 'error, specified address does not exist'})
     
     # Delete the address
-    cursor.execute('DELETE FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
-    get_db_connection().commit()
+    execute_query('DELETE FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
     
     # Log the deletion
-    
     log('info', f'User {request.user_identity} deleted address')
 
     return jsonify({'outcome': 'address successfully deleted'})
@@ -659,22 +617,16 @@ def address_update():
     # Check if the field to modify is allowed
     if toModify in ['idIndirizzo']:
         return jsonify({'outcome': 'error, specified field cannot be modified'})
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if address exists
-    cursor.execute('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo))
-    address = cursor.fetchone()
+    address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo))
     if address is None:
         return jsonify({'outcome': 'error, specified address does not exist'})
     
     # Update the address
-    cursor.execute(f'UPDATE indirizzi SET {toModify} = %s WHERE idIndirizzo = %s', (newValue, idIndirizzo))
-    get_db_connection().commit()
+    execute_query(f'UPDATE indirizzi SET {toModify} = %s WHERE idIndirizzo = %s', (newValue, idIndirizzo))
     
     # Log the update
-    
     log('info', f'User {request.user_identity} updated address')
 
     return jsonify({'outcome': 'address successfully updated'})
@@ -687,19 +639,16 @@ def address_read():
         idIndirizzo = int(request.args.get('idIndirizzo'))
     except (ValueError, TypeError):
         return jsonify({'error': 'invalid idIndirizzo parameter'}), 400
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
-        cursor.execute('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
+        address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
         
         # Log the read
         
         log('info', f'User {request.user_identity} read address')
 
-        return jsonify(cursor.fetchall()), 200
+        return jsonify(address), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
 
@@ -715,19 +664,14 @@ def contact_register():
     ruolo = request.args.get('ruolo')
     idAzienda = int(request.args.get('idAzienda'))
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if idAzienda exists
-    cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda))
-    company = cursor.fetchone()
+    company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
     if company is None:
         return jsonify({'outcome': 'error, specified company does not exist'})
     
     # Insert the contact
-    cursor.execute('INSERT INTO contatti (nome, cognome, telefono, email, ruolo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)', 
-                   (nome, cognome, telefono, email, ruolo, idAzienda))
-    get_db_connection().commit()
+    contact = execute_query('INSERT INTO contatti (nome, cognome, telefono, email, ruolo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)',
+                     (nome, cognome, telefono, email, ruolo, idAzienda))
     
     # Log the contact creation
     
@@ -742,21 +686,15 @@ def contact_delete():
     # Gather parameters
     idContatto = int(request.args.get('idContatto'))
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if contact exists
-    cursor.execute('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
-    contact = cursor.fetchone()
+    contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
     if contact is None:
         return jsonify({'outcome': 'error, specified contact does not exist'})
     
     # Delete the contact
-    cursor.execute('DELETE FROM contatti WHERE idContatto = %s', (idContatto,))
-    get_db_connection().commit()
+    execute_query('DELETE FROM contatti WHERE idContatto = %s', (idContatto,))
 
     # Log the deletion
-    
     log('info', f'User {request.user_identity} deleted contact')
 
     return jsonify({'outcome': 'contact successfully deleted'})
@@ -777,22 +715,16 @@ def contact_update():
     # Check if any casting operations are needed
     if toModify in ['telefono']:
         newValue = int(newValue)
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if contact exists
-    cursor.execute('SELECT * FROM contatti WHERE idContatto = %s', (idContatto))
-    contact = cursor.fetchone()
+    contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (idContatto))
     if contact is None:
         return jsonify({'outcome': 'error, specified contact does not exist'})
     
     # Update the contact
-    cursor.execute(f'UPDATE contatti SET {toModify} = %s WHERE idContatto = %s', (newValue, idContatto))
-    get_db_connection().commit()
+    execute_query(f'UPDATE contatti SET {toModify} = %s WHERE idContatto = %s', (newValue, idContatto))
 
     # Log the update
-    
     log('info', f'User {request.user_identity} updated contact')
 
     return jsonify({'outcome': 'contact successfully updated'})
@@ -806,18 +738,14 @@ def contact_read():
     except (ValueError, TypeError):
         return jsonify({'error': 'invalid idContatto parameter'}), 400
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Execute query
     try:
-        cursor.execute('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
+        contact = execute_query('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
         
         # Log the read
-        
         log('info', f'User {request.user_identity} read contact')
 
-        return jsonify(cursor.fetchall()), 200
+        return jsonify(contact), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
 
@@ -831,23 +759,18 @@ def tutor_register():
     telefono = request.args.get('telefono')
     email = request.args.get('email')
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if tutor already exists by checking if the combination of email and phone number already exists
-    cursor.execute('SELECT * FROM tutor WHERE emailTutor = %s AND telefonoTutor = %s', (email, telefono))
-    tutor = cursor.fetchone()
+    tutor = fetchone_query('SELECT * FROM tutor WHERE emailTutor = %s AND telefonoTutor = %s', (email, telefono))
     if tutor is None:
         return jsonify({'outcome': 'error, specified company does not exist'})
     
     # Insert the tutor
-    cursor.execute('INSERT INTO tutor (nome, cognome, telefonoTutor, emailTutor) VALUES (%s, %s, %s, %s)', 
-                   (nome, cognome, telefono, email))
-    get_db_connection().commit()
+    execute_query('INSERT INTO tutor (nome, cognome, telefonoTutor, emailTutor) VALUES (%s, %s, %s, %s)',
+                     (nome, cognome, telefono, email))
     
     # Log the tutor creation
     
-    log('info', f'User {request.user_identity} created tutor')
+    log('info', f'User {request.user_identity} created a tutor')
 
     return jsonify({'outcome': 'tutor successfully created'})
 
@@ -857,21 +780,15 @@ def tutor_delete():
     # Gather parameters
     idTutor = int(request.args.get('idTutor'))
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if tutor exists
-    cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
-    tutor = cursor.fetchone()
+    tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
     if tutor is None:
         return jsonify({'outcome': 'error, specified tutor does not exist'})
     
     # Delete the tutor
-    cursor.execute('DELETE FROM tutor WHERE idTutor = %s', (idTutor,))
-    get_db_connection().commit()
+    execute_query('DELETE FROM tutor WHERE idTutor = %s', (idTutor,))
     
     # Log the deletion
-    
     log('info', f'User {request.user_identity} deleted tutor')
 
     return jsonify({'outcome': 'tutor successfully deleted'})
@@ -888,27 +805,17 @@ def tutor_update():
     # Check if the field to modify is allowed
     if toModify in ['idTutor']:
         return jsonify({'outcome': 'error, specified field cannot be modified'})
-    
-    # Check if any casting operations are needed
-    if toModify in ['telefonoTutor']:
-        newValue = int(newValue)
-
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if tutor exists
-    cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (idTutor))
-    tutor = cursor.fetchone()
+    tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
     if tutor is None:
         return jsonify({'outcome': 'error, specified tutor does not exist'})
     
     # Update the tutor
-    cursor.execute(f'UPDATE tutor SET {toModify} = %s WHERE idTutor = %s', (newValue, idTutor))
-    get_db_connection().commit()
+    execute_query(f'UPDATE tutor SET {toModify} = %s WHERE idTutor = %s', (newValue, idTutor))
     
     # Log the update
-    
-    log('info', f'User {request.user_identity} updated tutor')
+    log('info', f'User {request.user_identity} updated tutor with id {idTutor}')
 
     return jsonify({'outcome': 'tutor successfully updated'})
 
@@ -920,19 +827,15 @@ def tutor_read():
         idTutor = int(request.args.get('idTutor'))
     except (ValueError, TypeError):
         return jsonify({'error': 'invalid idTutor parameter'}), 400
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
-        cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
+        tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
         
         # Log the read
-        
-        log('info', f'User {request.user_identity} read tutor')
+        log('info', f'User {request.user_identity} read tutor with id {idTutor}')
 
-        return jsonify(cursor.fetchall()), 200
+        return jsonify(tutor), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
 
@@ -956,19 +859,14 @@ def company_register():
     scadenzaConvenzione = request.args.get('scadenzaConvenzione')
     settore = request.args.get('settore')
     categoria = request.args.get('categoria')
-
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
     
     # Insert the company
     try:
-        cursor.execute('INSERT INTO aziende (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, partitaIVA, telefonoAzienda, fax, emailAzienda, pec, formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', 
+        execute_query('INSERT INTO aziende (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, partitaIVA, telefonoAzienda, fax, emailAzienda, pec, formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', 
                     (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, partitaIVA, telefonoAzienda, fax, emailAzienda, pec, formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria))
-        get_db_connection().commit()
         
         # Log the company creation
-        
-        log('info', f'User {request.user_identity} created')
+        log('info', f'User {request.user_identity} created a company')
 
         return jsonify({'outcome': 'company successfully created'})
     except mysql.connector.IntegrityError as ex:
@@ -980,22 +878,16 @@ def company_delete():
     # Gather parameters
     idAzienda = int(request.args.get('idAzienda'))
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if company exists
-    cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
-    company = cursor.fetchone()
+    company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
     if company is None:
         return jsonify({'outcome': 'error, specified company does not exist'})
 
     # Delete the company (cascade delete will handle related rows)
-    cursor.execute('DELETE FROM aziende WHERE idAzienda = %s', (idAzienda,))
-    get_db_connection().commit()
+    execute_query('DELETE FROM indirizzi WHERE idAzienda = %s', (idAzienda))
     
     # Log the deletion
-    
-    log('info', f'User {request.user_identity} deleted company')
+    log('info', f'User {request.user_identity} deleted company with id {idAzienda}')
 
     return jsonify({'outcome': 'company successfully deleted'})
 
@@ -1017,22 +909,16 @@ def company_update():
     elif toModify in ['dataConvenzione', 'scadenzaConvenzione']:
         newValue = parse_date_string(date_string=newValue)
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if company exists
-    cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda))
-    company = cursor.fetchone()
+    company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda))
     if company is None:
         return jsonify({'outcome': 'error, specified company does not exist'})
     
     # Update the company
-    cursor.execute(f'UPDATE aziende SET {toModify} = %s WHERE idAzienda = %s', (newValue, idAzienda))
-    get_db_connection().commit()
+    execute_query(f'UPDATE aziende SET {toModify} = %s WHERE idAzienda = %s', (newValue, idAzienda))
     
     # Log the update
-    
-    log('info', f'User {request.user_identity} updated company')
+    log('info', f'User {request.user_identity} updated company with id {idAzienda}')
 
     return jsonify({'outcome': 'company successfully updated'})
 
@@ -1044,19 +930,15 @@ def company_read():
         idAzienda = int(request.args.get('idAzienda'))
     except (ValueError, TypeError):
         return jsonify({'error': 'invalid idAzienda parameter'}), 400
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
-        cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         
         # Log the read
-        
-        log('info', f'User {request.user_identity} read company')
+        log('info', f'User {request.user_identity} read company with id {idAzienda}')
 
-        return jsonify(cursor.fetchall()), 200
+        return jsonify(company), 200
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
 
@@ -1067,22 +949,16 @@ def sector_register():
     # Gather parameters
     settore = request.args.get('settore')
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if sector exists
-    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
-    sector = cursor.fetchone()
+    sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
     if sector is None:
         return jsonify({'outcome': 'error, specified sector already exists'})
     
     # Insert the sector
-    cursor.execute('INSERT INTO settori (settore) VALUES (%s)', (settore,))
-    get_db_connection().commit()
+    execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
     
     # Log the sector creation
-    
-    log('info', f'User {request.user_identity} created sector')
+    log('info', f'User {request.user_identity} created sector {settore}')
 
     return jsonify({'outcome': 'sector successfully created'})
 
@@ -1093,23 +969,17 @@ def sector_delete():
     # Gather parameters
     settore = request.args.get('settore')
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if sector exists
-    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
-    sector = cursor.fetchone()
+    sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
     if sector is None:
         return jsonify({'outcome': 'error, specified sector does not exist'})
     
     # Delete the sector
-    cursor.execute('DELETE FROM settori WHERE settore = %s', (settore,))
+    execute_query('DELETE FROM settori WHERE settore = %s', (settore,))
     
     # Log the deletion
-    
-    log('info', f'User {request.user_identity} deleted sector')
+    log('info', f'User {request.user_identity} deleted sector {settore}')
 
-    get_db_connection().commit()
     return jsonify({'outcome': 'sector successfully deleted'})
 
 @app.route('/api/sector_update', methods=['PATCH'])
@@ -1120,22 +990,16 @@ def sector_update():
     settore = request.args.get('settore')
     newValue = request.args.get('newValue')
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if sector exists
-    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
-    sector = cursor.fetchone()
+    sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
     if sector is None:
         return jsonify({'outcome': 'error, specified sector does not exist'})
     
     # Update the sector
-    cursor.execute('UPDATE settori SET settore = %s WHERE settore = %s', (newValue, settore))
-    get_db_connection().commit()
+    execute_query('UPDATE settori SET settore = %s WHERE settore = %s', (newValue, settore))
     
     # Log the update
-    
-    log('info', f'User {request.user_identity} updated sector')
+    log('info', f'User {request.user_identity} updated sector {settore}')
 
     return jsonify({'outcome': 'sector successfully updated'})
 
@@ -1147,22 +1011,16 @@ def subject_register():
     materia = request.args.get('materia')
     descrizione = request.args.get('descrizione')
 
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
-
     # Check if subject exists
-    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
-    subject = cursor.fetchone()
+    subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
     if subject is None:
         return jsonify({'outcome': 'error, specified subject already exists'})
     
     # Insert the subject
-    cursor.execute('INSERT INTO materie (materia, descr) VALUES (%s)', (materia,descrizione))
-    get_db_connection().commit()
+    execute_query('INSERT INTO materie (materia, descr) VALUES (%s, %s)', (materia, descrizione))
 
     # Log the subject creation
-    
-    log('info', f'User {request.user_identity} created subject')
+    log('info', f'User {request.user_identity} created subject {materia}')
 
     return jsonify({'outcome': 'subject successfully created'})
 
@@ -1177,18 +1035,15 @@ def subject_delete():
     cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if subject exists
-    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
-    subject = cursor.fetchone()
+    subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
     if subject is None:
         return jsonify({'outcome': 'error, specified subject does not exist'})
     
     # Delete the subject
-    cursor.execute('DELETE FROM materie WHERE materia = %s', (materia,))
-    get_db_connection().commit()
+    execute_query('DELETE FROM materie WHERE materia = %s', (materia,))
 
     # Log the deletion
-    
-    log('info', f'User {request.user_identity} deleted subject')
+    log('info', f'User {request.user_identity} deleted subject {materia}')
 
     return jsonify({'outcome': 'subject successfully deleted'})
 
@@ -1204,23 +1059,17 @@ def subject_update():
     # Check if the field to modify is allowed
     if toModify in ['materia']:
         return jsonify({'outcome': 'error, specified field cannot be modified'})
-    
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if subject exists
-    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia))
-    subject = cursor.fetchone()
+    subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
     if subject is None:
         return jsonify({'outcome': 'error, specified subject does not exist'})
     
     # Update the subject
-    cursor.execute(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
-    get_db_connection().commit()
+    execute_query(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
     
     # Log the update
-    
-    log('info', f'User {request.user_identity} updated subject')
+    log('info', f'User {request.user_identity} updated subject {materia}')
 
     return jsonify({'outcome': 'subject successfully updated'})
 
@@ -1232,37 +1081,33 @@ def bind_turn_to_student():
     matricola = int(request.args.get('matricola'))
     idTurno = int(request.args.get('idTurno'))
 
-    return bind_turn_to_student_logic    
+    return bind_turn_to_student_logic(matricola, idTurno)    
 
 def bind_turn_to_student_logic(matricola, idTurno):
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if student exists
-    cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
-    student = cursor.fetchone()
+    student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
     if student is None:
         return jsonify({'outcome': 'error, specified student does not exist'})
     
     # Check if turn exists
-    cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-    turn = cursor.fetchone()
+    turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
     if turn is None:
         return jsonify({'outcome': 'error, specified turn does not exist'})
     
     # Check if the turn is full
-    cursor.execute('SELECT posti, postiOccupati WHERE idTurno = %s', (idTurno,))
-    data = cursor.fecthone()
+    data = fetchone_query('SELECT posti, postiOccupati WHERE idTurno = %s', (idTurno,))
     ci_sono_posti = data["posti"] != data["postiOccupati"]
     if not ci_sono_posti:
         return jsonify({'outcome': 'error, no available spots for the specified turn'})
 
     # Bind the turn to the student
-    cursor.execute('INSERT INTO studenteTurno (matricola, idTurno) VALUES (%s, %s)', (matricola, idTurno))
-    get_db_connection().commit()
+    execute_query('INSERT INTO studenteTurno (matricola, idTurno) VALUES (%s, %s)', (matricola, idTurno))
+
+    # Update the number of occupied spots
+    execute_query('UPDATE turni SET postiOccupati = postiOccupati + 1 WHERE idTurno = %s', (idTurno,))
     
     # Log the binding
-    
     log('info', f'User {request.user_identity} binded student {matricola} to turn {idTurno}')
 
     return jsonify({'outcome': 'success, student binded to turn successfully'})
@@ -1279,27 +1124,21 @@ def bind_company_to_user():
     return bind_company_to_user_logic(email, anno, idAzienda)
     
 def bind_company_to_user_logic(email, anno, idAzienda):
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if user exists
-    cursor.execute('SELECT * FROM utenti WHERE emailUtente = %s', (email,))
-    user = cursor.fetchone()
+    user = fetchone_query('SELECT * FROM utenti WHERE emailUtente = %s', (email,))
     if user is None:
         return jsonify({'outcome': 'error, specified user does not exist'})
     
     # Check if company exists
-    cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
-    company = cursor.fetchone()
+    company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
     if company is None:
         return jsonify({'outcome': 'error, specified company does not exist'})
     
     # Bind the company to the user
-    cursor.execute('INSERT INTO utenteAzienda (emailUtente, idAzienda, anno) VALUES (%s, %s, %s)', (email, idAzienda, anno))
-    get_db_connection().commit()
+    execute_query('INSERT INTO utenteAzienda (emailUtente, idAzienda, anno) VALUES (%s, %s, %s)', (email, idAzienda, anno))
     
     # Log the binding
-    
     log('info', f'User {request.user_identity} binded company {idAzienda} to user {email}')
 
     return jsonify({'outcome': 'success, company binded to user successfully'})
@@ -1312,37 +1151,30 @@ def bind_turn_to_sector():
     settore = request.args.get('settore')
 
     # Call the reusable logic
-    result = bind_turn_to_sector_logic(idTurno, settore)
-    return jsonify(result)
+    return bind_turn_to_sector_logic(idTurno, settore)
 
 def bind_turn_to_sector_logic(idTurno, settore):
     """
     Logic to bind a turn to a sector.
     """
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if turn exists
-    cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-    turn = cursor.fetchone()
+    turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
     if turn is None:
         return {'outcome': 'error, specified turn does not exist'}
     
     # Check if sector exists
-    cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
-    sector = cursor.fetchone()
+    sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
     if sector is None:
         return {'outcome': 'error, specified sector does not exist'}
     
     # Bind the turn to the sector
-    cursor.execute('INSERT INTO turnoSectore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
-    get_db_connection().commit()
+    execute_query('INSERT INTO turnoSectore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
     
     # Log the binding
-    
     log('info', f'User {request.user_identity} binded turn {idTurno} to sector {settore}')
 
-    return {'outcome': 'success, turn binded to sector successfully'}
+    return jsonify({'outcome': 'success, turn binded to sector successfully'})
 
 @app.route('/api/bind_turn_to_subject', methods = ['POST'])
 @jwt_required_endpoint()
@@ -1355,27 +1187,21 @@ def bind_turn_to_subject():
     return bind_turn_to_subject_logic(idTurno, materia)
 
 def bind_turn_to_subject_logic(idTurno, materia):
-    # Create new cursor
-    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if turn exists
-    cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-    turn = cursor.fetchone()
+    turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
     if turn is None:
         return jsonify({'outcome': 'error, specified turn does not exist'})
     
     # Check if subject exists
-    cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
-    subject = cursor.fetchone()
+    subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
     if subject is None:
         return jsonify({'outcome': 'error, specified subject does not exist'})
     
     # Bind the turn to the subject
-    cursor.execute('INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)', (idTurno, materia))
-    get_db_connection().commit()
+    execute_query('INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)', (idTurno, materia))
     
     # Log the binding
-    
     log('info', f'User {request.user_identity} binded turn {idTurno} to subject {materia}')
     
     return jsonify({'outcome': 'success, turn binded to subject successfully'})
