@@ -1,7 +1,6 @@
-from flask import Flask, jsonify, request # From Flask import the Flask object, jsonify function and request object
-from utils import jwt_required_endpoint, fetchone_query, execute_query, log, close_log_socket, parse_date_string, parse_time_string, AUTH_SERVER_HOST
+from flask import Flask 
+from utils import log, close_log_socket
 from api_blueprints import *  # Import all the blueprints
-from os import os_listdir
 import signal
 
 # Create a Flask app

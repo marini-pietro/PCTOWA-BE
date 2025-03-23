@@ -80,7 +80,7 @@ class UserDelete(Resource):
         return jsonify({'outcome': 'user successfully deleted'})
 
 # Add resources to the API
-api.add_resource(UserRegister, '/user_register')
-api.add_resource(UserLogin, '/user_login')
-api.add_resource(UserUpdate, '/user_update')
-api.add_resource(UserDelete, '/user_delete')
+api.add_resource(UserRegister, '/register')
+api.add_resource(UserLogin, '/login')
+api.add_resource(UserUpdate, '/update')
+api.add_resource(UserDelete, '/delete')

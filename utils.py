@@ -2,6 +2,7 @@ from functools import wraps
 from flask import jsonify, request # From Flask import the jsonify function and request object
 from requests import post as requests_post # From requests import the post function
 from json import dumps as json_dumps # From json import the dumps function
+from config import *
 import mysql.connector, socket
 from datetime import datetime
 
@@ -26,20 +27,6 @@ def clear_db_connection_pool():
     for connection in db_pool._cnx_queue:
         connection.close()
     db_pool._cnx_queue.clear()
-
-# Define authentication server data
-AUTH_SERVER_HOST = 'localhost' # The host of the authentication server
-AUTH_SERVER_PORT = 5002 # The port of the authentication server
-AUTH_SERVER_VALIDATE_URL = f'http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate' # The URL to validate a token
-
-# Define log server host, port and server name in log files
-LOG_SERVER_HOST = 'localhost' # The host of the log server (should match to HOST in logger.py)
-LOG_SERVER_PORT = 5001 # The port of the log server (should match to PORT in logger.py)
-
-# Define host and port of the API server
-API_SERVER_HOST = '172.16.1.98' # The host of the API server
-API_SERVER_PORT = 5000 # The port of the API server
-API_SERVER_NAME_IN_LOG = 'api-server' # The name of the server in the log messages
 
 # Create a socket object at the start of the program
 log_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
