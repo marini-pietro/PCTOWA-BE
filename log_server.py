@@ -2,6 +2,10 @@ import logging
 from json import loads as json_loads, JSONDecodeError
 from socketserver import BaseRequestHandler, TCPServer
 
+# Define host and port for the log server
+LOG_SERVER_HOST = 'localhost'
+LOG_SERVER_PORT = 5001
+
 class Logger:
     def __init__(self, log_file="PCTO_Webapp_backend.log", console_level=logging.INFO, file_level=logging.DEBUG):
         # Create a logger object
@@ -80,11 +84,10 @@ class LogRequestHandler(BaseRequestHandler):
 
 if __name__ == "__main__":
     logger = Logger()
-    HOST, PORT = "localhost", 9999
 
     # Create the server
-    with TCPServer((HOST, PORT), lambda *args, **kwargs: LogRequestHandler(*args, logger=logger, **kwargs)) as server:
-        print(f"Server started at {HOST}:{PORT}")
+    with TCPServer((LOG_SERVER_HOST, LOG_SERVER_PORT), lambda *args, **kwargs: LogRequestHandler(*args, logger=logger, **kwargs)) as server:
+        print(f"Server started at {LOG_SERVER_HOST}:{LOG_SERVER_PORT}")
         try:
             server.serve_forever()
         except KeyboardInterrupt:

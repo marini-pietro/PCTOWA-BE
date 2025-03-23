@@ -1,6 +1,7 @@
-from flask import Flask, jsonify, request
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from datetime import datetime, timedelta
+from functools import wraps
+from flask import Flask, jsonify, request, g # From Flask import the Flask object, jsonify function, request object and global object
+from requests import post as requests_post
+from datetime import datetime
 from json import dumps as json_dumps
 import mysql.connector, signal, socket
 
@@ -15,23 +16,23 @@ conn = mysql.connector.connect(
 # Create a Flask app
 app = Flask(__name__)
 
-# Configure JWT
-app.config['JWT_SECRET_KEY'] = 'your_secret_key'  # Replace with a secure key
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Token expiration time
-jwt = JWTManager(app)
+# Define host and port for the API server
+API_SERVER_HOST = '172.16.1.98' # The host of the API server
+API_SERVER_PORT = 5000 # The port of the API server
 
 # Define log server host, port and server name in log files
 LOG_SERVER_HOST = 'localhost' # The host of the log server (should match to HOST in logger.py)
-LOG_SERVER_PORT = 9999 # The port of the log server (should match to PORT in logger.py)
+LOG_SERVER_PORT = 5001 # The port of the log server (should match to PORT in logger.py)
 SERVER_NAME_IN_LOG = 'api-server' # The name of the server in the log messages
 
 # Create a socket object at the start of the program
 log_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 log_socket.connect((LOG_SERVER_HOST, LOG_SERVER_PORT))
 
-# Define host and port for the API server
-API_SERVER_HOST = '172.16.1.98' # The host of the API server
-API_SERVER_PORT = 12345 # The port of the API server
+# Define authentication server data
+AUTH_SERVER_HOST = 'localhost' # The host of the authentication server
+AUTH_SERVER_PORT = 5002 # The port of the authentication server
+AUTH_SERVER_VALIDATE_URL = f'http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate'
 
 def log(type, message) -> None:
     """
@@ -87,6 +88,8 @@ def parse_date_string(date_string) -> datetime:
     try: return datetime.strptime(date_string, '%Y-%m-%d').date()
     except ValueError: return None
 
+# Function used for testing purposes, should be removed in production
+
 @app.route('/api/endpoints', methods=['GET']) # Only used for testing purposes should be removed in production
 def list_endpoints():
     endpoints = []
@@ -102,32 +105,69 @@ def list_endpoints():
 def shutdown_endpoint():
     close_api()
 
-@app.route('/api/user_login', methods=['GET'])
+# Utility functions
+
+@app.before_request
+def validate_jwt():
+    if request.endpoint not in ['login', 'list_endpoints', 'shutdown_endpoint']: # Skip validation for login endpoint (for production remove list_endpoints and shutdown_endpoint)
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        response = requests_post(f'{AUTH_SERVER_HOST}/auth/validate', json={'token': token})
+        if response.status_code != 200 or not response.json().get('valid'):
+            return jsonify({'error': 'Invalid or missing token'}), 401
+
+def jwt_required_endpoint(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        if not token:
+            return jsonify({'error': 'Missing token'}), 401
+
+        # Validate the token with the authentication server
+        response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
+        if response.status_code != 200 or not response.json().get('valid'):
+            return jsonify({'error': 'Invalid or expired token'}), 401
+
+        # Attach the user identity to the request context
+        request.user_identity = response.json().get('identity')
+        return func(*args, **kwargs)
+    return wrapper
+
+def get_user_identity_from_jwt():
+    """
+    Retrieve the user identity from the JWT by validating it with the authentication server.
+    If the identity is already set in the request context, return it directly.
+    """
+    # Check if the user identity is already set in the request context
+    if hasattr(request, 'user_identity') and request.user_identity:
+        return request.user_identity
+
+    # Retrieve the token from the Authorization header
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token:
+        return None
+
+    # Validate the token with the authentication server
+    response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
+    if response.status_code == 200 and response.json().get('valid'):
+        # Extract and return the user identity
+        user_identity = response.json().get('identity')
+        request.user_identity = user_identity  # Cache the identity in the request context
+        return user_identity
+
+    return None
+
+# API endpoints
+
+@app.route('/api/user_login', methods=['POST'])
 def login():
-    """
-    Authenticate the user and return a JWT token.
-    """
-    # Gather parameters
     email = request.json.get('email')
     password = request.json.get('password')
 
-    # Create new cursor
-    cursor = conn.cursor(dictionary=True)
-    
-    # Check if user exists
-    cursor.execute('SELECT * FROM utenti WHERE emailUtente = %s AND password = %s', (email, password))
-    user = cursor.fetchone()
-    if user is None:
-        return jsonify({"outcome": "error, invalid credentials"}), 401
-
-    # Generate access token
-    access_token = create_access_token(identity={'email': email, 'type': user['tipo']})
-    
-    # Log the login
-    current_user = get_jwt_identity()
-    log('info', f'User {current_user} logged in')
-
-    return jsonify({"access_token": access_token}), 200
+    # Forward login request to the authentication service
+    response = requests_post(f'{AUTH_SERVER_HOST}/auth/login', json={'email': email, 'password': password})
+    if response.status_code == 200:
+        return jsonify(response.json()), 200
+    return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/api/user_register', methods=['POST'])
 def register():
@@ -155,7 +195,7 @@ def register():
         return jsonify({'outcome': 'error, user with provided credentials already exists'}), 400
 
 @app.route('/api/user_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def user_update():
     
     # Gather parameters
@@ -181,13 +221,13 @@ def user_update():
     conn.commit()
 
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated')
 
     return jsonify({'outcome': 'user successfully updated'})
 
 @app.route('/api/user_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def user_delete():
     
     # Gather parameters
@@ -207,13 +247,13 @@ def user_delete():
     conn.commit()
 
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted')
 
     return jsonify({'outcome': 'user successfully deleted'})
 
 @app.route('/api/class_register', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def class_register():
     # Gather parameters
     classe = request.args.get('classe')
@@ -228,7 +268,7 @@ def class_register():
         conn.commit()
 
         # Log the class creation
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} created class {classe}')
 
         return jsonify({"outcome": "class successfully created"})
@@ -236,7 +276,7 @@ def class_register():
         return jsonify({'outcome': 'error, class with provided credentials already exists'})
 
 @app.route('/api/class_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def class_delete():
     # Gather parameters
     idClasse = request.args.get('idClasse')
@@ -255,13 +295,13 @@ def class_delete():
     conn.commit()
 
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted class')
 
     return jsonify({'outcome': 'class successfully deleted'})
 
 @app.route('/api/class_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def class_update():
     # Gather parameters
     idClasse = request.args.get('idClasse')
@@ -286,13 +326,13 @@ def class_update():
     conn.commit()
     
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated class')
 
     return jsonify({'outcome': 'class successfully updated'})
 
 @app.route('/api/class_read', methods = ['GET'])
-@jwt_required()
+@jwt_required_endpoint()
 def class_read():
     # Gather parameters
     try:
@@ -308,7 +348,7 @@ def class_read():
         cursor.execute('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
 
         # Log the read
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} read class')
 
         return jsonify(cursor.fetchall()), 200
@@ -316,7 +356,7 @@ def class_read():
         return jsonify({"error": str(err)}), 500
 
 @app.route('/api/student_register', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def student_register():
     # Gather parameters
     matricola = request.args.get('matricola')
@@ -332,7 +372,7 @@ def student_register():
         conn.commit()
 
         # Log the student creation
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} created student {matricola}')
 
         return jsonify({"outcome": "student successfully created"})
@@ -340,7 +380,7 @@ def student_register():
         return jsonify({'outcome': 'student with provided matricola already exists'})
 
 @app.route('/api/student_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def student_delete():
     # Gather parameters
     matricola = request.args.get('matricola')
@@ -359,13 +399,13 @@ def student_delete():
     conn.commit()
 
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted student {matricola}')
 
     return jsonify({'outcome': 'student successfully deleted'})
 
 @app.route('/api/student_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def student_update():
     # Gather parameters
     matricola = request.args.get('matricola')
@@ -390,13 +430,13 @@ def student_update():
     conn.commit()
     
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated student {matricola}')
 
     return jsonify({'outcome': 'student successfully updated'})
 
 @app.route('/api/student_read', methods = ['GET'])
-@jwt_required()
+@jwt_required_endpoint()
 def student_read():
     # Gather parameters
     try:
@@ -412,7 +452,7 @@ def student_read():
         cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
         
         # Log the read
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} read student {matricola}')
 
         return jsonify(cursor.fetchall()), 200
@@ -420,7 +460,7 @@ def student_read():
         return jsonify({'error': str(err)}), 500
 
 @app.route('/api/turn_register', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def turn_register():
 
     # Gather parameters
@@ -471,13 +511,13 @@ def turn_register():
     conn.commit()
     
     # Log the turn creation
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} created turn')
 
     return jsonify({'outcome': 'turn successfully created'}), 201
 
 @app.route('/api/turn_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def turn_delete():
     
     # Gather parameters
@@ -497,13 +537,13 @@ def turn_delete():
     conn.commit()
     
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted turn')
 
     return jsonify({'outcome': 'turn successfully deleted'})
 
 @app.route('/api/turn_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def turn_update():
 
     # Gather parameters
@@ -537,13 +577,13 @@ def turn_update():
     conn.commit()
     
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated turn')
 
     return jsonify({'outcome': 'turn successfully updated'})
 
 @app.route('/api/turn_read', methods=['GET'])
-@jwt_required()
+@jwt_required_endpoint()
 def turn_read():
     # Gather parameters
     try:
@@ -559,7 +599,7 @@ def turn_read():
         cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
 
         # Log the read
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} read turn')
 
         return jsonify(cursor.fetchall()), 200
@@ -567,7 +607,7 @@ def turn_read():
         return jsonify({'error': str(err)}), 500
 
 @app.route('/api/address_register', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def address_register():
 
     #Gather GET parameters
@@ -593,13 +633,13 @@ def address_register():
     conn.commit()
     
     # Log the address creation
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} created address')
 
     return jsonify({'outcome': 'address successfully created'})
 
 @app.route('/api/address_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def address_delete():
     
     # Gather parameters
@@ -619,13 +659,13 @@ def address_delete():
     conn.commit()
     
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted address')
 
     return jsonify({'outcome': 'address successfully deleted'})
 
 @app.route('/api/address_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def address_update():
 
     # Gather parameters
@@ -651,13 +691,13 @@ def address_update():
     conn.commit()
     
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated address')
 
     return jsonify({'outcome': 'address successfully updated'})
 
 @app.route('/api/address_read', methods = ['GET'])
-@jwt_required()
+@jwt_required_endpoint()
 def address_read():
     #Gather parameters
     try:
@@ -673,7 +713,7 @@ def address_read():
         cursor.execute('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
         
         # Log the read
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} read address')
 
         return jsonify(cursor.fetchall()), 200
@@ -681,7 +721,7 @@ def address_read():
         return jsonify({'error': str(err)}), 500
 
 @app.route('/api/contact_register', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def contact_register():
 
     # Gather parameters
@@ -707,13 +747,13 @@ def contact_register():
     conn.commit()
     
     # Log the contact creation
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} created contact')
 
     return jsonify({'outcome': 'success, company inserted'})
 
 @app.route('/api/contact_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def contact_delete():
 
     # Gather parameters
@@ -733,13 +773,13 @@ def contact_delete():
     conn.commit()
 
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted contact')
 
     return jsonify({'outcome': 'contact successfully deleted'})
 
 @app.route('/api/contact_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def contact_update():
 
     # Gather parameters
@@ -769,13 +809,13 @@ def contact_update():
     conn.commit()
 
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated contact')
 
     return jsonify({'outcome': 'contact successfully updated'})
 
 @app.route('/api/contact_read', methods = ['GET'])
-@jwt_required()
+@jwt_required_endpoint()
 def contact_read():
     # Gather parameters
     try:
@@ -791,7 +831,7 @@ def contact_read():
         cursor.execute('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
         
         # Log the read
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} read contact')
 
         return jsonify(cursor.fetchall()), 200
@@ -799,7 +839,7 @@ def contact_read():
         return jsonify({'error': str(err)}), 500
 
 @app.route('/api/tutor_register', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def tutor_register():
 
     # Gather parameters
@@ -823,13 +863,13 @@ def tutor_register():
     conn.commit()
     
     # Log the tutor creation
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} created tutor')
 
     return jsonify({'outcome': 'tutor successfully created'})
 
 @app.route('/api/tutor_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def tutor_delete():
     # Gather parameters
     idTutor = int(request.args.get('idTutor'))
@@ -848,13 +888,13 @@ def tutor_delete():
     conn.commit()
     
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted tutor')
 
     return jsonify({'outcome': 'tutor successfully deleted'})
 
 @app.route('/api/tutor_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def tutor_update():
     
     # Gather parameters
@@ -884,13 +924,13 @@ def tutor_update():
     conn.commit()
     
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated tutor')
 
     return jsonify({'outcome': 'tutor successfully updated'})
 
 @app.route('/api/tutor_read', methods = ['GET'])
-@jwt_required()
+@jwt_required_endpoint()
 def tutor_read():
     # Gather parameters
     try:
@@ -906,7 +946,7 @@ def tutor_read():
         cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
         
         # Log the read
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} read tutor')
 
         return jsonify(cursor.fetchall()), 200
@@ -914,7 +954,7 @@ def tutor_read():
         return jsonify({'error': str(err)}), 500
 
 @app.route('/api/company_register', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def company_register():
 
     # Gather parameters
@@ -944,7 +984,7 @@ def company_register():
         conn.commit()
         
         # Log the company creation
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} created')
 
         return jsonify({'outcome': 'company successfully created'})
@@ -952,7 +992,7 @@ def company_register():
         return jsonify({'outcome': 'error, company already exists, integrity error: {ex}'})
 
 @app.route('/api/company_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def company_delete():
     # Gather parameters
     idAzienda = int(request.args.get('idAzienda'))
@@ -971,13 +1011,13 @@ def company_delete():
     conn.commit()
     
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted company')
 
     return jsonify({'outcome': 'company successfully deleted'})
 
 @app.route('/api/company_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def company_update():
     # Gather parameters
     idAzienda = int(request.args.get('idAzienda'))
@@ -1008,13 +1048,13 @@ def company_update():
     conn.commit()
     
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated company')
 
     return jsonify({'outcome': 'company successfully updated'})
 
 @app.route('/api/company_read', methods = ['GET'])
-@jwt_required()
+@jwt_required_endpoint()
 def company_read():
     # Gather parameters
     try:
@@ -1030,7 +1070,7 @@ def company_read():
         cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         
         # Log the read
-        current_user = get_jwt_identity()
+        current_user = get_user_identity_from_jwt()
         log('info', f'User {current_user} read company')
 
         return jsonify(cursor.fetchall()), 200
@@ -1038,7 +1078,7 @@ def company_read():
         return jsonify({'error': str(err)}), 500
 
 @app.route('/api/sector_register', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def sector_register():
     
     # Gather parameters
@@ -1058,13 +1098,13 @@ def sector_register():
     conn.commit()
     
     # Log the sector creation
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} created sector')
 
     return jsonify({'outcome': 'sector successfully created'})
 
 @app.route('/api/sector_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def sector_delete():
     
     # Gather parameters
@@ -1083,14 +1123,14 @@ def sector_delete():
     cursor.execute('DELETE FROM settori WHERE settore = %s', (settore,))
     
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted sector')
 
     conn.commit()
     return jsonify({'outcome': 'sector successfully deleted'})
 
 @app.route('/api/sector_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def sector_update():
 
     # Gather parameters
@@ -1111,13 +1151,13 @@ def sector_update():
     conn.commit()
     
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated sector')
 
     return jsonify({'outcome': 'sector successfully updated'})
 
 @app.route('/api/subject_register', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def subject_register():
     
     # Gather parameters
@@ -1138,13 +1178,13 @@ def subject_register():
     conn.commit()
 
     # Log the subject creation
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} created subject')
 
     return jsonify({'outcome': 'subject successfully created'})
 
 @app.route('/api/subject_delete', methods=['DELETE'])
-@jwt_required()
+@jwt_required_endpoint()
 def subject_delete():
 
     # Gather parameters
@@ -1164,13 +1204,13 @@ def subject_delete():
     conn.commit()
 
     # Log the deletion
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted subject')
 
     return jsonify({'outcome': 'subject successfully deleted'})
 
 @app.route('/api/subject_update', methods=['PATCH'])
-@jwt_required()
+@jwt_required_endpoint()
 def subject_update():
     
     # Gather parameters
@@ -1196,13 +1236,13 @@ def subject_update():
     conn.commit()
     
     # Log the update
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} updated subject')
 
     return jsonify({'outcome': 'subject successfully updated'})
 
 @app.route('/api/bind_turn_to_student', methods = ['GET'])
-@jwt_required()
+@jwt_required_endpoint()
 def bind_turn_to_student():
 
     # Gather parameters
@@ -1239,13 +1279,13 @@ def bind_turn_to_student_logic(matricola, idTurno):
     conn.commit()
     
     # Log the binding
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} binded student {matricola} to turn {idTurno}')
 
     return jsonify({'outcome': 'success, student binded to turn successfully'})
 
 @app.route('/api/bind_company_to_user', methods = ['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def bind_company_to_user():
 
     # Gather parameters
@@ -1276,13 +1316,13 @@ def bind_company_to_user_logic(email, anno, idAzienda):
     conn.commit()
     
     # Log the binding
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} binded company {idAzienda} to user {email}')
 
     return jsonify({'outcome': 'success, company binded to user successfully'})
 
 @app.route('/api/bind_turn_to_sector', methods=['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def bind_turn_to_sector():
     # Gather parameters
     idTurno = int(request.args.get('idTurno'))
@@ -1316,13 +1356,13 @@ def bind_turn_to_sector_logic(idTurno, settore):
     conn.commit()
     
     # Log the binding
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} binded turn {idTurno} to sector {settore}')
 
     return {'outcome': 'success, turn binded to sector successfully'}
 
 @app.route('/api/bind_turn_to_subject', methods = ['POST'])
-@jwt_required()
+@jwt_required_endpoint()
 def bind_turn_to_subject():
 
     # Gather parameters
@@ -1352,7 +1392,7 @@ def bind_turn_to_subject_logic(idTurno, materia):
     conn.commit()
     
     # Log the binding
-    current_user = get_jwt_identity()
+    current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} binded turn {idTurno} to subject {materia}')
     
     return jsonify({'outcome': 'success, turn binded to subject successfully'})
