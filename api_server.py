@@ -5,13 +5,19 @@ from datetime import datetime
 from json import dumps as json_dumps
 import mysql.connector, signal, socket
 
-# Create a connection to the database
-conn = mysql.connector.connect(
-    host='localhost',
-    user='pctowa',
-    password='pctowa2025',
-    database='pctowa'
+# Create a connection pool
+db_pool = mysql.connector.pooling.MySQLConnectionPool(
+    pool_name="mypool",
+    pool_size=10,  # Maximum number of connections in the pool
+    host="localhost",
+    user="pctowa",
+    password="pctowa2025",
+    database="pctowa"
 )
+
+# Function to get a connection from the pool
+def get_db_connection():
+    return db_pool.get_connection()
 
 # Create a Flask app
 app = Flask(__name__)
@@ -107,6 +113,18 @@ def shutdown_endpoint():
 
 # Utility functions
 
+def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature
+    """
+    Gracefully close the API server.
+    """
+    log('info', 'API server shutting down')
+    log_socket.close()  # Close the socket connection to the log server
+    db_pool._remove_connections() # Close all connections in the connection pool
+    exit(0)  # Close the API
+
+signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
+signal.signal(signal.SIGTERM, close_api)  # Bind SIGTERM to close_api function
+
 @app.before_request
 def validate_jwt():
     if request.endpoint not in ['login', 'list_endpoints', 'shutdown_endpoint']: # Skip validation for login endpoint (for production remove list_endpoints and shutdown_endpoint)
@@ -182,13 +200,13 @@ def register():
     user_type = request.json.get('tipo')
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
     
     # Insert the user
     try:
         cursor.execute('INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)', 
                        (email, password, name, surname, int(user_type)))
-        conn.commit()
+        get_db_connection().commit()
         log('info', f'User {email} registered')
         return jsonify({"outcome": "user successfully created"}), 201
     except mysql.connector.IntegrityError:
@@ -208,7 +226,7 @@ def user_update():
         return jsonify({'outcome': 'error, specified field cannot be modified'})
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if user exists
     cursor.execute('SELECT * FROM utente WHERE emailUtente = %s', (email,))
@@ -218,7 +236,7 @@ def user_update():
     
     # Update the user
     cursor.execute(f'UPDATE utente SET {toModify} = %s WHERE emailUtente = %s', (newValue, email))
-    conn.commit()
+    get_db_connection().commit()
 
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -234,7 +252,7 @@ def user_delete():
     email = request.args.get('email')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if user exists
     cursor.execute('SELECT * FROM users WHERE email = %s', (email,))
@@ -244,7 +262,7 @@ def user_delete():
     
     # Delete the user
     cursor.execute('DELETE FROM users WHERE email = %s', (email,))
-    conn.commit()
+    get_db_connection().commit()
 
     # Log the deletion
     current_user = get_user_identity_from_jwt()
@@ -261,11 +279,11 @@ def class_register():
     emailResponsabile = request.args.get('emailResponsabile')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)          
+    cursor = get_db_connection().cursor(dictionary=True)          
     
     try:
         cursor.execute('INSERT INTO classi (classe, anno, emailResponsabile) VALUES (%s, %s, %s)', (classe, anno, emailResponsabile))
-        conn.commit()
+        get_db_connection().commit()
 
         # Log the class creation
         current_user = get_user_identity_from_jwt()
@@ -282,7 +300,7 @@ def class_delete():
     idClasse = request.args.get('idClasse')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if class exists
     cursor.execute('SELECT * FROM classi WHERE idClasse = %s', (idClasse,))
@@ -292,7 +310,7 @@ def class_delete():
     
     # Delete the class
     cursor.execute('DELETE FROM classi WHERE idClasse = %s', (idClasse,))
-    conn.commit()
+    get_db_connection().commit()
 
     # Log the deletion
     current_user = get_user_identity_from_jwt()
@@ -313,7 +331,7 @@ def class_update():
         return jsonify({'outcome': 'error, specified field cannot be modified'})
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if class exists
     cursor.execute('SELECT * FROM classi WHERE idClasse = %s', (idClasse))
@@ -323,7 +341,7 @@ def class_update():
     
     # Update the class
     cursor.execute(f'UPDATE classi SET {toModify} = %s WHERE idClasse = %s', (newValue, idClasse))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -341,7 +359,7 @@ def class_read():
         return jsonify({"error": "Invalid idClasse parameter"}), 400
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
@@ -365,11 +383,11 @@ def student_register():
     idClasse = request.args.get('idClasse')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
     
     try:
         cursor.execute('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
-        conn.commit()
+        get_db_connection().commit()
 
         # Log the student creation
         current_user = get_user_identity_from_jwt()
@@ -386,7 +404,7 @@ def student_delete():
     matricola = request.args.get('matricola')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if student exists
     cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
@@ -396,7 +414,7 @@ def student_delete():
     
     # Delete the student
     cursor.execute('DELETE FROM studenti WHERE matricola = %s', (matricola,))
-    conn.commit()
+    get_db_connection().commit()
 
     # Log the deletion
     current_user = get_user_identity_from_jwt()
@@ -417,7 +435,7 @@ def student_update():
         return jsonify({'outcome': 'error, specified field cannot be modified'})
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if student exists
     cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola))
@@ -427,7 +445,7 @@ def student_update():
     
     # Update the student
     cursor.execute(f'UPDATE studenti SET {toModify} = %s WHERE matricola = %s', (newValue, matricola))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -445,7 +463,7 @@ def student_read():
         return jsonify({'error': 'invalid matricola parameter'}), 400
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
@@ -476,7 +494,7 @@ def turn_register():
     oraFine = parse_time_string(time_string=request.args.get('oraFine')) # Parse function will return None if string is incorrectly formatted or value is None to begin with
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if idAzienda exists
     cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda))
@@ -508,7 +526,7 @@ def turn_register():
     # Insert the turn
     cursor.execute('INSERT INTO turni (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', 
                    (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the turn creation
     current_user = get_user_identity_from_jwt()
@@ -524,7 +542,7 @@ def turn_delete():
     idTurno = int(request.args.get('idTurno'))
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if turn exists
     cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
@@ -534,7 +552,7 @@ def turn_delete():
     
     # Delete the turn
     cursor.execute('DELETE FROM turni WHERE idTurno = %s', (idTurno,))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the deletion
     current_user = get_user_identity_from_jwt()
@@ -564,7 +582,7 @@ def turn_update():
         newValue = parse_time_string(time_string=newValue)
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if turn exists
     cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno))
@@ -574,7 +592,7 @@ def turn_update():
     
     # Update the turn
     cursor.execute(f'UPDATE turni SET {toModify} = %s WHERE idTurno = %s', (newValue, idTurno))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -592,7 +610,7 @@ def turn_read():
         return jsonify({'error': 'invalid idTurno parameter'}), 400
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
@@ -619,7 +637,7 @@ def address_register():
     idAzienda = int(request.args.get('idAzienda'))
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if idAzienda exists
     cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda))
@@ -630,7 +648,7 @@ def address_register():
     # Insert the address
     cursor.execute('INSERT INTO indirizzi (stato, provincia, comune, cap, indirizzo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)', 
                    (stato, provincia, comune, cap, indirizzo, idAzienda))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the address creation
     current_user = get_user_identity_from_jwt()
@@ -646,7 +664,7 @@ def address_delete():
     idIndirizzo = int(request.args.get('idIndirizzo'))
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if address exists
     cursor.execute('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
@@ -656,7 +674,7 @@ def address_delete():
     
     # Delete the address
     cursor.execute('DELETE FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the deletion
     current_user = get_user_identity_from_jwt()
@@ -678,7 +696,7 @@ def address_update():
         return jsonify({'outcome': 'error, specified field cannot be modified'})
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if address exists
     cursor.execute('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo))
@@ -688,7 +706,7 @@ def address_update():
     
     # Update the address
     cursor.execute(f'UPDATE indirizzi SET {toModify} = %s WHERE idIndirizzo = %s', (newValue, idIndirizzo))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -706,7 +724,7 @@ def address_read():
         return jsonify({'error': 'invalid idIndirizzo parameter'}), 400
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
@@ -733,7 +751,7 @@ def contact_register():
     idAzienda = int(request.args.get('idAzienda'))
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if idAzienda exists
     cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda))
@@ -744,7 +762,7 @@ def contact_register():
     # Insert the contact
     cursor.execute('INSERT INTO contatti (nome, cognome, telefono, email, ruolo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)', 
                    (nome, cognome, telefono, email, ruolo, idAzienda))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the contact creation
     current_user = get_user_identity_from_jwt()
@@ -760,7 +778,7 @@ def contact_delete():
     idContatto = int(request.args.get('idContatto'))
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if contact exists
     cursor.execute('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
@@ -770,7 +788,7 @@ def contact_delete():
     
     # Delete the contact
     cursor.execute('DELETE FROM contatti WHERE idContatto = %s', (idContatto,))
-    conn.commit()
+    get_db_connection().commit()
 
     # Log the deletion
     current_user = get_user_identity_from_jwt()
@@ -796,7 +814,7 @@ def contact_update():
         newValue = int(newValue)
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if contact exists
     cursor.execute('SELECT * FROM contatti WHERE idContatto = %s', (idContatto))
@@ -806,7 +824,7 @@ def contact_update():
     
     # Update the contact
     cursor.execute(f'UPDATE contatti SET {toModify} = %s WHERE idContatto = %s', (newValue, idContatto))
-    conn.commit()
+    get_db_connection().commit()
 
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -824,7 +842,7 @@ def contact_read():
         return jsonify({'error': 'invalid idContatto parameter'}), 400
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
@@ -849,7 +867,7 @@ def tutor_register():
     email = request.args.get('email')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if tutor already exists by checking if the combination of email and phone number already exists
     cursor.execute('SELECT * FROM tutor WHERE emailTutor = %s AND telefonoTutor = %s', (email, telefono))
@@ -860,7 +878,7 @@ def tutor_register():
     # Insert the tutor
     cursor.execute('INSERT INTO tutor (nome, cognome, telefonoTutor, emailTutor) VALUES (%s, %s, %s, %s)', 
                    (nome, cognome, telefono, email))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the tutor creation
     current_user = get_user_identity_from_jwt()
@@ -875,7 +893,7 @@ def tutor_delete():
     idTutor = int(request.args.get('idTutor'))
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if tutor exists
     cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
@@ -885,7 +903,7 @@ def tutor_delete():
     
     # Delete the tutor
     cursor.execute('DELETE FROM tutor WHERE idTutor = %s', (idTutor,))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the deletion
     current_user = get_user_identity_from_jwt()
@@ -911,7 +929,7 @@ def tutor_update():
         newValue = int(newValue)
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if tutor exists
     cursor.execute('SELECT * FROM tutor WHERE idTutor = %s', (idTutor))
@@ -921,7 +939,7 @@ def tutor_update():
     
     # Update the tutor
     cursor.execute(f'UPDATE tutor SET {toModify} = %s WHERE idTutor = %s', (newValue, idTutor))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -939,7 +957,7 @@ def tutor_read():
         return jsonify({'error': 'invalid idTutor parameter'}), 400
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
@@ -975,13 +993,13 @@ def company_register():
     categoria = request.args.get('categoria')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
     
     # Insert the company
     try:
         cursor.execute('INSERT INTO aziende (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, partitaIVA, telefonoAzienda, fax, emailAzienda, pec, formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', 
                     (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, partitaIVA, telefonoAzienda, fax, emailAzienda, pec, formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria))
-        conn.commit()
+        get_db_connection().commit()
         
         # Log the company creation
         current_user = get_user_identity_from_jwt()
@@ -998,7 +1016,7 @@ def company_delete():
     idAzienda = int(request.args.get('idAzienda'))
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if company exists
     cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
@@ -1008,7 +1026,7 @@ def company_delete():
 
     # Delete the company (cascade delete will handle related rows)
     cursor.execute('DELETE FROM aziende WHERE idAzienda = %s', (idAzienda,))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the deletion
     current_user = get_user_identity_from_jwt()
@@ -1035,7 +1053,7 @@ def company_update():
         newValue = parse_date_string(date_string=newValue)
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if company exists
     cursor.execute('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda))
@@ -1045,7 +1063,7 @@ def company_update():
     
     # Update the company
     cursor.execute(f'UPDATE aziende SET {toModify} = %s WHERE idAzienda = %s', (newValue, idAzienda))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -1063,7 +1081,7 @@ def company_read():
         return jsonify({'error': 'invalid idAzienda parameter'}), 400
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Execute query
     try:
@@ -1085,7 +1103,7 @@ def sector_register():
     settore = request.args.get('settore')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if sector exists
     cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
@@ -1095,7 +1113,7 @@ def sector_register():
     
     # Insert the sector
     cursor.execute('INSERT INTO settori (settore) VALUES (%s)', (settore,))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the sector creation
     current_user = get_user_identity_from_jwt()
@@ -1111,7 +1129,7 @@ def sector_delete():
     settore = request.args.get('settore')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if sector exists
     cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
@@ -1126,7 +1144,7 @@ def sector_delete():
     current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} deleted sector')
 
-    conn.commit()
+    get_db_connection().commit()
     return jsonify({'outcome': 'sector successfully deleted'})
 
 @app.route('/api/sector_update', methods=['PATCH'])
@@ -1138,7 +1156,7 @@ def sector_update():
     newValue = request.args.get('newValue')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if sector exists
     cursor.execute('SELECT * FROM settori WHERE settore = %s', (settore,))
@@ -1148,7 +1166,7 @@ def sector_update():
     
     # Update the sector
     cursor.execute('UPDATE settori SET settore = %s WHERE settore = %s', (newValue, settore))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -1165,7 +1183,7 @@ def subject_register():
     descrizione = request.args.get('descrizione')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if subject exists
     cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
@@ -1175,7 +1193,7 @@ def subject_register():
     
     # Insert the subject
     cursor.execute('INSERT INTO materie (materia, descr) VALUES (%s)', (materia,descrizione))
-    conn.commit()
+    get_db_connection().commit()
 
     # Log the subject creation
     current_user = get_user_identity_from_jwt()
@@ -1191,7 +1209,7 @@ def subject_delete():
     materia = request.args.get('materia')
 
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if subject exists
     cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia,))
@@ -1201,7 +1219,7 @@ def subject_delete():
     
     # Delete the subject
     cursor.execute('DELETE FROM materie WHERE materia = %s', (materia,))
-    conn.commit()
+    get_db_connection().commit()
 
     # Log the deletion
     current_user = get_user_identity_from_jwt()
@@ -1223,7 +1241,7 @@ def subject_update():
         return jsonify({'outcome': 'error, specified field cannot be modified'})
     
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if subject exists
     cursor.execute('SELECT * FROM materie WHERE materia = %s', (materia))
@@ -1233,7 +1251,7 @@ def subject_update():
     
     # Update the subject
     cursor.execute(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the update
     current_user = get_user_identity_from_jwt()
@@ -1253,7 +1271,7 @@ def bind_turn_to_student():
 
 def bind_turn_to_student_logic(matricola, idTurno):
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if student exists
     cursor.execute('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
@@ -1276,7 +1294,7 @@ def bind_turn_to_student_logic(matricola, idTurno):
 
     # Bind the turn to the student
     cursor.execute('INSERT INTO studenteTurno (matricola, idTurno) VALUES (%s, %s)', (matricola, idTurno))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the binding
     current_user = get_user_identity_from_jwt()
@@ -1297,7 +1315,7 @@ def bind_company_to_user():
     
 def bind_company_to_user_logic(email, anno, idAzienda):
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if user exists
     cursor.execute('SELECT * FROM utenti WHERE emailUtente = %s', (email,))
@@ -1313,7 +1331,7 @@ def bind_company_to_user_logic(email, anno, idAzienda):
     
     # Bind the company to the user
     cursor.execute('INSERT INTO utenteAzienda (emailUtente, idAzienda, anno) VALUES (%s, %s, %s)', (email, idAzienda, anno))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the binding
     current_user = get_user_identity_from_jwt()
@@ -1337,7 +1355,7 @@ def bind_turn_to_sector_logic(idTurno, settore):
     Logic to bind a turn to a sector.
     """
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if turn exists
     cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
@@ -1353,7 +1371,7 @@ def bind_turn_to_sector_logic(idTurno, settore):
     
     # Bind the turn to the sector
     cursor.execute('INSERT INTO turnoSectore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the binding
     current_user = get_user_identity_from_jwt()
@@ -1373,7 +1391,7 @@ def bind_turn_to_subject():
 
 def bind_turn_to_subject_logic(idTurno, materia):
     # Create new cursor
-    cursor = conn.cursor(dictionary=True)
+    cursor = get_db_connection().cursor(dictionary=True)
 
     # Check if turn exists
     cursor.execute('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
@@ -1389,20 +1407,13 @@ def bind_turn_to_subject_logic(idTurno, materia):
     
     # Bind the turn to the subject
     cursor.execute('INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)', (idTurno, materia))
-    conn.commit()
+    get_db_connection().commit()
     
     # Log the binding
     current_user = get_user_identity_from_jwt()
     log('info', f'User {current_user} binded turn {idTurno} to subject {materia}')
     
     return jsonify({'outcome': 'success, turn binded to subject successfully'})
-
-# Graceful shutdown
-def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature
-    conn.close()
-    exit(0)  # Close the API
-
-signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
 
 if __name__ == '__main__':
     app.run(host=API_SERVER_HOST, 
