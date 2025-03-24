@@ -1,10 +1,11 @@
+from flask import Flask, request, jsonify
+from config import LOG_SERVER_HOST, LOG_SERVER_PORT, LOG_SERVER_DEBUG_MODE
 import logging
-from json import loads as json_loads, JSONDecodeError
-from socketserver import BaseRequestHandler, TCPServer
-from config import LOG_SERVER_HOST, LOG_SERVER_PORT
+
+app = Flask(__name__)
 
 class Logger:
-    def __init__(self, log_file="PCTO_Webapp_backend.log", console_level=logging.INFO, file_level=logging.DEBUG):
+    def __init__(self, log_file="PCTO_webapp_backend.log", console_level=logging.INFO, file_level=logging.DEBUG):
         # Create a logger object
         self.logger = logging.getLogger("api_logger")
         self.logger.setLevel(logging.DEBUG)
@@ -29,65 +30,58 @@ class Logger:
     def log(self, log_type, message, origin="unknown"):
         """
         Log a message with the specified type, message and origin
-        
-        params
-            log_type: The type of the log message (e.g. info, error, warning)
-            message: The log message
-            origin: The origin of the log message
-
-        returns:
-            None
-
-        raises:
-            None
-        """	
+        """
         log_message = f"[{origin}] {message}"
         log_type = log_type.lower()
-        
+
         if log_type not in ["debug", "info", "warning", "error", "critical"]:
-            return self.logger.error(f"Origin {origin} tried to log [{message}] with invalid log type [{log_type}]")
-        
+            self.logger.error(f"Origin {origin} tried to log [{message}] with invalid log type [{log_type}]")
+            return False
+
         log_method = getattr(self.logger, log_type)
         log_method(log_message)
+        return True
 
     def close(self):
         for handler in self.logger.handlers[:]:
             handler.close()
             self.logger.removeHandler(handler)
 
-class LogRequestHandler(BaseRequestHandler):
-    def __init__(self, *args, logger=None, **kwargs):
-        self.logger = logger
-        super().__init__(*args, **kwargs)
+# Initialize the logger
+logger = Logger()
 
-    def handle(self):
-        # Receive data from the client
-        data = self.request.recv(1024).strip() # 1024 is the buffer size
-        try:
-            # Parse the received JSON data
-            log_data = json_loads(data.decode('utf-8'))
-            log_type = log_data.get("type", "info")
-            message = log_data.get("message", "")
-            origin = log_data.get("origin", "unknown")
+@app.route('/log', methods=['POST'])
+def log_message():
+    """
+    Endpoint to log messages.
+    Expects a JSON payload with 'type', 'message', and 'origin'.
+    """
+    try:
+        data = request.get_json()
+        log_type = data.get("type", "info")
+        message = data.get("message", "")
+        origin = data.get("origin", "unknown")
 
-            # Log the message using the Logger instance
-            self.logger.log(log_type, message, origin)
-        except JSONDecodeError:
-            client_ip = self.client_address[0]
-            self.logger.log(log_type="error", message="Invalid JSON data received from client", origin=client_ip)
-        except Exception as ex:
-            client_ip = self.client_address[0]
-            self.logger.log(log_type="error", message=f"Error occured while handling log request: {str(ex)}", origin=client_ip)
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+
+        success = logger.log(log_type, message, origin)
+        if not success:
+            return jsonify({"error": f"Invalid log type: {log_type}"}), 400
+
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """
+    Health check endpoint to verify the server is running.
+    """
+    return jsonify({"status": "ok"}), 200
 
 if __name__ == "__main__":
-    logger = Logger()
-
-    # Create the server
-    with TCPServer((LOG_SERVER_HOST, LOG_SERVER_PORT), lambda *args, **kwargs: LogRequestHandler(*args, logger=logger, **kwargs)) as server:
-        print(f"Server started at {LOG_SERVER_HOST}:{LOG_SERVER_PORT}")
-        try:
-            server.serve_forever()
-        except KeyboardInterrupt:
-            print("Shutting down server...")
-        finally:
-            logger.close()
+    try:
+        app.run(host=LOG_SERVER_HOST, port=LOG_SERVER_PORT, debug=LOG_SERVER_DEBUG_MODE)
+    except KeyboardInterrupt:
+        logger.close()

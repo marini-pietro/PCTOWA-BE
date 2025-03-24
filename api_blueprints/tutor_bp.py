@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 import mysql.connector
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint
 
@@ -28,7 +29,11 @@ class TutorRegister(Resource):
         )
 
         # Log the tutor creation
-        log('info', f'User {request.user_identity} created a tutor')
+        log(type='info', 
+            message=f'User {request.user_identity} created a tutor', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'tutor successfully created'}), 201
 
@@ -47,7 +52,11 @@ class TutorDelete(Resource):
         execute_query('DELETE FROM tutor WHERE idTutor = %s', (idTutor,))
 
         # Log the deletion
-        log('info', f'User {request.user_identity} deleted tutor')
+        log(type='info', 
+            message=f'User {request.user_identity} deleted tutor', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'tutor successfully deleted'})
 
@@ -72,7 +81,11 @@ class TutorUpdate(Resource):
         execute_query(f'UPDATE tutor SET {toModify} = %s WHERE idTutor = %s', (newValue, idTutor))
 
         # Log the update
-        log('info', f'User {request.user_identity} updated tutor with id {idTutor}')
+        log(type='info', 
+            message=f'User {request.user_identity} updated tutor with id {idTutor}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'tutor successfully updated'})
 
@@ -90,7 +103,11 @@ class TutorRead(Resource):
             tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
 
             # Log the read
-            log('info', f'User {request.user_identity} read tutor with id {idTutor}')
+            log(type='info', 
+                message=f'User {request.user_identity} read tutor with id {idTutor}', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
 
             return jsonify(tutor), 200
         except mysql.connector.Error as err:

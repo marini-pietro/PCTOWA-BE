@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 import mysql.connector
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint, parse_date_string, parse_time_string
 
@@ -52,7 +53,11 @@ class TurnRegister(Resource):
         )
 
         # Log the turn creation
-        log('info', f'User {request.user_identity} created a turn')
+        log(type='info', 
+            message=f'User {request.user_identity} created a turn', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'turn successfully created'}), 201
 
@@ -71,7 +76,11 @@ class TurnDelete(Resource):
         execute_query('DELETE FROM turni WHERE idTurno = %s', (idTurno,))
 
         # Log the deletion
-        log('info', f'User {request.user_identity} deleted turn')
+        log(type='info', 
+            message=f'User {request.user_identity} deleted turn', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'turn successfully deleted'})
 
@@ -104,7 +113,11 @@ class TurnUpdate(Resource):
         execute_query(f'UPDATE turni SET {toModify} = %s WHERE idTurno = %s', (newValue, idTurno))
 
         # Log the update
-        log('info', f'User {request.user_identity} updated turn')
+        log(type='info', 
+            message=f'User {request.user_identity} updated turn', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'turn successfully updated'})
 
@@ -122,7 +135,11 @@ class TurnRead(Resource):
             turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
 
             # Log the read
-            log('info', f'User {request.user_identity} read turn')
+            log(type='info', 
+                message=f'User {request.user_identity} read turn', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
 
             return jsonify(turn), 200
         except mysql.connector.Error as err:
@@ -149,7 +166,11 @@ class TurnBind(Resource):
         execute_query('INSERT INTO turniSettore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
 
         # Log the binding
-        log('info', f'User {request.user_identity} binded sector to turn')
+        log(type='info', 
+            message=f'User {request.user_identity} binded sector to turn', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'sector binded to turn successfully'})
 

@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
@@ -22,7 +23,11 @@ class SubjectRegister(Resource):
         execute_query('INSERT INTO materie (materia, descr) VALUES (%s, %s)', (materia, descrizione))
 
         # Log the subject creation
-        log('info', f'User {request.user_identity} created subject {materia}')
+        log(type='info', 
+            message=f'User {request.user_identity} created subject {materia}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'subject successfully created'}), 201
 
@@ -41,7 +46,11 @@ class SubjectDelete(Resource):
         execute_query('DELETE FROM materie WHERE materia = %s', (materia,))
 
         # Log the deletion
-        log('info', f'User {request.user_identity} deleted subject {materia}')
+        log(type='info', 
+            message=f'User {request.user_identity} deleted subject {materia}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'subject successfully deleted'})
 
@@ -66,7 +75,11 @@ class SubjectUpdate(Resource):
         execute_query(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
 
         # Log the update
-        log('info', f'User {request.user_identity} updated subject {materia}')
+        log(type='info', 
+            message=f'User {request.user_identity} updated subject {materia}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'subject successfully updated'})
     
@@ -91,7 +104,11 @@ class SubjectBind(Resource):
         execute_query('INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)', (idTurno, materia))
         
         # Log the binding
-        log('info', f'User {request.user_identity} binded turn {idTurno} to subject {materia}')
+        log(type='info', 
+            message=f'User {request.user_identity} binded turn {idTurno} to subject {materia}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'success, turn binded to subject successfully'})
     
@@ -116,7 +133,11 @@ class SubjectUnbind(Resource):
         execute_query('DELETE FROM turnoMateria WHERE idTurno = %s AND materia = %s', (idTurno, materia))
         
         # Log the unbinding
-        log('info', f'User {request.user_identity} unbinded turn {idTurno} from subject {materia}')
+        log(type='info', 
+            message=f'User {request.user_identity} unbinded turn {idTurno} from subject {materia}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'success, turn unbinded from subject successfully'})
     
@@ -130,6 +151,13 @@ class SubjectRead(Resource):
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
             return jsonify({'outcome': 'error, specified subject does not exist'})
+
+        # Log the read
+        log(type="info",
+            message=f"User {request.user_identity} read subject {materia}", 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         # Return the subject
         return jsonify({'materia': subject[0], 'descrizione': subject[1]})

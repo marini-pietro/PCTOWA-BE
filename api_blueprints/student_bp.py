@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 import mysql.connector
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
@@ -21,7 +22,11 @@ class StudentRegister(Resource):
             execute_query('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
 
             # Log the student creation
-            log('info', f'User {request.user_identity} created student {matricola}')
+            log(type='info', 
+                message=f'User {request.user_identity} created student {matricola}', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
 
             return jsonify({"outcome": "student successfully created"}), 201
         except mysql.connector.IntegrityError:
@@ -42,7 +47,11 @@ class StudentDelete(Resource):
         execute_query('DELETE FROM studenti WHERE matricola = %s', (matricola,))
 
         # Log the deletion
-        log('info', f'User {request.user_identity} deleted student {matricola}')
+        log(type='info', 
+            message=f'User {request.user_identity} deleted student {matricola}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'student successfully deleted'})
 
@@ -67,7 +76,11 @@ class StudentUpdate(Resource):
         execute_query(f'UPDATE studenti SET {toModify} = %s WHERE matricola = %s', (newValue, matricola))
 
         # Log the update
-        log('info', f'User {request.user_identity} updated student {matricola}')
+        log(type='info', 
+            message=f'User {request.user_identity} updated student {matricola}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'student successfully updated'})
 
@@ -86,7 +99,11 @@ class StudentRead(Resource):
             return jsonify({'outcome': 'error, specified student does not exist'})
 
         # Log the read
-        log('info', f'User {request.user_identity} read student {matricola}')
+        log(type='info', 
+            message=f'User {request.user_identity} read student {matricola}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify(student), 200
 
@@ -114,6 +131,13 @@ class StudentBindTurn(Resource):
         
         # Bind the student to the turn
         execute_query('INSERT INTO studenti_turni VALUES (%s, %s)', (matricola, idTurno))
+
+        # Log the bind
+        log(type="info", 
+            message=f"User {request.user_identity} binded student {matricola} to turn {idTurno}", 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
         
         return {'outcome': 'student successfully bound to the turn'}
 

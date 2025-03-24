@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
@@ -21,7 +22,11 @@ class SectorRegister(Resource):
         execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
 
         # Log the sector creation
-        log('info', f'User {request.user_identity} created sector {settore}')
+        log(type='info',
+            message=f'User {request.user_identity} created sector {settore}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'sector successfully created'}), 201
 
@@ -40,7 +45,11 @@ class SectorDelete(Resource):
         execute_query('DELETE FROM settori WHERE settore = %s', (settore,))
 
         # Log the deletion
-        log('info', f'User {request.user_identity} deleted sector {settore}')
+        log(type='info',
+            message=f'User {request.user_identity} deleted sector {settore}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'sector successfully deleted'})
 
@@ -60,7 +69,11 @@ class SectorUpdate(Resource):
         execute_query('UPDATE settori SET settore = %s WHERE settore = %s', (newValue, settore))
 
         # Log the update
-        log('info', f'User {request.user_identity} updated sector {settore}')
+        log(type='info', 
+            message=f'User {request.user_identity} updated sector {settore}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'sector successfully updated'})
     
@@ -85,7 +98,11 @@ class SectorBind(Resource):
         execute_query('INSERT INTO turnoSectore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
         
         # Log the binding
-        log('info', f'User {request.user_identity} binded turn {idTurno} to sector {settore}')
+        log(type='info', 
+            message=f'User {request.user_identity} binded turn {idTurno} to sector {settore}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'success, turn binded to sector successfully'})
 

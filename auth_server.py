@@ -1,12 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from datetime import timedelta
-from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT
+from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG
+from utils import log, fetchone_query
+import secrets
 
 app = Flask(__name__)
 
 # Configure JWT
-app.config['JWT_SECRET_KEY'] = 'your_auth_service_secret_key'  # Use a secure key
+app.config['JWT_SECRET_KEY'] = secrets.token_hex(32) # Use a secure key (dinamic key, so if jwt are validated, cache and then the server is restarted those same jwt will not be valid with the new key)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 jwt = JWTManager(app)
 
@@ -15,11 +17,36 @@ def login():
     email = request.json.get('email')
     password = request.json.get('password')
 
-    # Validate user credentials (replace with your database logic)
-    if email == "test@example.com" and password == "password123":
-        access_token = create_access_token(identity={'email': email})
-        return jsonify({'access_token': access_token}), 200
-    return jsonify({'error': 'Invalid credentials'}), 401
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required'}), 400
+
+    try:
+        # Query the database to validate the user's credentials
+        query = "SELECT email FROM users WHERE email = %s AND password = %s"
+        params = (email, password)  # Use parameterized queries to prevent SQL injection
+        user = fetchone_query(query, params)
+
+        if user:
+            access_token = create_access_token(identity={'email': email})
+
+            # Log the login operation
+            log(type="info",    
+                message=f"User {email} logged in",
+                origin_name=AUTH_SERVER_NAME_IN_LOG, 
+                origin_host=AUTH_SERVER_HOST, 
+                origin_port=AUTH_SERVER_PORT)
+
+            return jsonify({'access_token': access_token}), 200
+        else:
+            return jsonify({'error': 'Invalid credentials'}), 401
+    except Exception as e:
+        # Log the error
+        log(type="error",    
+            message=f"Error during login: {str(e)}",
+            origin_name=AUTH_SERVER_NAME_IN_LOG, 
+            origin_host=AUTH_SERVER_HOST, 
+            origin_port=AUTH_SERVER_PORT)
+        return jsonify({'error': 'An error occurred during login'}), 500
 
 @app.route('/auth/validate', methods=['POST'])
 def validate():

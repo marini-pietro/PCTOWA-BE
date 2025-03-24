@@ -1,8 +1,8 @@
 from functools import wraps
 from flask import jsonify, request # From Flask import the jsonify function and request object
 from requests import post as requests_post # From requests import the post function
-from json import dumps as json_dumps # From json import the dumps function
 from config import *
+from cachetools import TTLCache
 import mysql.connector, socket
 from datetime import datetime
 
@@ -28,13 +28,10 @@ def clear_db_connection_pool():
         connection.close()
     db_pool._cnx_queue.clear()
 
-# Create a socket object at the start of the program
-log_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-log_socket.connect((LOG_SERVER_HOST, LOG_SERVER_PORT))
-
-def log(type, message) -> None:
+# Log server related
+def log(type, message, origin_name, origin_host, origin_port) -> None:
     """
-    Log a message to the log server.
+    Log a message to the log server via its API.
         
     params:
         type - The type of the log message
@@ -48,23 +45,19 @@ def log(type, message) -> None:
         log_data = {
             'type': type,
             'message': message,
-            'origin': f"{API_SERVER_NAME_IN_LOG} ({API_SERVER_HOST}:{API_SERVER_PORT})",
+            'origin': f"{origin_name} ({origin_host}:{origin_port})",
         }
-            
-        # Send the log message data to the log server
-        log_socket.sendall(json_dumps(log_data).encode('utf-8'))
+        
+        # Send the log message data to the log server API
+        response = requests_post(f"http://{LOG_SERVER_HOST}:{LOG_SERVER_PORT}/log", json=log_data)
+        
+        # Check if the log server responded with an error
+        if response.status_code != 200:
+            print(f"Failed to log message: {response.status_code} - {response.text}")
     except Exception as e:
         print(f"Failed to send log: {e}")
 
-def close_log_socket():
-    """
-    Close the socket connection to the log server.
-        
-    returns: 
-        None
-    """
-    log_socket.close()
-
+# Data handling related
 def parse_time_string(time_string) -> datetime:
     """
     Parse a time string in the format HH:MM and return a datetime object.
@@ -95,6 +88,10 @@ def parse_date_string(date_string) -> datetime:
     try: return datetime.strptime(date_string, '%Y-%m-%d').date()
     except ValueError: return None
 
+# Token validation related
+# | Create a cache for token validation results with a time-to-live (TTL) of 300 seconds (5 minutes)
+token_cache = TTLCache(maxsize=1000, ttl=300)
+
 def jwt_required_endpoint(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -102,16 +99,26 @@ def jwt_required_endpoint(func):
         if not token:
             return jsonify({'error': 'Missing token'}), 401
 
-        # Validate the token with the authentication server
-        response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
-        if response.status_code != 200 or not response.json().get('valid'):
-            return jsonify({'error': 'Invalid or expired token'}), 401
+        # Check if the token is already cached
+        if token in token_cache:
+            is_valid, identity = token_cache[token]
+        else:
+            # Validate the token with the authentication server
+            response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
+            if response.status_code != 200 or not response.json().get('valid'):
+                return jsonify({'error': 'Invalid or expired token'}), 401
+
+            # Cache the validation result
+            is_valid = response.json().get('valid')
+            identity = response.json().get('identity')
+            token_cache[token] = (is_valid, identity)
 
         # Attach the user identity to the request context
-        request.user_identity = response.json().get('identity')
+        request.user_identity = identity
         return func(*args, **kwargs)
     return wrapper
 
+# Common database queries
 def fetchone_query(query, params):
     """
     Execute a query on the database and return the result.
@@ -123,9 +130,11 @@ def fetchone_query(query, params):
     returns: 
         The result of the query
     """
-    with get_db_connection().cursor(dictionary=True) as cursor: # Use a context manager to automatically close the cursor
-        cursor.execute(query, params)
-        return cursor.fetchone()
+
+    with get_db_connection() as connection: # Use a context manager to ensure the connection is closed after use
+        with connection.cursor(dictionary=True) as cursor:
+            cursor.execute(query, params)
+            return cursor.fetchone()
 
 def fetchall_query(query, params):
     """
@@ -139,21 +148,24 @@ def fetchall_query(query, params):
         The result of the query
     """
 
-    with get_db_connection().cursor(dictionary=True) as cursor: # Use a context manager to automatically close the cursor
-        cursor.execute(query, params)
-        return cursor.fetchall()
+    with get_db_connection() as connection: # Use a context manager to ensure the connection is closed after use
+        with connection.cursor(dictionary=True) as cursor:
+            cursor.execute(query, params)
+            return cursor.fetchall()
 
 def execute_query(query, params):
     """
-    Execute a query on the database and return the result.
+    Execute a query on the database and commit the changes.
     
     params:
         query - The query to execute
         params - The parameters to pass to the query
         
     returns: 
-        The result of the query
+        None
     """
-    cursor = get_db_connection().cursor(dictionary=True)
-    cursor.execute(query, params)
-    get_db_connection().commit()
+    # Use a context manager to ensure the connection is closed after use
+    with get_db_connection() as connection:
+        with connection.cursor(dictionary=True) as cursor:
+            cursor.execute(query, params)
+            connection.commit()

@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 import mysql.connector
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint
 
@@ -30,7 +31,11 @@ class AddressRegister(Resource):
         )
 
         # Log the address creation
-        log('info', f'User {request.user_identity} created address')
+        log(type='info', 
+            message=f'User {request.user_identity} created address', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'address successfully created'}), 201
 
@@ -49,7 +54,11 @@ class AddressDelete(Resource):
         execute_query('DELETE FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
 
         # Log the deletion
-        log('info', f'User {request.user_identity} deleted address')
+        log(type='info', 
+            message=f'User {request.user_identity} deleted address', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'address successfully deleted'})
 
@@ -74,7 +83,11 @@ class AddressUpdate(Resource):
         execute_query(f'UPDATE indirizzi SET {toModify} = %s WHERE idIndirizzo = %s', (newValue, idIndirizzo))
 
         # Log the update
-        log('info', f'User {request.user_identity} updated address')
+        log(type='info', 
+            message=f'User {request.user_identity} updated address', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'address successfully updated'})
 
@@ -92,7 +105,11 @@ class AddressRead(Resource):
             address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
 
             # Log the read
-            log('info', f'User {request.user_identity} read address')
+            log(type='info', 
+                message=f'User {request.user_identity} read address', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
 
             return jsonify(address), 200
         except mysql.connector.Error as err:
