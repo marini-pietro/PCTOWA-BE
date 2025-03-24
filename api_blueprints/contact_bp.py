@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 import mysql.connector
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
@@ -30,7 +31,11 @@ class ContactRegister(Resource):
         )
 
         # Log the contact creation
-        log('info', f'User {request.user_identity} created contact')
+        log(type='info', 
+            message=f'User {request.user_identity} created contact', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'success, contact inserted'}), 201
 
@@ -49,7 +54,11 @@ class ContactDelete(Resource):
         execute_query('DELETE FROM contatti WHERE idContatto = %s', (idContatto,))
 
         # Log the deletion
-        log('info', f'User {request.user_identity} deleted contact')
+        log(type='info',
+            message= f'User {request.user_identity} deleted contact', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'contact successfully deleted'})
 
@@ -78,7 +87,11 @@ class ContactUpdate(Resource):
         execute_query(f'UPDATE contatti SET {toModify} = %s WHERE idContatto = %s', (newValue, idContatto))
 
         # Log the update
-        log('info', f'User {request.user_identity} updated contact')
+        log(type='info',
+            message= f'User {request.user_identity} updated contact', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'contact successfully updated'})
 
@@ -96,7 +109,11 @@ class ContactRead(Resource):
             contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
 
             # Log the read
-            log('info', f'User {request.user_identity} read contact')
+            log(type='info',
+                message=f'User {request.user_identity} read contact', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
 
             return jsonify(contact), 200
         except mysql.connector.Error as err:

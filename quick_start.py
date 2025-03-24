@@ -1,13 +1,12 @@
 import subprocess
+import signal
 
 processes = []
-for server in ["log_server.py", "auth_server.py", "api_server.py"]:
-    try:
-        process = subprocess.Popen(["python", server])
-        processes.append(process)
-    except Exception as e:
-        print(f"Error occurred while starting {server}: {e}")
-
-# Wait for all processes to complete (optional, if you want to monitor them)
-for process in processes:
-    process.wait()
+try:
+    for server in ["log_server.py", "auth_server.py", "api_server.py"]:
+        processes.append(subprocess.Popen(["python", server]))
+    for process in processes:
+        process.wait()
+except KeyboardInterrupt:
+    for process in processes:
+        process.send_signal(signal.SIGINT)

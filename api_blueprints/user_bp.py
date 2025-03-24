@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 from requests import post as requests_post
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 import mysql.connector
 from utils import fetchone_query, execute_query, log, AUTH_SERVER_HOST, jwt_required_endpoint  # Import shared utilities
 
@@ -21,7 +22,14 @@ class UserRegister(Resource):
                 'INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)',
                 (email, password, name, surname, int(user_type))
             )
-            log('info', f'User {email} registered')
+
+            # Log the register
+            log(type='info', 
+                message=f'User {email} registered', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
+            
             return jsonify({"outcome": "user successfully created"}), 201
         except mysql.connector.IntegrityError:
             return jsonify({'outcome': 'error, user with provided credentials already exists'}), 400
@@ -57,7 +65,11 @@ class UserUpdate(Resource):
         execute_query(f'UPDATE utente SET {to_modify} = %s WHERE emailUtente = %s', (new_value, email))
 
         # Log the update
-        log('info', f'User {request.user_identity} updated')
+        log(type='info', 
+            message=f'User {request.user_identity} updated', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'user successfully updated'})
 
@@ -75,7 +87,11 @@ class UserDelete(Resource):
         execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
 
         # Log the deletion
-        log('info', f'User {request.user_identity} deleted')
+        log(type='info', 
+            message=f'User {request.user_identity} deleted', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'user successfully deleted'})
 

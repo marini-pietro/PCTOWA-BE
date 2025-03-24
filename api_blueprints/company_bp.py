@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 import mysql.connector
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint, parse_date_string
 
 # Create the blueprint and API
@@ -35,7 +36,11 @@ class CompanyRegister(Resource):
             )
 
             # Log the company creation
-            log('info', f'User {request.user_identity} created a company')
+            log(type='info', 
+                message=f'User {request.user_identity} created a company', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
 
             return jsonify({'outcome': 'company successfully created'}), 201
         except mysql.connector.IntegrityError as ex:
@@ -56,7 +61,11 @@ class CompanyDelete(Resource):
         execute_query('DELETE FROM aziende WHERE idAzienda = %s', (idAzienda,))
 
         # Log the deletion
-        log('info', f'User {request.user_identity} deleted company with id {idAzienda}')
+        log(type='info', 
+            message=f'User {request.user_identity} deleted company with id {idAzienda}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'company successfully deleted'})
 
@@ -87,7 +96,11 @@ class CompanyUpdate(Resource):
         execute_query(f'UPDATE aziende SET {toModify} = %s WHERE idAzienda = %s', (newValue, idAzienda))
 
         # Log the update
-        log('info', f'User {request.user_identity} updated company with id {idAzienda}')
+        log(type='info', 
+            message=f'User {request.user_identity} updated company with id {idAzienda}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'company successfully updated'})
 
@@ -105,7 +118,11 @@ class CompanyRead(Resource):
             company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
 
             # Log the read
-            log('info', f'User {request.user_identity} read company with id {idAzienda}')
+            log(type='info', 
+                message=f'User {request.user_identity} read company with id {idAzienda}', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
 
             return jsonify(company), 200
         except mysql.connector.Error as err:
@@ -132,7 +149,11 @@ class CompanyBindTurn(Resource):
         execute_query('INSERT INTO aziendaTurno (idAzienda, idTurno) VALUES (%s, %s)', (idAzienda, idTurno))
 
         # Log the binding
-        log('info', f'User {request.user_identity} binded company with id {idAzienda} to turn with id {idTurno}')
+        log(type='info', 
+            message=f'User {request.user_identity} binded company with id {idAzienda} to turn with id {idTurno}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return {'outcome': 'success, company binded to turn successfully'}
     
@@ -158,7 +179,11 @@ class CompanyBindUser(Resource):
         execute_query('INSERT INTO aziendaUtente (idAzienda, emailUtente, anno) VALUES (%s, %s, %s)', (idAzienda, email, anno))
 
         # Log the binding
-        log('info', f'User {request.user_identity} binded company with id {idAzienda} to user with email {email}')
+        log(type='info', 
+            message=f'User {request.user_identity} binded company with id {idAzienda} to user with email {email}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'success, company binded to user successfully'})
 
