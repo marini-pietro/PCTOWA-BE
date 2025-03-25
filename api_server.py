@@ -1,23 +1,21 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from utils import log
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_DEBUG_MODE, API_SERVER_NAME_IN_LOG
 from api_blueprints import *  # Import all the blueprints
-import signal
+import signal, os, importlib
 
 # Create a Flask app
 app = Flask(__name__)
 
 # Register the blueprints
-app.register_blueprint(address_bp, url_prefix='/api/address')
-app.register_blueprint(class_bp, url_prefix='/api/class')
-app.register_blueprint(company_bp, url_prefix='/api/company')
-app.register_blueprint(contact_bp, url_prefix='/api/contact')
-app.register_blueprint(sector_bp, url_prefix='/api/sector')
-app.register_blueprint(student_bp, url_prefix='/api/student')
-app.register_blueprint(subject_bp, url_prefix='/api/subject')
-app.register_blueprint(turn_bp, url_prefix='/api/turn')
-app.register_blueprint(tutor_bp, url_prefix='/api/tutor')
-app.register_blueprint(user_bp, url_prefix='/api/user')
+blueprints_dir = os.path.dirname(__file__) + '/api_blueprints'
+for filename in os.listdir(blueprints_dir):
+    if filename.endswith('_bp.py'):  # Look for files ending with '_bp.py'
+        module_name = filename[:-3]  # Remove the .py extension
+        module = importlib.import_module(f'api_blueprints.{module_name}')
+        blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
+        app.register_blueprint(blueprint, url_prefix=f'/api/{module_name[:-3]}')  # Remove '_bp' for the URL prefix
+        print(f"Registered blueprint: {module_name} with prefix /api/{module_name[:-3]}")
 
 # Utility functions
 def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature

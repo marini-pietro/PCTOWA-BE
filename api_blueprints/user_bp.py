@@ -1,13 +1,13 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 from requests import post as requests_post
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST
 import mysql.connector
-from utils import fetchone_query, execute_query, log, AUTH_SERVER_HOST, jwt_required_endpoint  # Import shared utilities
+from utils import fetchone_query, execute_query, log, jwt_required_endpoint  # Import shared utilities
 
 # Create the blueprint and API
-users_bp = Blueprint('users', __name__)
-api = Api(users_bp)
+user_bp = Blueprint('user', __name__)
+api = Api(user_bp)
 
 class UserRegister(Resource):
     def post(self):

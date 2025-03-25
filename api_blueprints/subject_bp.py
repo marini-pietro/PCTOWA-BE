@@ -4,8 +4,8 @@ from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
-subjects_bp = Blueprint('subjects', __name__)
-api = Api(subjects_bp)
+subject_bp = Blueprint('subjects', __name__)
+api = Api(subject_bp)
 
 class SubjectRegister(Resource):
     @jwt_required_endpoint

@@ -5,8 +5,8 @@ from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
-classes_bp = Blueprint('classes', __name__)
-api = Api(classes_bp)
+class_bp = Blueprint('class', __name__)
+api = Api(class_bp)
 
 class ClassRegister(Resource):
     @jwt_required_endpoint

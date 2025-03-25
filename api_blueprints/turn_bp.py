@@ -5,8 +5,8 @@ import mysql.connector
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint, parse_date_string, parse_time_string
 
 # Create the blueprint and API
-turns_bp = Blueprint('turns', __name__)
-api = Api(turns_bp)
+turn_bp = Blueprint('turn', __name__)
+api = Api(turn_bp)
 
 class TurnRegister(Resource):
     @jwt_required_endpoint
