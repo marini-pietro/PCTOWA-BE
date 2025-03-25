@@ -9,7 +9,7 @@ company_bp = Blueprint('company', __name__)
 api = Api(company_bp)
 
 class CompanyRegister(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         ragioneSociale = request.args.get('ragioneSociale')
@@ -47,7 +47,7 @@ class CompanyRegister(Resource):
             return jsonify({'outcome': f'error, company already exists, integrity error: {ex}'}), 400
 
 class CompanyDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         idAzienda = int(request.args.get('idAzienda'))
@@ -70,7 +70,7 @@ class CompanyDelete(Resource):
         return jsonify({'outcome': 'company successfully deleted'})
 
 class CompanyUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         # Gather parameters
         idAzienda = int(request.args.get('idAzienda'))
@@ -105,7 +105,7 @@ class CompanyUpdate(Resource):
         return jsonify({'outcome': 'company successfully updated'})
 
 class CompanyRead(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def get(self):
         # Gather parameters
         try:
@@ -129,7 +129,7 @@ class CompanyRead(Resource):
             return jsonify({'error': str(err)}), 500
 
 class CompanyBindTurn(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         idAzienda = int(request.args.get('idAzienda'))
@@ -158,7 +158,7 @@ class CompanyBindTurn(Resource):
         return {'outcome': 'success, company binded to turn successfully'}
     
 class CompanyBindUser(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         idAzienda = int(request.args.get('idAzienda'))

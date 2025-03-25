@@ -8,7 +8,7 @@ subjects_bp = Blueprint('sector', __name__)
 api = Api(subjects_bp)
 
 class SectorRegister(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         settore = request.args.get('settore')
@@ -31,7 +31,7 @@ class SectorRegister(Resource):
         return jsonify({'outcome': 'sector successfully created'}), 201
 
 class SectorDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         settore = request.args.get('settore')
@@ -54,7 +54,7 @@ class SectorDelete(Resource):
         return jsonify({'outcome': 'sector successfully deleted'})
 
 class SectorUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         # Gather parameters
         settore = request.args.get('settore')
@@ -78,7 +78,7 @@ class SectorUpdate(Resource):
         return jsonify({'outcome': 'sector successfully updated'})
     
 class SectorBind(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         idTurno = int(request.args.get('idTurno'))
