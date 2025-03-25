@@ -77,6 +77,8 @@ def health_check():
 
 if __name__ == "__main__":
     try:
-        app.run(host=LOG_SERVER_HOST, port=LOG_SERVER_PORT, debug=LOG_SERVER_DEBUG_MODE)
+        app.run(host=LOG_SERVER_HOST, 
+                port=LOG_SERVER_PORT, 
+                debug=LOG_SERVER_DEBUG_MODE)
     except KeyboardInterrupt:
         logger.close()

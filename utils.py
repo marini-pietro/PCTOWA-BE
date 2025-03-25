@@ -1,13 +1,13 @@
 from functools import wraps
 from flask import jsonify, request # From Flask import the jsonify function and request object
 from requests import post as requests_post # From requests import the post function
-from config import *
+from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL
 from cachetools import TTLCache
-import mariadb, socket
+from contextlib import contextmanager
+import mariadb
 from datetime import datetime
 
 # Create a connection pool
-
 try:
     db_pool = mariadb.ConnectionPool(
         pool_name="pctowa_connection_pool",
@@ -16,21 +16,31 @@ try:
         user=DB_USER,
         password=DB_PASSWORD,
         database=DB_NAME
-    )
+        )
 except Exception as ex:
-    print(f"Invalid credentials\n{ex}")
-    exit(1)
+    print(f"\nInvalid credentials, couldn't access database.\n{ex}")
+    #exit(1)
 
 # Function to get a connection from the pool
-def get_db_connection():
-    return db_pool.get_connection()
+@contextmanager
+def get_db_connection(): # Make the function a context manager and use a generator to yield the connection
+    connection = db_pool.get_connection()
+    try:
+        yield connection
+    finally:
+        connection.close()
 
 # Function to clear the connection pool
 def clear_db_connection_pool():
-    # Close all connections in the connection pool
     for connection in db_pool._cnx_queue:
         connection.close()
     db_pool._cnx_queue.clear()
+
+# Graceful shutdown handler
+def shutdown_handler(signal, frame):
+    clear_db_connection_pool()
+    print("Database connection pool cleared. Exiting...")
+    exit(0)
 
 # Log server related
 def log(type, message, origin_name, origin_host, origin_port) -> None:

@@ -5,8 +5,8 @@ from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from utils import fetchone_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
-contacts_bp = Blueprint('contacts', __name__)
-api = Api(contacts_bp)
+contact_bp = Blueprint('contact', __name__)
+api = Api(contact_bp)
 
 class ContactRegister(Resource):
     @jwt_required_endpoint

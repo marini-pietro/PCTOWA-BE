@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from datetime import timedelta
-from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG, JWT_TOKEN_DURATION
+from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, JWT_TOKEN_DURATION
 from utils import log, fetchone_query
 import secrets
 
@@ -67,4 +67,4 @@ def health_check():
 if __name__ == '__main__':
     app.run(host=AUTH_SERVER_HOST, 
             port=AUTH_SERVER_PORT, 
-            debug=True) # Set debug=False in production
+            debug=AUTH_SERVER_DEBUG_MODE) # Set debug=False in production
