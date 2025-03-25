@@ -9,7 +9,7 @@ classes_bp = Blueprint('classes', __name__)
 api = Api(classes_bp)
 
 class ClassRegister(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         classe = request.args.get('classe')
@@ -31,7 +31,7 @@ class ClassRegister(Resource):
             return jsonify({'outcome': 'error, class with provided credentials already exists'}), 400
 
 class ClassDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         idClasse = request.args.get('idClasse')
@@ -54,7 +54,7 @@ class ClassDelete(Resource):
         return jsonify({'outcome': 'class successfully deleted'})
 
 class ClassUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         # Gather parameters
         idClasse = request.args.get('idClasse')
@@ -83,7 +83,7 @@ class ClassUpdate(Resource):
         return jsonify({'outcome': 'class successfully updated'})
 
 class ClassRead(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def get(self):
         # Gather parameters
         try:

@@ -9,7 +9,7 @@ student_bp = Blueprint('student', __name__)
 api = Api(student_bp)
 
 class StudentRegister(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         matricola = request.args.get('matricola')
@@ -33,7 +33,7 @@ class StudentRegister(Resource):
             return jsonify({'outcome': 'error, student with provided matricola already exists'}), 400
 
 class StudentDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         matricola = request.args.get('matricola')
@@ -56,7 +56,7 @@ class StudentDelete(Resource):
         return jsonify({'outcome': 'student successfully deleted'})
 
 class StudentUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         # Gather parameters
         matricola = request.args.get('matricola')
@@ -85,7 +85,7 @@ class StudentUpdate(Resource):
         return jsonify({'outcome': 'student successfully updated'})
 
 class StudentRead(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def get(self):
         # Gather parameters
         try:
@@ -108,7 +108,7 @@ class StudentRead(Resource):
         return jsonify(student), 200
 
 class StudentBindTurn(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         idTurno = int(request.args.get('idTurno'))

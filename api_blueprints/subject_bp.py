@@ -8,7 +8,7 @@ subjects_bp = Blueprint('subjects', __name__)
 api = Api(subjects_bp)
 
 class SubjectRegister(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         materia = request.args.get('materia')
@@ -32,7 +32,7 @@ class SubjectRegister(Resource):
         return jsonify({'outcome': 'subject successfully created'}), 201
 
 class SubjectDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         materia = request.args.get('materia')
@@ -55,7 +55,7 @@ class SubjectDelete(Resource):
         return jsonify({'outcome': 'subject successfully deleted'})
 
 class SubjectUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         # Gather parameters
         materia = request.args.get('materia')
@@ -84,7 +84,7 @@ class SubjectUpdate(Resource):
         return jsonify({'outcome': 'subject successfully updated'})
     
 class SubjectBind(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         idTurno = int(request.args.get('idTurno'))
@@ -113,7 +113,7 @@ class SubjectBind(Resource):
         return jsonify({'outcome': 'success, turn binded to subject successfully'})
     
 class SubjectUnbind(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         idTurno = int(request.args.get('idTurno'))
@@ -142,7 +142,7 @@ class SubjectUnbind(Resource):
         return jsonify({'outcome': 'success, turn unbinded from subject successfully'})
     
 class SubjectRead(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def get(self):
         # Gather parameters
         materia = request.args.get('materia')

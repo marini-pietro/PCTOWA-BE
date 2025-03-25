@@ -9,7 +9,7 @@ turns_bp = Blueprint('turns', __name__)
 api = Api(turns_bp)
 
 class TurnRegister(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         settore = request.args.get('settore')
@@ -62,7 +62,7 @@ class TurnRegister(Resource):
         return jsonify({'outcome': 'turn successfully created'}), 201
 
 class TurnDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         idTurno = int(request.args.get('idTurno'))
@@ -85,7 +85,7 @@ class TurnDelete(Resource):
         return jsonify({'outcome': 'turn successfully deleted'})
 
 class TurnUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         # Gather parameters
         idTurno = int(request.args.get('idTurno'))
@@ -122,7 +122,7 @@ class TurnUpdate(Resource):
         return jsonify({'outcome': 'turn successfully updated'})
 
 class TurnRead(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def get(self):
         # Gather parameters
         try:
@@ -146,7 +146,7 @@ class TurnRead(Resource):
             return jsonify({'error': str(err)}), 500
 
 class TurnBind(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         idTurno = int(request.args.get('idTurno'))
