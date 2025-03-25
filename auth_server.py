@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from datetime import timedelta
-from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG
+from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG, JWT_TOKEN_DURATION
 from utils import log, fetchone_query
 import secrets
 
@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # Configure JWT
 app.config['JWT_SECRET_KEY'] = secrets.token_hex(32) # Use a secure key (dinamic key, so if jwt are validated, cache and then the server is restarted those same jwt will not be valid with the new key)
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=JWT_TOKEN_DURATION)
 jwt = JWTManager(app)
 
 @app.route('/auth/login', methods=['POST'])
@@ -56,6 +56,13 @@ def validate():
         return jsonify({'valid': True, 'identity': decoded_token['sub']}), 200
     except Exception as e:
         return jsonify({'valid': False, 'error': str(e)}), 401
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """
+    Health check endpoint to verify the server is running.
+    """
+    return jsonify({"status": "ok"}), 200
 
 if __name__ == '__main__':
     app.run(host=AUTH_SERVER_HOST, 
