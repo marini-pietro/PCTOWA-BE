@@ -9,7 +9,7 @@ address_bp = Blueprint('address', __name__)
 api = Api(address_bp)
 
 class AddressRegister(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         stato = request.args.get('stato')
@@ -40,7 +40,7 @@ class AddressRegister(Resource):
         return jsonify({'outcome': 'address successfully created'}), 201
 
 class AddressDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         idIndirizzo = int(request.args.get('idIndirizzo'))
@@ -63,7 +63,7 @@ class AddressDelete(Resource):
         return jsonify({'outcome': 'address successfully deleted'})
 
 class AddressUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         # Gather parameters
         idIndirizzo = int(request.args.get('idIndirizzo'))
@@ -92,7 +92,7 @@ class AddressUpdate(Resource):
         return jsonify({'outcome': 'address successfully updated'})
 
 class AddressRead(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def get(self):
         # Gather parameters
         try:

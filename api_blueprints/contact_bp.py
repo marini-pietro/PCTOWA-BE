@@ -9,7 +9,7 @@ contacts_bp = Blueprint('contacts', __name__)
 api = Api(contacts_bp)
 
 class ContactRegister(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         nome = request.args.get('nome')
@@ -40,7 +40,7 @@ class ContactRegister(Resource):
         return jsonify({'outcome': 'success, contact inserted'}), 201
 
 class ContactDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         idContatto = int(request.args.get('idContatto'))
@@ -63,7 +63,7 @@ class ContactDelete(Resource):
         return jsonify({'outcome': 'contact successfully deleted'})
 
 class ContactUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         # Gather parameters
         idContatto = int(request.args.get('idContatto'))
@@ -96,7 +96,7 @@ class ContactUpdate(Resource):
         return jsonify({'outcome': 'contact successfully updated'})
 
 class ContactRead(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def get(self):
         # Gather parameters
         try:

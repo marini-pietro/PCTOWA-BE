@@ -9,7 +9,7 @@ tutor_bp = Blueprint('tutor', __name__)
 api = Api(tutor_bp)
 
 class TutorRegister(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def post(self):
         # Gather parameters
         nome = request.args.get('nome')
@@ -38,7 +38,7 @@ class TutorRegister(Resource):
         return jsonify({'outcome': 'tutor successfully created'}), 201
 
 class TutorDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         # Gather parameters
         idTutor = int(request.args.get('idTutor'))
@@ -61,7 +61,7 @@ class TutorDelete(Resource):
         return jsonify({'outcome': 'tutor successfully deleted'})
 
 class TutorUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         # Gather parameters
         idTutor = int(request.args.get('idTutor'))
@@ -90,7 +90,7 @@ class TutorUpdate(Resource):
         return jsonify({'outcome': 'tutor successfully updated'})
 
 class TutorRead(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def get(self):
         # Gather parameters
         try:

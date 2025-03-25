@@ -46,7 +46,7 @@ class UserLogin(Resource):
         return jsonify({'error': 'Invalid credentials'}), 401
 
 class UserUpdate(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def patch(self):
         email = request.args.get('email')
         to_modify = request.args.get('toModify')
@@ -74,7 +74,7 @@ class UserUpdate(Resource):
         return jsonify({'outcome': 'user successfully updated'})
 
 class UserDelete(Resource):
-    @jwt_required_endpoint()
+    @jwt_required_endpoint
     def delete(self):
         email = request.args.get('email')
 
