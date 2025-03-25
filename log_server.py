@@ -27,20 +27,14 @@ class Logger:
         self.logger.addHandler(console_handler)
         self.logger.addHandler(file_handler)
 
-    def log(self, log_type, message, origin="unknown"):
+    def log(self, log_type, message, origin="unknown") -> None:
         """
         Log a message with the specified type, message and origin
         """
         log_message = f"[{origin}] {message}"
-        log_type = log_type.lower()
-
-        if log_type not in ["debug", "info", "warning", "error", "critical"]:
-            self.logger.error(f"Origin {origin} tried to log [{message}] with invalid log type [{log_type}]")
-            return False
 
         log_method = getattr(self.logger, log_type)
         log_method(log_message)
-        return True
 
     def close(self):
         for handler in self.logger.handlers[:]:
@@ -56,22 +50,23 @@ def log_message():
     Endpoint to log messages.
     Expects a JSON payload with 'type', 'message', and 'origin'.
     """
-    try:
-        data = request.get_json()
-        log_type = data.get("type", "info")
-        message = data.get("message", "")
-        origin = data.get("origin", "unknown")
+    data = request.get_json()
+    log_type = data.get("type", "info")
+    message = data.get("message")
+    origin = data.get("origin", "unknown")
 
-        if not message:
-            return jsonify({"error": "Message is required"}), 400
+    if not message:
+        return jsonify({"error": "Message is required"}), 400
 
-        success = logger.log(log_type, message, origin)
-        if not success:
-            return jsonify({"error": f"Invalid log type: {log_type}"}), 400
+    if log_type not in ["debug", "info", "warning", "error", "critical"]:
+        return jsonify({"error": "invalid log type"}), 400
 
-        return jsonify({"status": "success"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    try: 
+        logger.log(log_type, message, origin)
+    except Exception as ex: 
+        return jsonify({"error": f"unable to log due to error {ex}"}), 500
+
+    return jsonify({"status": "success"}), 200
 
 @app.route('/health', methods=['GET'])
 def health_check():

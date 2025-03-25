@@ -33,6 +33,13 @@ def close_api(signal, frame):  # Parameters are necessary even if not used becau
 signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
 signal.signal(signal.SIGTERM, close_api)  # Bind SIGTERM to close_api function
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """
+    Health check endpoint to verify the server is running.
+    """
+    return jsonify({"status": "ok"}), 200
+
 # Functions used for testing purposes, should be removed in production
 @app.route('/api/endpoints', methods=['GET']) # Only used for testing purposes should be removed in production
 def list_endpoints():

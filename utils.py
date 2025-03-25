@@ -3,19 +3,23 @@ from flask import jsonify, request # From Flask import the jsonify function and 
 from requests import post as requests_post # From requests import the post function
 from config import *
 from cachetools import TTLCache
-import mysql.connector, socket
+import mariadb, socket
 from datetime import datetime
 
 # Create a connection pool
-CONNECTION_POOL_SIZE = 10 # The maximum number of connections in the pool
-db_pool = mysql.connector.pooling.MySQLConnectionPool(
-    pool_name="pctowa_connection_pool",
-    pool_size=CONNECTION_POOL_SIZE,
-    host="localhost",
-    user="pctowa",
-    password="pctowa2025",
-    database="pctowa"
-)
+
+try:
+    db_pool = mariadb.ConnectionPool(
+        pool_name="pctowa_connection_pool",
+        pool_size=max(1, min(CONNECTION_POOL_SIZE, 151)), # Clamp the value to ensure it does not exceed limitations
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+except Exception as ex:
+    print(f"Invalid credentials\n{ex}")
+    exit(1)
 
 # Function to get a connection from the pool
 def get_db_connection():
