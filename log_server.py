@@ -27,7 +27,7 @@ class Logger:
         self.logger.addHandler(console_handler)
         self.logger.addHandler(file_handler)
 
-    def log(self, log_type, message, origin="unknown") -> None:
+    def log(self, log_type, message, origin="unknown"):
         """
         Log a message with the specified type, message and origin
         """
