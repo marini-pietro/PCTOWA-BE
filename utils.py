@@ -4,12 +4,12 @@ from requests import post as requests_post # From requests import the post funct
 from config import DB_HOST, REDACTED_USER, REDACTED_PASSWORD, DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL
 from cachetools import TTLCache
 from contextlib import contextmanager
-import mariadb
 from datetime import datetime
+import mysql.connector
 
 # Create a connection pool
 try:
-    db_pool = mariadb.ConnectionPool(
+    db_pool = mysql.connector.ConnectionPool(
         pool_name="pctowa_connection_pool",
         pool_size=max(1, min(CONNECTION_POOL_SIZE, 151)), # Clamp the value to ensure it does not exceed limitations
         host=DB_HOST,
@@ -19,7 +19,7 @@ try:
         )
 except Exception as ex:
     print(f"\nInvalid credentials, couldn't access database.\n{ex}")
-    #exit(1)
+    exit(1)
 
 # Function to get a connection from the pool
 @contextmanager
