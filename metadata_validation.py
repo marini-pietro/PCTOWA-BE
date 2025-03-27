@@ -44,11 +44,13 @@ def fetch_table_metadata():
             TABLE_METADATA.append({table_name: columns})
 
         # Print TABLE_METADATA to stdout
-        print(TABLE_METADATA)
+        print(json.dumps(TABLE_METADATA, indent=4))
 
         # Save TABLE_METADATA to a JSON file
         with open("table_metadata.json", "w") as json_file:
             json.dump(TABLE_METADATA, json_file, indent=4)
+
+        print("Table metadata saved to table_metadata.json")
 
     except Exception as e:
         print(f"Error fetching table metadata: {e}")
