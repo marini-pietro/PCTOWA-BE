@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from utils import log
+from api_blueprints.blueprints_utils import log
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_DEBUG_MODE, API_SERVER_NAME_IN_LOG
 from api_blueprints import *  # Import all the blueprints
 import signal, os, importlib

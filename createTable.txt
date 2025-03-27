@@ -46,7 +46,6 @@ CREATE TABLE aziende (
     formaGiuridica VARCHAR(255) NOT NULL,
     dataConvenzione DATE,
     scadenzaConvenzione DATE,
-    settore VARCHAR(255) NOT NULL,
     categoria VARCHAR(255) NOT NULL
 );
 
