@@ -2,7 +2,8 @@ from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from datetime import timedelta
 from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, JWT_TOKEN_DURATION
-from utils import log, fetchone_query
+from api_blueprints.blueprints_utils import log
+from api_blueprints.blueprints_utils import fetchone_query
 import secrets
 
 app = Flask(__name__)

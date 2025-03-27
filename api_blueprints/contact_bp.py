@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from utils import fetchone_query, execute_query, log, jwt_required_endpoint
+from blueprints_utils import validate_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
 contact_bp = Blueprint('contact', __name__)
@@ -98,24 +98,39 @@ class ContactUpdate(Resource):
 class ContactRead(Resource):
     @jwt_required_endpoint
     def get(self):
-        # Gather parameters
+        # Gather URL parameters
         try:
-            idContatto = int(request.args.get('idContatto'))
+            limit = int(request.args.get('limit'))
+            offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return jsonify({'error': 'invalid idContatto parameter'}), 400
+            return jsonify({'error': 'invalid limit or offset parameter'}), 400
 
-        # Execute query
+        # Gather json filters
+        data = request.get_json()
+
+        # Validate filters
+        outcome = validate_filters(data=data, table_name='contatti')
+        if outcome != True: # if the validation fails, outcome will be a dict with the error message
+            return outcome
+
         try:
-            contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
+            # Build the query
+            filters_keys = list(data.keys()) if isinstance(data, dict) else []
+            filters = " AND ".join([f"{key} = %s" for key in filters_keys])
+            query = f"SELECT * FROM contatti WHERE {filters} LIMIT %s OFFSET %s" if filters else "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
+            params = [data[key] for key in filters_keys] + [limit, offset]
+
+            # Execute query
+            contacts = fetchall_query(query, tuple(params))
 
             # Log the read
             log(type='info',
-                message=f'User {request.user_identity} read contact', 
+                message=f'User {request.user_identity} read contacts with filters {data}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return jsonify(contact), 200
+            return jsonify(contacts), 200
         except mysql.connector.Error as err:
             return jsonify({'error': str(err)}), 500
 

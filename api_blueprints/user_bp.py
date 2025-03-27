@@ -2,8 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 from requests import post as requests_post
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST
-import mysql.connector
-from utils import fetchone_query, execute_query, log, jwt_required_endpoint  # Import shared utilities
+from blueprints_utils import validate_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint  # Import shared utilities
 
 # Create the blueprint and API
 user_bp = Blueprint('user', __name__)
@@ -31,7 +30,7 @@ class UserRegister(Resource):
                 origin_port=API_SERVER_PORT)
             
             return jsonify({"outcome": "user successfully created"}), 201
-        except mysql.connector.IntegrityError:
+        except Exception:
             return jsonify({'outcome': 'error, user with provided credentials already exists'}), 400
 
 class UserLogin(Resource):
@@ -94,6 +93,45 @@ class UserDelete(Resource):
             origin_port=API_SERVER_PORT)
 
         return jsonify({'outcome': 'user successfully deleted'})
+    
+class UserRead(Resource):
+    @jwt_required_endpoint
+    def get(self):
+        # Gather URL parameters
+        try:
+            limit = int(request.args.get('limit'))
+            offset = int(request.args.get('offset'))
+        except (ValueError, TypeError):
+            return jsonify({'error': 'invalid limit or offset parameter'}), 400
+
+        # Gather json filters
+        data = request.get_json()
+
+        # Validate filters
+        outcome = validate_filters(data=data, table_name='utenti')
+        if outcome != True: # if the validation fails, outcome will be a dict with the error message
+            return outcome
+
+        try:
+            # Build the query
+            filters_keys = list(data.keys()) if isinstance(data, dict) else []
+            filters = " AND ".join([f"{key} = %s" for key in filters_keys])
+            query = f"SELECT * FROM indirizzi WHERE {filters} LIMIT %s OFFSET %s" if filters else "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
+            params = [data[key] for key in filters_keys] + [limit, offset]
+
+            # Execute query
+            users = fetchall_query(query, tuple(params))
+
+            # Log the read
+            log(type='info', 
+                message=f'User {request.user_identity} read users with filters: {data}', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
+
+            return jsonify(users), 200
+        except Exception as err:
+            return jsonify({'error': str(err)}), 500
 
 # Add resources to the API
 api.add_resource(UserRegister, '/register')
