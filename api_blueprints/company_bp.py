@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from utils import fetchone_query, execute_query, log, jwt_required_endpoint, parse_date_string
+from blueprints_utils import validate_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, parse_date_string
 
 # Create the blueprint and API
 company_bp = Blueprint('company', __name__)
@@ -107,24 +107,39 @@ class CompanyUpdate(Resource):
 class CompanyRead(Resource):
     @jwt_required_endpoint
     def get(self):
-        # Gather parameters
+        # Gather URL parameters
         try:
-            idAzienda = int(request.args.get('idAzienda'))
+            limit = int(request.args.get('limit'))
+            offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return jsonify({'error': 'invalid idAzienda parameter'}), 400
+            return jsonify({'error': 'invalid limit or offset parameter'}), 400
 
-        # Execute query
+        # Gather json filters
+        data = request.get_json()
+
+        # Validate filters
+        outcome = validate_filters(data=data, table_name='aziende')
+        if outcome != True: # if the validation fails, outcome will be a dict with the error message
+            return outcome
+
         try:
-            company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
+            # Build the query
+            filters_keys = list(data.keys()) if isinstance(data, dict) else []
+            filters = " AND ".join([f"{key} = %s" for key in filters_keys])
+            query = f"SELECT * FROM aziende WHERE {filters} LIMIT %s OFFSET %s" if filters else "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
+            params = [data[key] for key in filters_keys] + [limit, offset]
+
+            # Execute query
+            companies = fetchall_query(query, tuple(params))
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read company with id {idAzienda}', 
+                message=f'User {request.user_identity} read companies with filters: {data}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return jsonify(company), 200
+            return jsonify(companies), 200
         except mysql.connector.Error as err:
             return jsonify({'error': str(err)}), 500
 
