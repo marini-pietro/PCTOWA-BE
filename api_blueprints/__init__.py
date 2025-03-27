@@ -15,7 +15,7 @@ import os
 __all__ = []
 current_dir = os.path.dirname(__file__)
 for file in os.listdir(current_dir):
-    if file.endswith('.py') and file != '__init__.py':
+    if file.endswith('.py') and file != '__init__.py' and file != 'blueprints_utils.py':
         module_name = file[:-3]
         if module_name + '_bp' not in __all__:
             __all__.append(module_name + '_bp')
