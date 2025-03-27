@@ -1,10 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-import mysql.connector
-from utils import fetchone_query, execute_query, log, jwt_required_endpoint
-from blueprints_utils import validate_filters
-import json
+from blueprints_utils import validate_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
 address_bp = Blueprint('address', __name__)
@@ -108,46 +105,28 @@ class AddressRead(Resource):
 
         # Validate filters
         outcome = validate_filters(data=data, table_name='indirizzi')
-        if outcome is not None: 
+        if outcome != True: # if the validation fails, outcome will be a dict with the error message
             return outcome
-        
-
-        with open('../table_metadata.json') as metadata_file:
-            try:
-                metadata = json.load(metadata_file)
-                indirizzi_available_filters = metadata.get('indirizzi', [])
-                if not isinstance(indirizzi_available_filters, list) or not all(isinstance(item, str) for item in indirizzi_available_filters):
-                    return jsonify({'error': 'invalid indirizzi column values in metadata'}), 400
-                
-                # Get list of keys in data json
-                filters_key = list(data.keys()) if isinstance(data, dict) else []
-
-                # Check if any filter key is not in indirizzi_filters
-                invalid_filters = [key for key in filters_key if key not in indirizzi_available_filters]
-                if invalid_filters:
-                    return jsonify({'error': f'Invalid filter(s): {", ".join(invalid_filters)}'}), 400
-
-            except json.JSONDecodeError:
-                return jsonify({'error': 'failed to parse metadata file'}), 500
 
         try:
             # Build the query
-            filters = " AND ".join([f"{key} = %s" for key in filters_key])
+            filters_keys = list(data.keys()) if isinstance(data, dict) else []
+            filters = " AND ".join([f"{key} = %s" for key in filters_keys])
             query = f"SELECT * FROM indirizzi WHERE {filters} LIMIT %s OFFSET %s" if filters else "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
-            params = [data[key] for key in filters_key] + [limit, offset]
+            params = [data[key] for key in filters_keys] + [limit, offset]
 
             # Execute query
-            address = fetchone_query(query, tuple(params))
+            addresses = fetchall_query(query, tuple(params))
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read address', 
+                message=f'User {request.user_identity} read addresses with filters: {data}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return jsonify(address), 200
-        except mysql.connector.Error as err:
+            return jsonify(addresses), 200
+        except Exception as err:
             return jsonify({'error': str(err)}), 500
 
 # Add resources to the API

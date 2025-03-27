@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from utils import fetchone_query, execute_query, log, jwt_required_endpoint
+from blueprints_utils import validate_filters,  fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
 subject_bp = Blueprint('subjects', __name__)
@@ -144,23 +144,41 @@ class SubjectUnbind(Resource):
 class SubjectRead(Resource):
     @jwt_required_endpoint
     def get(self):
-        # Gather parameters
-        materia = request.args.get('materia')
+        # Gather URL parameters
+        try:
+            limit = int(request.args.get('limit'))
+            offset = int(request.args.get('offset'))
+        except (ValueError, TypeError):
+            return jsonify({'error': 'invalid limit or offset parameter'}), 400
 
-        # Check if subject exists
-        subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
-        if subject is None:
-            return jsonify({'outcome': 'error, specified subject does not exist'})
+        # Gather json filters
+        data = request.get_json()
 
-        # Log the read
-        log(type="info",
-            message=f"User {request.user_identity} read subject {materia}", 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+        # Validate filters
+        outcome = validate_filters(data=data, table_name='materie')
+        if outcome != True: # if the validation fails, outcome will be a dict with the error message
+            return outcome
 
-        # Return the subject
-        return jsonify({'materia': subject[0], 'descrizione': subject[1]})
+        try:
+            # Build the query
+            filters_keys = list(data.keys()) if isinstance(data, dict) else []
+            filters = " AND ".join([f"{key} = %s" for key in filters_keys])
+            query = f"SELECT * FROM materie WHERE {filters} LIMIT %s OFFSET %s" if filters else "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
+            params = [data[key] for key in filters_keys] + [limit, offset]
+
+            # Execute query
+            subjects = fetchall_query(query, tuple(params))
+
+            # Log the read
+            log(type='info', 
+                message=f'User {request.user_identity} read subjects with filters {data}', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
+
+            return jsonify(subjects), 200
+        except Exception as err:
+            return jsonify({'error': str(err)}), 500
 
 # Add resources to the API
 api.add_resource(SubjectRegister, '/register')
