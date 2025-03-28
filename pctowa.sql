@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Mar 28, 2025 alle 10:01
+-- Creato il: Mar 28, 2025 alle 17:35
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -30,7 +30,6 @@ SET time_zone = "+00:00";
 CREATE TABLE `aziende` (
   `idAzienda` int NOT NULL,
   `ragioneSociale` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `formaGiuridica` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `codiceAteco` varchar(10) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `partitaIVA` char(11) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `fax` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
@@ -41,7 +40,8 @@ CREATE TABLE `aziende` (
   `scadenzaConvenzione` date DEFAULT NULL,
   `categoria` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `indirizzoLogo` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
-  `sitoWeb` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL
+  `sitoWeb` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
+  `formaGiuridica` varchar(10) COLLATE utf8_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -88,6 +88,16 @@ CREATE TABLE `docenteReferente` (
 -- --------------------------------------------------------
 
 --
+-- Struttura della tabella `formaGiuridica`
+--
+
+CREATE TABLE `formaGiuridica` (
+  `formaGiuridica` varchar(10) COLLATE utf8_unicode_ci NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Struttura della tabella `indirizzi`
 --
 
@@ -109,7 +119,8 @@ CREATE TABLE `indirizzi` (
 
 CREATE TABLE `materie` (
   `materia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `descr` varchar(255) COLLATE utf8_unicode_ci NOT NULL
+  `descr` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `color` varchar(7) COLLATE utf8_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -225,7 +236,8 @@ CREATE TABLE `utenti` (
 --
 ALTER TABLE `aziende`
   ADD PRIMARY KEY (`idAzienda`),
-  ADD UNIQUE KEY `partitaIVA` (`partitaIVA`);
+  ADD UNIQUE KEY `partitaIVA` (`partitaIVA`),
+  ADD KEY `formaGiuridica` (`formaGiuridica`);
 
 --
 -- Indici per le tabelle `classi`
@@ -247,6 +259,12 @@ ALTER TABLE `contatti`
 ALTER TABLE `docenteReferente`
   ADD PRIMARY KEY (`emailDocente`,`idAzienda`),
   ADD KEY `idAzienda` (`idAzienda`);
+
+--
+-- Indici per le tabelle `formaGiuridica`
+--
+ALTER TABLE `formaGiuridica`
+  ADD PRIMARY KEY (`formaGiuridica`);
 
 --
 -- Indici per le tabelle `indirizzi`
@@ -324,7 +342,7 @@ ALTER TABLE `utenti`
 -- AUTO_INCREMENT per la tabella `aziende`
 --
 ALTER TABLE `aziende`
-  MODIFY `idAzienda` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `idAzienda` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT per la tabella `classi`
@@ -359,6 +377,12 @@ ALTER TABLE `tutor`
 --
 -- Limiti per le tabelle scaricate
 --
+
+--
+-- Limiti per la tabella `aziende`
+--
+ALTER TABLE `aziende`
+  ADD CONSTRAINT `aziende_ibfk_1` FOREIGN KEY (`formaGiuridica`) REFERENCES `formaGiuridica` (`formaGiuridica`);
 
 --
 -- Limiti per la tabella `classi`

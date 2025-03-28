@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from .blueprints_utils import validate_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
+from .blueprints_utils import validate_filters, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
 address_bp = Blueprint('address', __name__)
@@ -110,10 +110,7 @@ class AddressRead(Resource):
 
         try:
             # Build the query
-            filters_keys = list(data.keys()) if isinstance(data, dict) else []
-            filters = " AND ".join([f"{key} = %s" for key in filters_keys])
-            query = f"SELECT * FROM indirizzi WHERE {filters} LIMIT %s OFFSET %s" if filters else "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
-            params = [data[key] for key in filters_keys] + [limit, offset]
+            query, params = build_query_from_filters(data=data, table_name='indirizzi', limit=limit, offset=offset)
 
             # Execute query
             addresses = fetchall_query(query, tuple(params))
