@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, make_response, jsonify
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from .blueprints_utils import validate_filters, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
@@ -21,7 +21,7 @@ class AddressRegister(Resource):
         # Check if idAzienda exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         if company is None:
-            return jsonify({'outcome': 'error, specified company does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified company does not exist'}), 404)
 
         # Insert the address
         execute_query(
@@ -36,7 +36,7 @@ class AddressRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'address successfully created'}), 201
+        return make_response(jsonify({'outcome': 'address successfully created'}), 201)
 
 class AddressDelete(Resource):
     @jwt_required_endpoint
@@ -47,7 +47,7 @@ class AddressDelete(Resource):
         # Check if address exists
         address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
         if address is None:
-            return jsonify({'outcome': 'error, specified address does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified address does not exist'}), 404)
 
         # Delete the address
         execute_query('DELETE FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
@@ -59,7 +59,7 @@ class AddressDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'address successfully deleted'})
+        return make_response(jsonify({'outcome': 'address successfully deleted'}), 200)
 
 class AddressUpdate(Resource):
     @jwt_required_endpoint
@@ -71,12 +71,12 @@ class AddressUpdate(Resource):
 
         # Check if the field to modify is allowed
         if toModify in ['idIndirizzo']:
-            return jsonify({'outcome': 'error, specified field cannot be modified'})
+            return make_response(jsonify({'outcome': 'error, specified field cannot be modified'}), 403)
 
         # Check if address exists
         address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
         if address is None:
-            return jsonify({'outcome': 'error, specified address does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified address does not exist'}), 404)
 
         # Update the address
         execute_query(f'UPDATE indirizzi SET {toModify} = %s WHERE idIndirizzo = %s', (newValue, idIndirizzo))
@@ -88,7 +88,7 @@ class AddressUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'address successfully updated'})
+        return make_response(jsonify({'outcome': 'address successfully updated'}), 200)
 
 class AddressRead(Resource):
     @jwt_required_endpoint
@@ -98,7 +98,7 @@ class AddressRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return jsonify({'error': 'invalid limit or offset parameter'}), 400
+            return make_response(jsonify({'error': 'invalid limit or offset parameter'}), 400)
 
         # Gather json filters
         data = request.get_json()
@@ -106,7 +106,7 @@ class AddressRead(Resource):
         # Validate filters
         outcome = validate_filters(data=data, table_name='indirizzi')
         if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return jsonify(outcome), 400
+            return outcome, 400
 
         try:
             # Build the query
@@ -122,9 +122,9 @@ class AddressRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return jsonify(addresses), 200
+            return make_response(jsonify(addresses), 200)
         except Exception as err:
-            return jsonify({'error': str(err)}), 500
+            return make_response(jsonify({'error': str(err)}), 500)
 
 # Add resources to the API
 api.add_resource(AddressRegister, '/register')

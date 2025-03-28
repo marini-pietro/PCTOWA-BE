@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, make_response, jsonify
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from .blueprints_utils import validate_filters, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
@@ -17,7 +17,7 @@ class SubjectRegister(Resource):
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is not None:
-            return jsonify({'outcome': 'error, specified subject already exists'})
+            return make_response(jsonify({'outcome': 'error, specified subject already exists'}), 400)
 
         # Insert the subject
         execute_query('INSERT INTO materie (materia, descr) VALUES (%s, %s)', (materia, descrizione))
@@ -29,7 +29,7 @@ class SubjectRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'subject successfully created'}), 201
+        return make_response(jsonify({'outcome': 'subject successfully created'}), 201)
 
 class SubjectDelete(Resource):
     @jwt_required_endpoint
@@ -40,7 +40,7 @@ class SubjectDelete(Resource):
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
-            return jsonify({'outcome': 'error, specified subject does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified subject does not exist'}), 404)
 
         # Delete the subject
         execute_query('DELETE FROM materie WHERE materia = %s', (materia,))
@@ -52,7 +52,7 @@ class SubjectDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'subject successfully deleted'})
+        return make_response(jsonify({'outcome': 'subject successfully deleted'}), 200)
 
 class SubjectUpdate(Resource):
     @jwt_required_endpoint
@@ -64,12 +64,12 @@ class SubjectUpdate(Resource):
 
         # Check if the field to modify is allowed
         if toModify in ['materia']:
-            return jsonify({'outcome': 'error, specified field cannot be modified'})
+            return make_response(jsonify({'outcome': 'error, specified field cannot be modified'}), 400)
 
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
-            return jsonify({'outcome': 'error, specified subject does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified subject does not exist'}), 404)
 
         # Update the subject
         execute_query(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
@@ -81,7 +81,7 @@ class SubjectUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'subject successfully updated'})
+        return make_response(jsonify({'outcome': 'subject successfully updated'}), 200)
     
 class SubjectBind(Resource):
     @jwt_required_endpoint
@@ -93,12 +93,12 @@ class SubjectBind(Resource):
         # Check if turn exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
         if turn is None:
-            return jsonify({'outcome': 'error, specified turn does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified turn does not exist'}), 404)
         
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
-            return jsonify({'outcome': 'error, specified subject does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified subject does not exist'}), 404)
         
         # Bind the turn to the subject
         execute_query('INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)', (idTurno, materia))
@@ -110,7 +110,7 @@ class SubjectBind(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'success, turn binded to subject successfully'})
+        return make_response(jsonify({'outcome': 'success, turn binded to subject successfully'}), 201)
     
 class SubjectUnbind(Resource):
     @jwt_required_endpoint
@@ -122,12 +122,12 @@ class SubjectUnbind(Resource):
         # Check if turn exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
         if turn is None:
-            return jsonify({'outcome': 'error, specified turn does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified turn does not exist'}), 404)
         
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
-            return jsonify({'outcome': 'error, specified subject does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified subject does not exist'}), 404)
         
         # Unbind the turn from the subject
         execute_query('DELETE FROM turnoMateria WHERE idTurno = %s AND materia = %s', (idTurno, materia))
@@ -139,7 +139,7 @@ class SubjectUnbind(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'success, turn unbinded from subject successfully'})
+        return make_response(jsonify({'outcome': 'success, turn unbinded from subject successfully'}), 200)
     
 class SubjectRead(Resource):
     @jwt_required_endpoint
@@ -149,7 +149,7 @@ class SubjectRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return jsonify({'error': 'invalid limit or offset parameter'}), 400
+            return make_response(jsonify({'error': 'invalid limit or offset parameter'}), 400)
 
         # Gather json filters
         data = request.get_json()
@@ -157,7 +157,7 @@ class SubjectRead(Resource):
         # Validate filters
         outcome = validate_filters(data=data, table_name='materie')
         if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return jsonify(outcome), 400
+            return make_response(jsonify(outcome), 400)
 
         try:
             # Build the query
@@ -173,9 +173,9 @@ class SubjectRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return jsonify(subjects), 200
+            return make_response(jsonify(subjects), 200)
         except Exception as err:
-            return jsonify({'error': str(err)}), 500
+            return make_response(jsonify({'error': str(err)}), 500)
 
 # Add resources to the API
 api.add_resource(SubjectRegister, '/register')

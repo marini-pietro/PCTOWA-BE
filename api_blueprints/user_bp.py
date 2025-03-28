@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, make_response, jsonify
 from flask_restful import Api, Resource
 from requests import post as requests_post
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST
@@ -29,9 +29,9 @@ class UserRegister(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
             
-            return jsonify({"outcome": "user successfully created"}), 201
+            return make_response(jsonify({"outcome": "user successfully created"}), 201)
         except Exception:
-            return jsonify({'outcome': 'error, user with provided credentials already exists'}), 400
+            return make_response(jsonify({'outcome': 'error, user with provided credentials already exists'}), 400)
 
 class UserLogin(Resource):
     def post(self):
@@ -41,8 +41,8 @@ class UserLogin(Resource):
         # Forward login request to the authentication service
         response = requests_post(f'{AUTH_SERVER_HOST}/auth/login', json={'email': email, 'password': password})
         if response.status_code == 200:
-            return jsonify(response.json()), 200
-        return jsonify({'error': 'Invalid credentials'}), 401
+            return response.json(), 200
+        return make_response(jsonify({'error': 'Invalid credentials'}), 401)
 
 class UserUpdate(Resource):
     @jwt_required_endpoint
@@ -53,12 +53,12 @@ class UserUpdate(Resource):
 
         # Check if the field to modify is allowed
         if to_modify in ['email']:
-            return jsonify({'outcome': 'error, specified field cannot be modified'})
+            return make_response(jsonify({'outcome': 'error, specified field cannot be modified'}), 400)
 
         # Check if user exists
         user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
         if user is None:
-            return jsonify({'outcome': 'error, user with provided email does not exist'})
+            return make_response(jsonify({'outcome': 'error, user with provided email does not exist'}), 404)
 
         # Update the user
         execute_query(f'UPDATE utente SET {to_modify} = %s WHERE emailUtente = %s', (new_value, email))
@@ -70,7 +70,7 @@ class UserUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'user successfully updated'})
+        return make_response(jsonify({'outcome': 'user successfully updated'}), 200)
 
 class UserDelete(Resource):
     @jwt_required_endpoint
@@ -80,7 +80,7 @@ class UserDelete(Resource):
         # Check if user exists
         user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
         if user is None:
-            return jsonify({'outcome': 'error, user with provided email does not exist'})
+            return make_response(jsonify({'outcome': 'error, user with provided email does not exist'}), 404)
 
         # Delete the user
         execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
@@ -92,17 +92,18 @@ class UserDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'user successfully deleted'})
+        return make_response(jsonify({'outcome': 'user successfully deleted'}), 200)
     
 class UserRead(Resource):
-    @jwt_required_endpoint
+    #@jwt_required_endpoint
     def get(self):
+
         # Gather URL parameters
         try:
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return jsonify({'error': 'invalid limit or offset parameter'}), 400
+            return make_response(jsonify({'error': 'invalid limit or offset parameter'}), 400)
 
         # Gather json filters
         data = request.get_json()
@@ -110,7 +111,7 @@ class UserRead(Resource):
         # Validate filters
         outcome = validate_filters(data=data, table_name='utenti')
         if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return jsonify(outcome), 400
+            return outcome, 400
 
         try:
             # Build the query
@@ -126,12 +127,13 @@ class UserRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return jsonify(users), 200
+            return make_response(jsonify(users), 200)
         except Exception as err:
-            return jsonify({'error': str(err)}), 500
+            return make_response(jsonify({'error': str(err)}), 500)
 
 # Add resources to the API
 api.add_resource(UserRegister, '/register')
 api.add_resource(UserLogin, '/login')
+api.add_resource(UserRead, '/read')
 api.add_resource(UserUpdate, '/update')
 api.add_resource(UserDelete, '/delete')
