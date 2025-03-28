@@ -114,23 +114,28 @@ class CompanyRead(Resource):
         except (ValueError, TypeError):
             return jsonify({'error': 'invalid limit or offset parameter'}), 400
 
-        # Gather json filters
+        # Gather JSON filters
         data = request.get_json()
 
         # Validate filters
         outcome = validate_filters(data=data, table_name='aziende')
-        if outcome != True: # if the validation fails, outcome will be a dict with the error message
-            return outcome
+        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
+            return jsonify(outcome), 400
 
         try:
             # Build the query
             filters_keys = list(data.keys()) if isinstance(data, dict) else []
             filters = " AND ".join([f"{key} = %s" for key in filters_keys])
             query = f"SELECT * FROM aziende WHERE {filters} LIMIT %s OFFSET %s" if filters else "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
+            
             params = [data[key] for key in filters_keys] + [limit, offset]
 
             # Execute query
             companies = fetchall_query(query, tuple(params))
+
+            # Ensure the result is JSON-serializable
+            if not isinstance(companies, list):
+                companies = list(companies)
 
             # Log the read
             log(type='info', 
@@ -139,8 +144,8 @@ class CompanyRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return jsonify(companies), 200
-        except mysql.connector.Error as err:
+            return jsonify({'data': companies if companies else []}), 200
+        except Exception as err:
             return jsonify({'error': str(err)}), 500
 
 class CompanyBindTurn(Resource):
@@ -207,3 +212,5 @@ api.add_resource(CompanyRegister, '/register')
 api.add_resource(CompanyDelete, '/delete')
 api.add_resource(CompanyUpdate, '/update')
 api.add_resource(CompanyRead, '/read')
+api.add_resource(CompanyBindTurn, '/bindTurn')
+api.add_resource(CompanyBindUser, '/bindUser')

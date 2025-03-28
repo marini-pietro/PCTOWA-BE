@@ -97,8 +97,8 @@ class ClassRead(Resource):
 
         # Validate filters
         outcome = validate_filters(data=data, table_name='classi')
-        if outcome != True: # if the validation fails, outcome will be a dict with the error message
-            return outcome
+        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
+            return jsonify(outcome), 400
 
         # Execute query
         try:
