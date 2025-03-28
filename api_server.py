@@ -8,28 +8,30 @@ import signal, os, importlib
 app = Flask(__name__)
 
 # Register the blueprints
-blueprints_dir = os.path.dirname(__file__) + '/api_blueprints'
-for filename in os.listdir(blueprints_dir):
-    if filename.endswith('_bp.py'):  # Look for files ending with '_bp.py'
-        module_name = filename[:-3]  # Remove the .py extension
-        module = importlib.import_module(f'api_blueprints.{module_name}')
-        blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
-        app.register_blueprint(blueprint, url_prefix=f'/api/{module_name[:-3]}')  # Remove '_bp' for the URL prefix
-        print(f"Registered blueprint: {module_name} with prefix /api/{module_name[:-3]}")
+if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':  # Avoid the blueprints getting registered again if server reloads while in debug mode
+    # Register the blueprints
+    blueprints_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'api_blueprints')
+    for filename in os.listdir(blueprints_dir):
+        if filename.endswith('_bp.py'):  # Look for files ending with '_bp.py'
+            module_name = filename[:-3]  # Remove the .py extension
+            module = importlib.import_module(f'api_blueprints.{module_name}')
+            blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
+            app.register_blueprint(blueprint, url_prefix=f'/api/{module_name[:-3]}')  # Remove '_bp' for the URL prefix
+            print(f"Registered blueprint: {module_name} with prefix /api/{module_name[:-3]}")
 
 # Utility functions
-def close_api(signal, frame):  # Parameters are necessary even if not used because it has to match the signal signature
+def close_api(signal, frame):  # Parameters are necessary to match the signal handler signature
     """
     Gracefully close the API server.
     """
     log(type='info', message='API server shutting down', origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
-    func = request.environ.get('werkzeug.server.shutdown')
-    if func is None:
+    
+    # Use the Flask shutdown function directly
+    shutdown_func = app.config.get('werkzeug.server.shutdown')
+    if shutdown_func is None:
         raise RuntimeError('Not running with the Werkzeug Server')
-    func()
-    return 'Server shutting down...'
-signal.signal(signal.SIGINT, close_api)  # Bind CTRL+C to close_api function
-signal.signal(signal.SIGTERM, close_api)  # Bind SIGTERM to close_api function
+    shutdown_func()
+    print("Server shutting down...")
 
 @app.route('/health', methods=['GET'])
 def health_check():

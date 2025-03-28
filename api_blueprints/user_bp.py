@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 from requests import post as requests_post
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST
-from blueprints_utils import validate_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint  # Import shared utilities
+from .blueprints_utils import validate_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint  # Import shared utilities
 
 # Create the blueprint and API
 user_bp = Blueprint('user', __name__)
