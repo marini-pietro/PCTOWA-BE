@@ -19,8 +19,7 @@ def validate_filters(data, table_name):
         table_name - The name of the table to validate against
 
     returns:
-        True if the filters are valid, otherwise an error message in JSON format
-        with a 400 status code.
+        A dictionary with an error message if validation fails, or True if validation succeeds.
 
     raises:
         JSONDecodeError - If the metadata file cannot be parsed
@@ -28,27 +27,22 @@ def validate_filters(data, table_name):
         TypeError - If the filters are not in the expected format
         ValueError - If the filters contain invalid values
     """
-
-    # Validate filters
-    with open('../table_metadata.json') as metadata_file: # Use context manager to automatically close file
+    with open('../table_metadata.json') as metadata_file:
         try:
             metadata = json.load(metadata_file)
             indirizzi_available_filters = metadata.get(f'{table_name}', [])
             if not isinstance(indirizzi_available_filters, list) or not all(isinstance(item, str) for item in indirizzi_available_filters):
-                return jsonify({'error': f'invalid {table_name} column values in metadata'}), 400
+                return {'error': f'invalid {table_name} column values in metadata'}
                 
-            # Get list of keys in data json
             filters_keys = list(data.keys()) if isinstance(data, dict) else []
-
-            # Check if any filter key is not in indirizzi_filters
             invalid_filters = [key for key in filters_keys if key not in indirizzi_available_filters]
             if invalid_filters:
-                return jsonify({'error': f'Invalid filter(s): {", ".join(invalid_filters)}'}), 400
+                return {'error': f'Invalid filter(s): {", ".join(invalid_filters)}'}
 
             return True
 
-        except json.JSONDecodeError or KeyError or TypeError or ValueError:
-            return jsonify({'error': 'failed to parse metadata file'}), 500
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            return {'error': 'failed to parse metadata file'}
             
 # Data handling related
 def parse_time_string(time_string) -> datetime:
@@ -137,16 +131,9 @@ def fetchone_query(query, params):
 def fetchall_query(query, params):
     """
     Execute a query on the database and return the result.
-    
-    params:
-        query - The query to execute
-        params - The parameters to pass to the query
-        
-    returns: 
-        The result of the query
     """
-
-    with get_db_connection() as connection: # Use a context manager to ensure the connection is closed after use
+    
+    with get_db_connection() as connection:
         with connection.cursor(dictionary=True) as cursor:
             cursor.execute(query, params)
             return cursor.fetchall()
