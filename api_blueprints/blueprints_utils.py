@@ -3,11 +3,10 @@ from flask import jsonify
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
 from datetime import datetime
-from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, CONNECTION_POOL_SIZE
+from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL
 from functools import wraps
 from flask import jsonify, request # From Flask import the jsonify function and request object
 from requests import post as requests_post # From requests import the post function
-from config import LOG_SERVER_HOST, LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL
 from cachetools import TTLCache
 
 def validate_filters(data, table_name):
@@ -89,6 +88,14 @@ try:
 except Exception as ex:
     print(f"Couldn't access database, see next line for full exception.\n{ex}\n\nhost: {DB_HOST}, dbname: {DB_NAME}, user: {DB_USER}, password: {DB_PASSWORD}")
     exit(1)
+
+def build_query_from_filters(data, table_name, limit=1, offset=0):
+    # Build the query
+    filters_keys = list(data.keys()) if isinstance(data, dict) else []
+    filters = " AND ".join([f"{key} = %s" for key in filters_keys])
+    return f"SELECT * FROM {table_name} WHERE {filters} LIMIT %s OFFSET %s" if filters else "SELECT * FROM indirizzi LIMIT %s OFFSET %s", \
+        	[data[key] for key in filters_keys] + [limit, offset]	
+
 
 # Function to get a connection from the pool
 @contextmanager
