@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, make_response, jsonify
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from .blueprints_utils import validate_filters, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
@@ -19,7 +19,7 @@ class TutorRegister(Resource):
         # Check if tutor already exists
         tutor = fetchone_query('SELECT * FROM tutor WHERE emailTutor = %s AND telefonoTutor = %s', (email, telefono))
         if tutor is not None:
-            return jsonify({'outcome': 'error, specified tutor already exists'})
+            return make_response(jsonify({'outcome': 'error, specified tutor already exists'}), 409)
 
         # Insert the tutor
         execute_query(
@@ -34,7 +34,7 @@ class TutorRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'tutor successfully created'}), 201
+        return make_response(jsonify({'outcome': 'tutor successfully created'}), 201)
 
 class TutorDelete(Resource):
     @jwt_required_endpoint
@@ -45,7 +45,7 @@ class TutorDelete(Resource):
         # Check if tutor exists
         tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
         if tutor is None:
-            return jsonify({'outcome': 'error, specified tutor does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified tutor does not exist'}), 404)
 
         # Delete the tutor
         execute_query('DELETE FROM tutor WHERE idTutor = %s', (idTutor,))
@@ -57,7 +57,7 @@ class TutorDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'tutor successfully deleted'})
+        return make_response(jsonify({'outcome': 'tutor successfully deleted'}), 200)
 
 class TutorUpdate(Resource):
     @jwt_required_endpoint
@@ -69,12 +69,12 @@ class TutorUpdate(Resource):
 
         # Check if the field to modify is allowed
         if toModify in ['idTutor']:
-            return jsonify({'outcome': 'error, specified field cannot be modified'})
+            return make_response(jsonify({'outcome': 'error, specified field cannot be modified'}), 400)
 
         # Check if tutor exists
         tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
         if tutor is None:
-            return jsonify({'outcome': 'error, specified tutor does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified tutor does not exist'}), 404)
 
         # Update the tutor
         execute_query(f'UPDATE tutor SET {toModify} = %s WHERE idTutor = %s', (newValue, idTutor))
@@ -86,7 +86,7 @@ class TutorUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'tutor successfully updated'})
+        return make_response(jsonify({'outcome': 'tutor successfully updated'}), 200)
 
 class TutorRead(Resource):
     @jwt_required_endpoint
@@ -96,7 +96,7 @@ class TutorRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return jsonify({'error': 'invalid limit or offset parameter'}), 400
+            return make_response(jsonify({'error': 'invalid limit or offset parameter'}), 400)
 
         # Gather json filters
         data = request.get_json()
@@ -104,7 +104,7 @@ class TutorRead(Resource):
         # Validate filters
         outcome = validate_filters(data=data, table_name='tutor')
         if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return jsonify(outcome), 400
+            return make_response(jsonify(outcome), 400)
 
         try:
             # Build the query
@@ -120,9 +120,9 @@ class TutorRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return jsonify(tutors), 200
+            return make_response(jsonify(tutors), 200)
         except Exception as err:
-            return jsonify({'error': str(err)}), 500
+            return make_response(jsonify({'error': str(err)}), 500)
 
 # Add resources to the API
 api.add_resource(TutorRegister, '/register')

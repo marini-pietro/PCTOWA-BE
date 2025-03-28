@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, make_response, jsonify
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from .blueprints_utils import validate_filters, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
@@ -16,7 +16,7 @@ class SectorRegister(Resource):
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
         if sector is not None:
-            return jsonify({'outcome': 'error, specified sector already exists'})
+            return {'outcome': 'error, specified sector already exists'}, 403
 
         # Insert the sector
         execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
@@ -28,7 +28,7 @@ class SectorRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'sector successfully created'}), 201
+        return make_response(jsonify({'outcome': 'sector successfully created'}), 201)
 
 class SectorDelete(Resource):
     @jwt_required_endpoint
@@ -39,7 +39,7 @@ class SectorDelete(Resource):
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
         if sector is None:
-            return jsonify({'outcome': 'error, specified sector does not exist'})
+            return {'outcome': 'error, specified sector does not exist'}, 404
 
         # Delete the sector
         execute_query('DELETE FROM settori WHERE settore = %s', (settore,))
@@ -51,7 +51,7 @@ class SectorDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'sector successfully deleted'})
+        return make_response(jsonify({'outcome': 'sector successfully deleted'}), 200)
 
 class SectorUpdate(Resource):
     @jwt_required_endpoint
@@ -63,7 +63,7 @@ class SectorUpdate(Resource):
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
         if sector is None:
-            return jsonify({'outcome': 'error, specified sector does not exist'})
+            return make_response(jsonify({'outcome': 'error, specified sector does not exist'}), 404)
 
         # Update the sector
         execute_query('UPDATE settori SET settore = %s WHERE settore = %s', (newValue, settore))
@@ -75,7 +75,7 @@ class SectorUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'sector successfully updated'})
+        return make_response(jsonify({'outcome': 'sector successfully updated'}), 200)
     
 class SectorBind(Resource):
     @jwt_required_endpoint
@@ -87,12 +87,12 @@ class SectorBind(Resource):
         # Check if turn exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
         if turn is None:
-            return {'outcome': 'error, specified turn does not exist'}
+            return make_response(jsonify({'outcome': 'error, specified turn does not exist'}), 404)
         
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
         if sector is None:
-            return {'outcome': 'error, specified sector does not exist'}
+            return make_response(jsonify({'outcome': 'error, specified sector does not exist'}), 404)
         
         # Bind the turn to the sector
         execute_query('INSERT INTO turnoSectore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
@@ -104,7 +104,7 @@ class SectorBind(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return jsonify({'outcome': 'success, turn binded to sector successfully'})
+        return make_response(jsonify({'outcome': 'success, turn binded to sector successfully'}), 200)
 
 class SectorRead(Resource):
     @jwt_required_endpoint
@@ -113,8 +113,8 @@ class SectorRead(Resource):
         try:
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
-        except (ValueError, TypeError):
-            return jsonify({'error': 'invalid limit or offset parameter'}), 400
+        except (ValueError, TypeError) as ex:
+            return make_response(jsonify({'error': f'invalid limit or offset parameter: {ex}'}), 400)
 
         # Gather json filters
         data = request.get_json()
@@ -122,7 +122,7 @@ class SectorRead(Resource):
         # Validate filters
         outcome = validate_filters(data=data, table_name='settori')
         if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return jsonify(outcome), 400
+            return make_response(jsonify(outcome), 400)
 
         try:
             # Build the query
@@ -138,9 +138,9 @@ class SectorRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return jsonify(sectors), 200
+            return make_response(jsonify(sectors), 200)
         except Exception as err:
-            return jsonify({'error': str(err)}), 500
+            return make_response(jsonify({'error': str(err)}), 500)
 
 # Add resources to the API
 api.add_resource(SectorRegister, '/register')

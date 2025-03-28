@@ -1,4 +1,4 @@
-import json
+import json, os
 from flask import jsonify
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
@@ -26,15 +26,24 @@ def validate_filters(data, table_name):
         TypeError - If the filters are not in the expected format
         ValueError - If the filters contain invalid values
     """
-    with open('../table_metadata.json') as metadata_file:
+    # Get the absolute path to the metadata file
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    metadata_path = os.path.join(base_dir, '..', 'table_metadata.json')
+
+    with open(metadata_path) as metadata_file:
         try:
             metadata = json.load(metadata_file)
-            indirizzi_available_filters = metadata.get(f'{table_name}', [])
-            if not isinstance(indirizzi_available_filters, list) or not all(isinstance(item, str) for item in indirizzi_available_filters):
+            
+            # If metadata is a list, convert it to a dictionary
+            if isinstance(metadata, list):
+                metadata = {key: value for item in metadata for key, value in item.items()}
+            
+            available_filters = metadata.get(f'{table_name}', [])
+            if not isinstance(available_filters, list) or not all(isinstance(item, str) for item in available_filters):
                 return {'error': f'invalid {table_name} column values in metadata'}
                 
             filters_keys = list(data.keys()) if isinstance(data, dict) else []
-            invalid_filters = [key for key in filters_keys if key not in indirizzi_available_filters]
+            invalid_filters = [key for key in filters_keys if key not in available_filters]
             if invalid_filters:
                 return {'error': f'Invalid filter(s): {", ".join(invalid_filters)}'}
 
