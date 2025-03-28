@@ -8,16 +8,14 @@ import os, importlib
 app = Flask(__name__)
 
 # Register the blueprints
-if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':  # Avoid the blueprints getting registered again if server reloads while in debug mode
-    # Register the blueprints
-    blueprints_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'api_blueprints')
-    for filename in os.listdir(blueprints_dir):
-        if filename.endswith('_bp.py'):  # Look for files ending with '_bp.py'
-            module_name = filename[:-3]  # Remove the .py extension
-            module = importlib.import_module(f'api_blueprints.{module_name}')
-            blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
-            app.register_blueprint(blueprint, url_prefix=f'/api/{module_name[:-3]}')  # Remove '_bp' for the URL prefix
-            print(f"Registered blueprint: {module_name} with prefix /api/{module_name[:-3]}")
+blueprints_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'api_blueprints')
+for filename in os.listdir(blueprints_dir):
+    if filename.endswith('_bp.py'):  # Look for files ending with '_bp.py'
+        module_name = filename[:-3]  # Remove the .py extension
+        module = importlib.import_module(f'api_blueprints.{module_name}')
+        blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
+        app.register_blueprint(blueprint, url_prefix=f'/api/{module_name[:-3]}')  # Remove '_bp' for the URL prefix
+        print(f"Registered blueprint: {module_name} with prefix /api/{module_name[:-3]}")
 
 # Utility functions
 def close_api(signal, frame):  # Parameters are necessary to match the signal handler signature
