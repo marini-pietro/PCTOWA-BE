@@ -30,7 +30,7 @@ def validate_filters(data, table_name):
     """
 
     # Validate filters
-    with open('../table_metadata.json') as metadata_file:
+    with open('../table_metadata.json') as metadata_file: # Use context manager to automatically close file
         try:
             metadata = json.load(metadata_file)
             indirizzi_available_filters = metadata.get(f'{table_name}', [])
@@ -84,16 +84,16 @@ def parse_date_string(date_string) -> datetime:
 # Database related
 # Create a connection pool
 try:
-    db_pool = mysql_pooling(
+    db_pool = mysql_pooling.MySQLConnectionPool(
         pool_name="pctowa_connection_pool",
-        pool_size=max(1, min(CONNECTION_POOL_SIZE, 151)), # Clamp the value to ensure it does not exceed limitations
+        pool_size=max(1, CONNECTION_POOL_SIZE),
         host=DB_HOST,
         user=REDACTED_USER,
         password=REDACTED_PASSWORD,
         database=DB_NAME
         )
 except Exception as ex:
-    print(f"\nInvalid credentials, couldn't access database.\n{ex}")
+    print(f"Couldn't access database, see next line for full exception.\n{ex}\n\nhost: {DB_HOST}, dbname: {DB_NAME}, user: {REDACTED_USER}, password: {REDACTED_PASSWORD}")
     exit(1)
 
 # Function to get a connection from the pool

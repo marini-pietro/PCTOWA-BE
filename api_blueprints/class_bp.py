@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource
 import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from blueprints_utils import validate_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
+from .blueprints_utils import validate_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
 class_bp = Blueprint('class', __name__)

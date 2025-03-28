@@ -19,7 +19,7 @@ API_SERVER_DEBUG_MODE = True
 
 # Database configuration
 DB_HOST = "localhost"
+DB_NAME = "pctowa"
 REDACTED_USER = "pctowa"
 REDACTED_PASSWORD = "pctowa2025"
-DB_NAME = "pctowa"
 CONNECTION_POOL_SIZE = 20 # The maximum number of connections in the pool
