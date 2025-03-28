@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Mar 28, 2025 alle 09:36
+-- Creato il: Mar 28, 2025 alle 10:01
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -29,20 +29,19 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `aziende` (
   `idAzienda` int NOT NULL,
-  `ragioneSociale` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `nome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `sitoWeb` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `indirizzoLogo` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `codiceAteco` varchar(10) COLLATE utf8_unicode_ci NOT NULL,
-  `partitaIVA` char(11) COLLATE utf8_unicode_ci NOT NULL,
-  `telefonoAzienda` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `fax` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `emailAzienda` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `pec` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `formaGiuridica` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `ragioneSociale` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `formaGiuridica` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `codiceAteco` varchar(10) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `partitaIVA` char(11) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `fax` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `pec` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `telefonoAzienda` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `emailAzienda` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `dataConvenzione` date DEFAULT NULL,
   `scadenzaConvenzione` date DEFAULT NULL,
-  `categoria` varchar(255) COLLATE utf8_unicode_ci NOT NULL
+  `categoria` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `indirizzoLogo` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
+  `sitoWeb` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -325,7 +324,7 @@ ALTER TABLE `utenti`
 -- AUTO_INCREMENT per la tabella `aziende`
 --
 ALTER TABLE `aziende`
-  MODIFY `idAzienda` int NOT NULL AUTO_INCREMENT;
+  MODIFY `idAzienda` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT per la tabella `classi`

@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from api_blueprints.blueprints_utils import log
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_DEBUG_MODE, API_SERVER_NAME_IN_LOG
 from api_blueprints import *  # Import all the blueprints
-import signal, os, importlib
+import os, importlib
 
 # Create a Flask app
 app = Flask(__name__)
@@ -33,7 +33,7 @@ def close_api(signal, frame):  # Parameters are necessary to match the signal ha
     shutdown_func()
     print("Server shutting down...")
 
-@app.route('/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
 def health_check():
     """
     Health check endpoint to verify the server is running.
