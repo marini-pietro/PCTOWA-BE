@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Mar 28, 2025 alle 17:35
+-- Creato il: Mar 28, 2025 alle 20:18
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -29,19 +29,19 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `aziende` (
   `idAzienda` int NOT NULL,
-  `ragioneSociale` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `ragioneSociale` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `codiceAteco` varchar(10) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `partitaIVA` char(11) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `fax` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `pec` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `telefonoAzienda` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `emailAzienda` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `fax` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `pec` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `telefonoAzienda` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `emailAzienda` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `dataConvenzione` date DEFAULT NULL,
   `scadenzaConvenzione` date DEFAULT NULL,
-  `categoria` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `categoria` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `indirizzoLogo` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
   `sitoWeb` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
-  `formaGiuridica` varchar(10) COLLATE utf8_unicode_ci DEFAULT NULL
+  `formaGiuridica` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -53,7 +53,7 @@ CREATE TABLE `aziende` (
 CREATE TABLE `classi` (
   `idClasse` int NOT NULL,
   `classe` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `anno` int NOT NULL,
+  `anno` char(9) COLLATE utf8_unicode_ci NOT NULL COMMENT 'e.g. 2024-2025',
   `emailResponsabile` varchar(255) COLLATE utf8_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
@@ -92,7 +92,7 @@ CREATE TABLE `docenteReferente` (
 --
 
 CREATE TABLE `formaGiuridica` (
-  `formaGiuridica` varchar(10) COLLATE utf8_unicode_ci NOT NULL
+  `formaGiuridica` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -152,8 +152,8 @@ CREATE TABLE `studenteTurno` (
 
 CREATE TABLE `studenti` (
   `matricola` int NOT NULL,
-  `nome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `cognome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `idClasse` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
@@ -207,10 +207,10 @@ CREATE TABLE `turnoSettore` (
 
 CREATE TABLE `tutor` (
   `idTutor` int NOT NULL,
-  `nome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `cognome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `emailTutor` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `telefonoTutor` varchar(255) COLLATE utf8_unicode_ci NOT NULL
+  `telefonoTutor` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -222,8 +222,8 @@ CREATE TABLE `tutor` (
 CREATE TABLE `utenti` (
   `emailUtente` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `password` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `nome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `cognome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `tipo` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 

@@ -1,137 +1,104 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, make_response, jsonify
 from flask_restful import Api, Resource
 import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from .blueprints_utils import validate_filters, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
 
-# Create the blueprint and API
 contact_bp = Blueprint('contact', __name__)
 api = Api(contact_bp)
 
 class ContactRegister(Resource):
     @jwt_required_endpoint
     def post(self):
-        # Gather parameters
-        nome = request.args.get('nome')
-        cognome = request.args.get('cognome')
-        telefono = request.args.get('telefono')
-        email = request.args.get('email')
-        ruolo = request.args.get('ruolo')
-        idAzienda = int(request.args.get('idAzienda'))
+        params = {
+            'nome': request.args.get('nome'),
+            'cognome': request.args.get('cognome'),
+            'telefono': request.args.get('telefono'),
+            'email': request.args.get('email'),
+            'ruolo': request.args.get('ruolo'),
+            'idAzienda': int(request.args.get('idAzienda'))
+        }
 
-        # Check if idAzienda exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
-        if company is None:
-            return jsonify({'outcome': 'error, specified company does not exist'})
+        if not fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (params['idAzienda'],)):
+            return make_response(jsonify({'outcome': 'Company not found'}), 404)
 
-        # Insert the contact
-        execute_query(
-            'INSERT INTO contatti (nome, cognome, telefono, email, ruolo, idAzienda) VALUES (%s, %s, %s, %s, %s, %s)',
-            (nome, cognome, telefono, email, ruolo, idAzienda)
-        )
-
-        # Log the contact creation
-        log(type='info', 
-            message=f'User {request.user_identity} created contact', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-
-        return jsonify({'outcome': 'success, contact inserted'}), 201
+        try:
+            execute_query(
+                '''INSERT INTO contatti 
+                (nome, cognome, telefono, email, ruolo, idAzienda)
+                VALUES (%s, %s, %s, %s, %s, %s)''',
+                tuple(params.values())
+            )
+            log(type='info', message=f'User {request.user_identity} created contact',
+                origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
+            return make_response(jsonify({'outcome': 'Contact created'}), 201)
+        except mysql.connector.IntegrityError:
+            return make_response(jsonify({'outcome': 'Contact already exists'}), 400)
 
 class ContactDelete(Resource):
     @jwt_required_endpoint
     def delete(self):
-        # Gather parameters
-        idContatto = int(request.args.get('idContatto'))
-
-        # Check if contact exists
-        contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
-        if contact is None:
-            return jsonify({'outcome': 'error, specified contact does not exist'})
-
-        # Delete the contact
-        execute_query('DELETE FROM contatti WHERE idContatto = %s', (idContatto,))
-
-        # Log the deletion
-        log(type='info',
-            message= f'User {request.user_identity} deleted contact', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-
-        return jsonify({'outcome': 'contact successfully deleted'})
+        contact_id = int(request.args.get('idContatto'))
+        if not fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (contact_id,)):
+            return make_response(jsonify({'outcome': 'Contact not found'}), 404)
+            
+        execute_query('DELETE FROM contatti WHERE idContatto = %s', (contact_id,))
+        
+        log(type='info', message=f'User {request.user_identity} deleted contact',
+            origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
+        
+        return make_response(jsonify({'outcome': 'contact successfully deleted'}), 200)
 
 class ContactUpdate(Resource):
+    allowed_fields = ['nome', 'cognome', 'telefono', 'email', 'ruolo', 'idAzienda']
+    
     @jwt_required_endpoint
     def patch(self):
-        # Gather parameters
-        idContatto = int(request.args.get('idContatto'))
-        toModify = request.args.get('toModify')
-        newValue = request.args.get('newValue')
+        contact_id = int(request.args.get('idContatto'))
+        field = request.args.get('toModify')
+        value = request.args.get('newValue')
 
-        # Check if the field to modify is allowed
-        if toModify in ['idContatto']:
-            return jsonify({'outcome': 'error, specified field cannot be modified'})
+        if field not in self.allowed_fields:
+            return make_response(jsonify({'outcome': 'Invalid field'}), 400)
 
-        # Check if any casting operations are needed
-        if toModify in ['telefono']:
-            newValue = int(newValue)
+        if not fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (contact_id,)):
+            return make_response(jsonify({'outcome': 'Contact not found'}), 404)
 
-        # Check if contact exists
-        contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (idContatto,))
-        if contact is None:
-            return jsonify({'outcome': 'error, specified contact does not exist'})
+        if field == 'telefono':
+            value = int(value)
 
-        # Update the contact
-        execute_query(f'UPDATE contatti SET {toModify} = %s WHERE idContatto = %s', (newValue, idContatto))
-
-        # Log the update
-        log(type='info',
-            message= f'User {request.user_identity} updated contact', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-
-        return jsonify({'outcome': 'contact successfully updated'})
+        execute_query(f'UPDATE contatti SET {field} = %s WHERE idContatto = %s', (value, contact_id))
+        
+        log(type='info', message=f'User {request.user_identity} updated contact',
+            origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
+        
+        return make_response(jsonify({'outcome': 'contact successfully updated'}), 200)
 
 class ContactRead(Resource):
     @jwt_required_endpoint
     def get(self):
-        # Gather URL parameters
         try:
-            limit = int(request.args.get('limit'))
-            offset = int(request.args.get('offset'))
-        except (ValueError, TypeError):
-            return jsonify({'error': 'invalid limit or offset parameter'}), 400
+            limit = int(request.args.get('limit', 10))
+            offset = int(request.args.get('offset', 0))
+        except (ValueError, TypeError) as ex:
+            return make_response(jsonify({'error': f'invalid limit or offset value: {ex}'}), 400)
 
-        # Gather json filters
         data = request.get_json()
-
-        # Validate filters
-        outcome = validate_filters(data=data, table_name='contatti')
-        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return jsonify(outcome), 400
+        if (validation := validate_filters(data, 'contatti')) is not True:
+            return validation, 400
 
         try:
-            # Build the query
-            query, params = build_query_from_filters(data=data, table_name='contatti', limit=limit, offset=offset)
+            query, params = build_query_from_filters(
+                data=data, table_name='contatti',
+                limit=limit, offset=offset
+            )
+            
+            contacts = [dict(row) for row in fetchall_query(query, tuple(params))]
+            
+            return make_response(jsonify(contacts), 200)
+        except Exception as err:
+            return make_response(jsonify({'error': str(err)}), 500)
 
-            # Execute query
-            contacts = fetchall_query(query, tuple(params))
-
-            # Log the read
-            log(type='info',
-                message=f'User {request.user_identity} read contacts with filters {data}', 
-                origin_name=API_SERVER_NAME_IN_LOG, 
-                origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
-
-            return jsonify(contacts), 200
-        except mysql.connector.Error as err:
-            return jsonify({'error': str(err)}), 500
-
-# Add resources to the API
 api.add_resource(ContactRegister, '/register')
 api.add_resource(ContactDelete, '/delete')
 api.add_resource(ContactUpdate, '/update')
