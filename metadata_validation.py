@@ -1,5 +1,4 @@
 # This script will be used to validate the filters provided in a JSON by clients by comparing them to table meta data.
-# Each time the api_server is ran this script will request table meta data from database in order to provide column names.
 
 import mysql.connector
 import json
@@ -10,7 +9,7 @@ TABLE_METADATA: List[Dict[str, List[str]]] = []
 
 def fetch_table_metadata():
     """
-    Fetches table metadata and dumps it in json file.
+    Fetches table metadata and dumps it in a JSON file, excluding primary keys.
     """
     global TABLE_METADATA
     try:
@@ -32,16 +31,31 @@ def fetch_table_metadata():
             """)
         tables = cursor.fetchall()
 
-        # Fetch column names for each table
+        # Fetch column names for each table, excluding primary keys
         for table in tables:
             table_name = table[0]
+            
+            # Fetch all column names
             cursor.execute(f"""
                 SELECT column_name 
                 FROM information_schema.columns 
                 WHERE table_name = %s;
             """, (table_name,))
-            columns = [row[0] for row in cursor.fetchall()]
-            TABLE_METADATA.append({table_name: columns})
+            all_columns = [row[0] for row in cursor.fetchall()]
+            
+            # Fetch primary key columns
+            cursor.execute(f"""
+                SELECT column_name 
+                FROM information_schema.key_column_usage 
+                WHERE table_name = %s AND constraint_name = 'PRIMARY';
+            """, (table_name,))
+            primary_keys = [row[0] for row in cursor.fetchall()]
+            
+            # Exclude primary keys from the column list
+            non_primary_columns = [col for col in all_columns if col not in primary_keys]
+            
+            # Append table metadata
+            TABLE_METADATA.append({table_name: non_primary_columns})
 
         # Print TABLE_METADATA to stdout
         print(json.dumps(TABLE_METADATA, indent=4))
@@ -61,4 +75,3 @@ def fetch_table_metadata():
 
 # Fetch metadata when the script is run
 fetch_table_metadata()
-
