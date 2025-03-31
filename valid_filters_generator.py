@@ -7,7 +7,7 @@ from typing import List, Dict
 
 TABLE_METADATA: List[Dict[str, List[str]]] = []
 
-def fetch_table_metadata():
+def fetch_table_metadata(exclude_primary_keys: bool):
     """
     Fetches table metadata and dumps it in a JSON file, excluding primary keys.
     """
@@ -52,19 +52,21 @@ def fetch_table_metadata():
             primary_keys = [row[0] for row in cursor.fetchall()]
             
             # Exclude primary keys from the column list
-            non_primary_columns = [col for col in all_columns if col not in primary_keys]
+            if exclude_primary_keys: valid_columns = [col for col in all_columns if col not in primary_keys]
+            else: valid_columns = all_columns
             
             # Append table metadata
-            TABLE_METADATA.append({table_name: non_primary_columns})
+            TABLE_METADATA.append({table_name: valid_columns})
 
         # Print TABLE_METADATA to stdout
         print(json.dumps(TABLE_METADATA, indent=4))
 
         # Save TABLE_METADATA to a JSON file
-        with open("table_metadata.json", "w") as json_file:
+        file_name = "valid_update_values.json" if exclude_primary_keys else "valid_search_values.json"
+        with open(file_name, "w") as json_file:
             json.dump(TABLE_METADATA, json_file, indent=4)
 
-        print("Table metadata saved to table_metadata.json")
+        print("Table metadata saved to valid_update_values.json")
 
     except Exception as e:
         print(f"Error fetching table metadata: {e}")
@@ -74,4 +76,14 @@ def fetch_table_metadata():
             connection.close()
 
 # Fetch metadata when the script is run
-fetch_table_metadata()
+if __name__ == "__main__":
+    while True:
+        what_kind_of_filters_to_generate = input("What kind of filters do you want to generate? (update/search/exit): ").strip().lower()
+        if what_kind_of_filters_to_generate in ["update", "search"]:
+            exclude_primary_keys = (what_kind_of_filters_to_generate == "update")
+            fetch_table_metadata(exclude_primary_keys)
+        elif what_kind_of_filters_to_generate == "exit":
+            print("Exiting...")
+            break
+        else:
+            print("Invalid input. Please enter 'update', 'search', or 'exit'.")
