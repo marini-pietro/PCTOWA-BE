@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Mar 28, 2025 alle 20:18
+-- Creato il: Mar 31, 2025 alle 11:20
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -92,7 +92,7 @@ CREATE TABLE `docenteReferente` (
 --
 
 CREATE TABLE `formaGiuridica` (
-  `formaGiuridica` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
+  `forma` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -120,7 +120,7 @@ CREATE TABLE `indirizzi` (
 CREATE TABLE `materie` (
   `materia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `descr` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `color` varchar(7) COLLATE utf8_unicode_ci DEFAULT NULL
+  `hexColor` char(7) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL COMMENT 'Colore della tag relativa alla materia nella webapp'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -264,7 +264,7 @@ ALTER TABLE `docenteReferente`
 -- Indici per le tabelle `formaGiuridica`
 --
 ALTER TABLE `formaGiuridica`
-  ADD PRIMARY KEY (`formaGiuridica`);
+  ADD PRIMARY KEY (`forma`);
 
 --
 -- Indici per le tabelle `indirizzi`
@@ -382,7 +382,7 @@ ALTER TABLE `tutor`
 -- Limiti per la tabella `aziende`
 --
 ALTER TABLE `aziende`
-  ADD CONSTRAINT `aziende_ibfk_1` FOREIGN KEY (`formaGiuridica`) REFERENCES `formaGiuridica` (`formaGiuridica`);
+  ADD CONSTRAINT `aziende_ibfk_1` FOREIGN KEY (`formaGiuridica`) REFERENCES `formaGiuridica` (`forma`);
 
 --
 -- Limiti per la tabella `classi`

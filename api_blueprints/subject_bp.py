@@ -83,35 +83,6 @@ class SubjectUpdate(Resource):
 
         return make_response(jsonify({'outcome': 'subject successfully updated'}), 200)
     
-class SubjectBind(Resource):
-    @jwt_required_endpoint
-    def post(self):
-        # Gather parameters
-        idTurno = int(request.args.get('idTurno'))
-        materia = request.args.get('materia')
-
-        # Check if turn exists
-        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-        if turn is None:
-            return make_response(jsonify({'outcome': 'error, specified turn does not exist'}), 404)
-        
-        # Check if subject exists
-        subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
-        if subject is None:
-            return make_response(jsonify({'outcome': 'error, specified subject does not exist'}), 404)
-        
-        # Bind the turn to the subject
-        execute_query('INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)', (idTurno, materia))
-        
-        # Log the binding
-        log(type='info', 
-            message=f'User {request.user_identity} binded turn {idTurno} to subject {materia}', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-
-        return make_response(jsonify({'outcome': 'success, turn binded to subject successfully'}), 201)
-    
 class SubjectUnbind(Resource):
     @jwt_required_endpoint
     def delete(self):
@@ -181,6 +152,5 @@ class SubjectRead(Resource):
 api.add_resource(SubjectRegister, '/register')
 api.add_resource(SubjectDelete, '/delete')
 api.add_resource(SubjectUpdate, '/update')
-api.add_resource(SubjectBind, '/bind')
 api.add_resource(SubjectUnbind, '/unbind')
 api.add_resource(SubjectRead, '/read')
