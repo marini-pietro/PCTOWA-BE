@@ -9,8 +9,8 @@ from flask import jsonify, request # From Flask import the jsonify function and 
 from requests import post as requests_post # From requests import the post function
 from cachetools import TTLCache
 
-# Cache the metadata file in memory
-metadata_cache = None
+# Validation related
+metadata_cache = None # Cache the metadata file in memory
 
 def validate_filters(data, table_name):
     """
@@ -57,6 +57,83 @@ def validate_filters(data, table_name):
 
     return True
             
+input_validation_cache = None # Cache the nullable column file in memory
+
+def validate_inputs(table_name: str, inputs: list):
+    """
+    Validate the inputs against the input validation metadata file.
+
+    params:
+        table_name - The name of the table to validate against
+        inputs - A list of dictionaries containing column-value pairs to validate
+
+    returns:
+        True if validation succeeds, or a string containing the invalid inputs if validation fails.
+
+    raises:
+        JSONDecodeError - If the input validation metadata file cannot be parsed
+        FileNotFoundError - If the input validation metadata file is not found
+        TypeError - If the inputs are not in the expected format
+    """
+    global input_validation_cache
+
+    # Load input validation metadata into cache if not already loaded
+    if input_validation_cache is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        input_validation_path = os.path.join(base_dir, '..', 'input_validation.json')
+        try:
+            with open(input_validation_path) as input_validation_file:
+                input_validation_metadata = json.load(input_validation_file)
+                input_validation_cache = input_validation_metadata
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            return f'Failed to load input validation metadata: {str(e)}'
+
+    # Validate inputs
+    table_metadata = input_validation_cache.get(table_name, [])
+    if not isinstance(table_metadata, list) or not all(isinstance(column, dict) for column in table_metadata):
+        return f'Invalid metadata structure for table "{table_name}" in input validation metadata'
+
+    invalid_inputs = []
+    for input_data in inputs:
+        if not isinstance(input_data, dict):
+            return 'Invalid input format, expected a list of dictionaries'
+
+        for column, value in input_data.items():
+            # Find column metadata
+            column_metadata = next((col for col in table_metadata if col["column_name"] == column), None)
+            if not column_metadata:
+                invalid_inputs.append(f"Unknown column '{column}'")
+                continue
+
+            # Check nullability
+            if not column_metadata["is_nullable"] and value is None:
+                invalid_inputs.append(f"Column '{column}' cannot be null")
+
+            # Check data type
+            expected_data_type = column_metadata["data_type"]
+            if value is not None:
+                if expected_data_type == "int" and not isinstance(value, int):
+                    invalid_inputs.append(f"Column '{column}' must be an integer")
+                elif expected_data_type == "varchar" and not isinstance(value, str):
+                    invalid_inputs.append(f"Column '{column}' must be a string")
+                elif expected_data_type == "float" and not isinstance(value, (float, int)):
+                    invalid_inputs.append(f"Column '{column}' must be a float")
+                elif expected_data_type == "date":
+                    try:
+                        datetime.strptime(value, "%Y-%m-%d")
+                    except ValueError:
+                        invalid_inputs.append(f"Column '{column}' must be a valid date in 'YYYY-MM-DD' format")
+                elif expected_data_type == "datetime":
+                    try:
+                        datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        invalid_inputs.append(f"Column '{column}' must be a valid datetime in 'YYYY-MM-DD HH:MM:SS' format")
+
+    if invalid_inputs:
+        return f"Validation failed for the following inputs: {', '.join(invalid_inputs)}"
+
+    return True
+
 # Data handling related
 def parse_time_string(time_string) -> datetime:
     """
@@ -115,7 +192,6 @@ def build_query_from_filters(data, table_name, limit=1, offset=0):
     query = f"SELECT * FROM {table_name} WHERE {filters} LIMIT %s OFFSET %s" if filters else \
             "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
     return query, params
-
 
 # Function to get a connection from the pool
 @contextmanager
