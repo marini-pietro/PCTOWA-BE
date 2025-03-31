@@ -5,7 +5,7 @@ L'API fornisce endpoint per gestire tutte le risorse relative alla attività PCT
 
 ## Documentazione  
 
-Questo file è inteso come una breve presentazione ed introduzione al progetto, se desideri leggere della documentazione più accurata puoi visitare la wiki del progetto premendo sul bottone `Wiki` in alto, tra `Projects` e `Security`. 
+Questo file è inteso come una breve presentazione ed introduzione al progetto, se desideri leggere della documentazione più accurata puoi visitare la [wiki](https://github.com/marini-pietro/Webapp-PCTO/wiki) del progetto premendo sul bottone `Wiki` in alto, tra `Projects` e `Security`, o sulla parola wiki stessa in questo file.
 
 # Licenza
 
