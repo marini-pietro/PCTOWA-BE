@@ -1,4 +1,4 @@
-import json, os
+import json, os, threading
 from flask import jsonify
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
@@ -8,6 +8,9 @@ from functools import wraps
 from flask import jsonify, request # From Flask import the jsonify function and request object
 from requests import post as requests_post # From requests import the post function
 from cachetools import TTLCache
+
+# Cache the metadata file in memory
+metadata_cache = None
 
 def validate_filters(data, table_name):
     """
@@ -26,31 +29,33 @@ def validate_filters(data, table_name):
         TypeError - If the filters are not in the expected format
         ValueError - If the filters contain invalid values
     """
-    # Get the absolute path to the metadata file
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    metadata_path = os.path.join(base_dir, '..', 'table_metadata.json')
+    global metadata_cache
 
-    with open(metadata_path) as metadata_file:
+    # Load metadata into cache if not already loaded
+    if metadata_cache is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        metadata_path = os.path.join(base_dir, '..', 'table_metadata.json')
         try:
-            metadata = json.load(metadata_file)
-            
-            # If metadata is a list, convert it to a dictionary
-            if isinstance(metadata, list):
-                metadata = {key: value for item in metadata for key, value in item.items()}
-            
-            available_filters = metadata.get(f'{table_name}', [])
-            if not isinstance(available_filters, list) or not all(isinstance(item, str) for item in available_filters):
-                return {'error': f'invalid {table_name} column values in metadata'}
-                
-            filters_keys = list(data.keys()) if isinstance(data, dict) else []
-            invalid_filters = [key for key in filters_keys if key not in available_filters]
-            if invalid_filters:
-                return {'error': f'Invalid filter(s): {", ".join(invalid_filters)}'}
+            with open(metadata_path) as metadata_file:
+                metadata = json.load(metadata_file)
+                # Convert list to dictionary if necessary
+                if isinstance(metadata, list):
+                    metadata = {key: value for item in metadata for key, value in item.items()}
+                metadata_cache = metadata
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            return {'error': f'Failed to load metadata: {str(e)}'}
 
-            return True
+    # Validate filters
+    available_filters = metadata_cache.get(f'{table_name}', [])
+    if not isinstance(available_filters, list) or not all(isinstance(item, str) for item in available_filters):
+        return {'error': f'invalid {table_name} column values in metadata'}
 
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
-            return {'error': 'failed to parse metadata file'}
+    filters_keys = list(data.keys()) if isinstance(data, dict) else []
+    invalid_filters = [key for key in filters_keys if key not in available_filters]
+    if invalid_filters:
+        return {'error': f'Invalid filter(s): {", ".join(invalid_filters)}'}
+
+    return True
             
 # Data handling related
 def parse_time_string(time_string) -> datetime:
@@ -99,11 +104,17 @@ except Exception as ex:
     exit(1)
 
 def build_query_from_filters(data, table_name, limit=1, offset=0):
-    # Build the query
-    filters_keys = list(data.keys()) if isinstance(data, dict) else []
-    filters = " AND ".join([f"{key} = %s" for key in filters_keys])
-    return f"SELECT * FROM {table_name} WHERE {filters} LIMIT %s OFFSET %s" if filters else "SELECT * FROM indirizzi LIMIT %s OFFSET %s", \
-        	[data[key] for key in filters_keys] + [limit, offset]	
+    """
+    Build a SQL query from filters.
+    """
+    if not isinstance(data, dict):
+        return "SELECT * FROM indirizzi LIMIT %s OFFSET %s", [limit, offset]
+
+    filters = " AND ".join([f"{key} = %s" for key in data.keys()])
+    params = list(data.values()) + [limit, offset]
+    query = f"SELECT * FROM {table_name} WHERE {filters} LIMIT %s OFFSET %s" if filters else \
+            "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
+    return query, params
 
 
 # Function to get a connection from the pool
@@ -171,10 +182,26 @@ def execute_query(query, params):
             cursor.execute(query, params)
             connection.commit()
 
+def execute_batch_queries(queries_with_params):
+    """
+    Execute multiple queries in a single transaction.
+    
+    params:
+        queries_with_params - A list of tuples (query, params)
+        
+    returns:
+        None
+    """
+    with get_db_connection() as connection:
+        with connection.cursor(dictionary=True) as cursor:
+            for query, params in queries_with_params:
+                cursor.execute(query, params)
+            connection.commit()
+
 # Log server related
 def log(type, message, origin_name, origin_host, origin_port) -> None:
     """
-    Log a message to the log server via its API.
+    Asynchronously logs a message to the log server via its API.
         
     params:
         type - The type of the log message
@@ -183,22 +210,20 @@ def log(type, message, origin_name, origin_host, origin_port) -> None:
     returns: 
         None
     """
-    try:
-        # Create a dictionary with the log message data
-        log_data = {
-            'type': type,
-            'message': message,
-            'origin': f"{origin_name} ({origin_host}:{origin_port})",
-        }
-        
-        # Send the log message data to the log server API
-        response = requests_post(f"http://{LOG_SERVER_HOST}:{LOG_SERVER_PORT}/log", json=log_data)
-        
-        # Check if the log server responded with an error
-        if response.status_code != 200:
-            print(f"Failed to log message: {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"Failed to send log: {e}")
+    def send_log():
+        try:
+            log_data = {
+                'type': type,
+                'message': message,
+                'origin': f"{origin_name} ({origin_host}:{origin_port})",
+            }
+            response = requests_post(f"http://{LOG_SERVER_HOST}:{LOG_SERVER_PORT}/log", json=log_data)
+            if response.status_code != 200:
+                print(f"Failed to log message: {response.status_code} - {response.text}")
+        except Exception as e:
+            print(f"Failed to send log: {e}")
+
+    threading.Thread(target=send_log, daemon=True).start()
 
 # Token validation related
 # | Create a cache for token validation results with a time-to-live (TTL) of 300 seconds (5 minutes)
@@ -211,21 +236,20 @@ def jwt_required_endpoint(func):
         if not token:
             return jsonify({'error': 'Missing token'}), 401
 
-        # Check if the token is already cached
-        if token in token_cache:
-            is_valid, identity = token_cache[token]
+        # Check token cache
+        cached_result = token_cache.get(token)
+        if cached_result:
+            is_valid, identity = cached_result
         else:
-            # Validate the token with the authentication server
+            # Validate token with auth server
             response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
             if response.status_code != 200 or not response.json().get('valid'):
                 return jsonify({'error': 'Invalid or expired token'}), 401
 
-            # Cache the validation result
             is_valid = response.json().get('valid')
             identity = response.json().get('identity')
             token_cache[token] = (is_valid, identity)
 
-        # Attach the user identity to the request context
         request.user_identity = identity
         return func(*args, **kwargs)
     return wrapper
