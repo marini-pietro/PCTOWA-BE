@@ -76,35 +76,6 @@ class SectorUpdate(Resource):
             origin_port=API_SERVER_PORT)
 
         return make_response(jsonify({'outcome': 'sector successfully updated'}), 200)
-    
-class SectorBind(Resource):
-    @jwt_required_endpoint
-    def post(self):
-        # Gather parameters
-        idTurno = int(request.args.get('idTurno'))
-        settore = request.args.get('settore')
-
-        # Check if turn exists
-        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-        if turn is None:
-            return make_response(jsonify({'outcome': 'error, specified turn does not exist'}), 404)
-        
-        # Check if sector exists
-        sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
-        if sector is None:
-            return make_response(jsonify({'outcome': 'error, specified sector does not exist'}), 404)
-        
-        # Bind the turn to the sector
-        execute_query('INSERT INTO turnoSectore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
-        
-        # Log the binding
-        log(type='info', 
-            message=f'User {request.user_identity} binded turn {idTurno} to sector {settore}', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-
-        return make_response(jsonify({'outcome': 'success, turn binded to sector successfully'}), 200)
 
 class SectorRead(Resource):
     @jwt_required_endpoint
@@ -140,5 +111,4 @@ class SectorRead(Resource):
 api.add_resource(SectorRegister, '/register')
 api.add_resource(SectorDelete, '/delete')
 api.add_resource(SectorUpdate, '/update')
-api.add_resource(SectorBind, '/bind')
 api.add_resource(SectorRead, '/read')
