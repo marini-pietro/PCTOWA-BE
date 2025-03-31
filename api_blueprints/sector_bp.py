@@ -1,7 +1,7 @@
 from flask import Blueprint, request, make_response, jsonify
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from .blueprints_utils import validate_filters, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
+from .blueprints_utils import fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
 
 # Create the blueprint and API
 sector_bp = Blueprint('sector', __name__)
@@ -116,24 +116,18 @@ class SectorRead(Resource):
         except (ValueError, TypeError) as ex:
             return make_response(jsonify({'error': f'invalid limit or offset parameter: {ex}'}), 400)
 
-        # Gather json filters
-        data = request.get_json()
-
-        # Validate filters
-        outcome = validate_filters(data=data, table_name='settori')
-        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return make_response(jsonify(outcome), 400)
+        # This endpoint does not require filters as the table has only one column 
 
         try:
             # Build the query
-            query, params = build_query_from_filters(data=data, table_name='settori', limit=limit, offset=offset)
+            query, params = 'SELECT settore FROM settori LIMIT %s OFFSET %s', (limit, offset)
 
             # Execute query
-            sectors = fetchone_query(query, tuple(params))
+            sectors = fetchall_query(query, tuple(params))
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read sectors with filters {data}', 
+                message=f'User {request.user_identity} read all sectors', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
