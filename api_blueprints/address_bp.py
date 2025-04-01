@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, make_response
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
+from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response
 
 # Create the blueprint and API
 address_bp = Blueprint('address', __name__)
@@ -21,7 +21,7 @@ class AddressRegister(Resource):
         # Check if idAzienda exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         if company is None:
-            return make_response(message={'outcome': 'error, specified company does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, specified company does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Insert the address
         execute_query(
@@ -36,7 +36,7 @@ class AddressRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'address successfully created'}, status_code=201)
+        return create_response(message={'outcome': 'address successfully created'}, status_code=STATUS_CODES["created"])
 
 class AddressDelete(Resource):
     @jwt_required_endpoint
@@ -47,7 +47,7 @@ class AddressDelete(Resource):
         # Check if address exists
         address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
         if address is None:
-            return make_response(message={'outcome': 'error, specified address does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, specified address does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Delete the address
         execute_query('DELETE FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
@@ -59,7 +59,7 @@ class AddressDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'address successfully deleted'}, status_code=200)
+        return create_response(message={'outcome': 'address successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class AddressUpdate(Resource):
     @jwt_required_endpoint
@@ -71,12 +71,12 @@ class AddressUpdate(Resource):
 
         # Check if the field to modify is allowed
         if toModify in ['idIndirizzo']:
-            return make_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=403)
+            return create_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=403)
 
         # Check if address exists
         address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
         if address is None:
-            return make_response(message={'outcome': 'error, specified address does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, specified address does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Update the address
         execute_query(f'UPDATE indirizzi SET {toModify} = %s WHERE idIndirizzo = %s', (newValue, idIndirizzo))
@@ -88,7 +88,7 @@ class AddressUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'address successfully updated'}, status_code=200)
+        return create_response(message={'outcome': 'address successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class AddressRead(Resource):
     @jwt_required_endpoint
@@ -98,7 +98,7 @@ class AddressRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return make_response(message={'error': 'invalid limit or offset parameter'}, status_code=400)
+            return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather json filters
         data = request.get_json()
@@ -106,7 +106,7 @@ class AddressRead(Resource):
         # Validate filters
         outcome = validate_filters(data=data, table_name='indirizzi')
         if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return outcome, 400
+            return outcome, STATUS_CODES["bad_request"]
 
         try:
             # Build the query
@@ -122,9 +122,9 @@ class AddressRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return make_response(jsonify(addresses), 200)
+            return create_response(message=addresses, status_code=STATUS_CODES["ok"])
         except Exception as err:
-            return make_response(message={'error': str(err)}, status_code=500)
+            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
 # Add resources to the API
 api.add_resource(AddressRegister, '/register')
