@@ -1,11 +1,12 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 import mysql.connector
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from .blueprints_utils import (
     validate_filters, build_query_from_filters, 
     fetchone_query, fetchall_query, execute_query, 
-    log, jwt_required_endpoint, parse_date_string
+    log, jwt_required_endpoint, parse_date_string,
+    create_response
 )
 
 # Create the blueprint and API
@@ -51,9 +52,9 @@ class CompanyRegister(Resource):
                 origin_port=API_SERVER_PORT
             )
 
-            return make_response(message={'outcome': 'company successfully created'}, status_code=201)
+            return create_response(message={'outcome': 'company successfully created'}, status_code=STATUS_CODES["created"])
         except mysql.connector.IntegrityError as ex:
-            return make_response(message={'outcome': f'error, company already exists: {ex}'}, status_code=400)
+            return create_response(message={'outcome': f'error, company already exists: {ex}'}, status_code=STATUS_CODES["bad_request"])
 
 class CompanyDelete(Resource):
     @jwt_required_endpoint
@@ -62,7 +63,7 @@ class CompanyDelete(Resource):
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         
         if not company:
-            return make_response(message={'outcome': 'error, company does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
 
         execute_query('DELETE FROM aziende WHERE idAzienda = %s', (idAzienda,))
         
@@ -74,7 +75,7 @@ class CompanyDelete(Resource):
             origin_port=API_SERVER_PORT
         )
 
-        return make_response(message={'outcome': 'company successfully deleted'}, status_code=200)
+        return create_response(message={'outcome': 'company successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class CompanyUpdate(Resource):
     @jwt_required_endpoint
@@ -84,7 +85,7 @@ class CompanyUpdate(Resource):
         new_value = request.args.get('newValue')
 
         if to_modify in ['idAzienda']:
-            return make_response(message={'outcome': 'error, invalid field to modify'}, status_code=400)
+            return create_response(message={'outcome': 'error, invalid field to modify'}, status_code=STATUS_CODES["bad_request"])
 
         if to_modify in ['telefonoAzienda', 'fax']:
             new_value = int(new_value)
@@ -93,7 +94,7 @@ class CompanyUpdate(Resource):
 
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         if not company:
-            return make_response(message={'outcome': 'error, company does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
 
         execute_query(f'UPDATE aziende SET {to_modify} = %s WHERE idAzienda = %s', (new_value, idAzienda))
         
@@ -105,7 +106,7 @@ class CompanyUpdate(Resource):
             origin_port=API_SERVER_PORT
         )
 
-        return make_response(message={'outcome': 'company successfully updated'}, status_code=200)
+        return create_response(message={'outcome': 'company successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class CompanyRead(Resource):
     @jwt_required_endpoint
@@ -114,13 +115,13 @@ class CompanyRead(Resource):
             limit = int(request.args.get('limit', 10))
             offset = int(request.args.get('offset', 0))
         except ValueError:
-            return {'error': 'invalid limit/offset format'}, 400
+            return {'error': 'invalid limit/offset format'}, STATUS_CODES["bad_request"]
 
         data = request.get_json()
         validation = validate_filters(data=data, table_name='aziende')
         
         if validation is not True:
-            return validation, 400
+            return validation, STATUS_CODES["bad_request"]
 
         try:
             query, params = build_query_from_filters(
@@ -133,7 +134,7 @@ class CompanyRead(Resource):
             companies = fetchall_query(query, tuple(params))
             
             if not companies:
-                return make_response(message={'outcome': 'no companies found'}, status_code=404)
+                return create_response(message={'outcome': 'no companies found'}, status_code=STATUS_CODES["not_found"])
 
             # Convert rows to dictionaries
             companies = [dict(row) for row in companies]
@@ -146,9 +147,9 @@ class CompanyRead(Resource):
                 origin_port=API_SERVER_PORT
             )
 
-            return companies, 200
+            return companies, STATUS_CODES["ok"]
         except Exception as err:
-            return make_response(message={'error': str(err)}, status_code=500)
+            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
 class CompanyBindTurn(Resource):
     @jwt_required_endpoint
@@ -157,10 +158,10 @@ class CompanyBindTurn(Resource):
         idTurno = int(request.args.get('idTurno'))
 
         if not fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,)):
-            return make_response(message={'outcome': 'error, company not found'}, status_code=404)
+            return create_response(message={'outcome': 'error, company not found'}, status_code=STATUS_CODES["not_found"])
 
         if not fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,)):
-            return make_response(message={'outcome': 'error, turn not found'}, status_code=404)
+            return create_response(message={'outcome': 'error, turn not found'}, status_code=STATUS_CODES["not_found"])
 
         execute_query('INSERT INTO aziendaTurno (idAzienda, idTurno) VALUES (%s, %s)', (idAzienda, idTurno))
         
@@ -172,7 +173,7 @@ class CompanyBindTurn(Resource):
             origin_port=API_SERVER_PORT
         )
 
-        return make_response(message={'outcome': 'company-turn binding successful'}, status_code=200)
+        return create_response(message={'outcome': 'company-turn binding successful'}, status_code=STATUS_CODES["ok"])
 
 class CompanyBindUser(Resource):
     @jwt_required_endpoint
@@ -182,10 +183,10 @@ class CompanyBindUser(Resource):
         anno = request.args.get('anno')
 
         if not fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,)):
-            return make_response(message={'outcome': 'error, company not found'}, status_code=404)
+            return create_response(message={'outcome': 'error, company not found'}, status_code=STATUS_CODES["not_found"])
 
         if not fetchone_query('SELECT * FROM utenti WHERE emailUtente = %s', (email,)):
-            return make_response(message={'outcome': 'error, user not found'}, status_code=404)
+            return create_response(message={'outcome': 'error, user not found'}, status_code=STATUS_CODES["not_found"])
 
         execute_query('INSERT INTO aziendaUtente (idAzienda, emailUtente, anno) VALUES (%s, %s, %s)', (idAzienda, email, anno))
         
@@ -197,7 +198,7 @@ class CompanyBindUser(Resource):
             origin_port=API_SERVER_PORT
         )
 
-        return make_response(message={'outcome': 'company-user binding successful'}, status_code=200)
+        return create_response(message={'outcome': 'company-user binding successful'}, status_code=STATUS_CODES["ok"])
 
 # Add resources to the API
 api.add_resource(CompanyRegister, '/register')

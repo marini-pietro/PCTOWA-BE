@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from datetime import timedelta
-from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, JWT_TOKEN_DURATION
+from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, JWT_TOKEN_DURATION, STATUS_CODES
 from api_blueprints.blueprints_utils import log
 from api_blueprints.blueprints_utils import fetchone_query
 import secrets
@@ -19,7 +19,7 @@ def login():
     password = request.json.get('password')
 
     if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), 400
+        return jsonify({'error': 'Email and password are required'}), STATUS_CODES["bad_request"]
 
     try:
         # Query the database to validate the user's credentials
@@ -37,7 +37,7 @@ def login():
                 origin_host=AUTH_SERVER_HOST, 
                 origin_port=AUTH_SERVER_PORT)
 
-            return jsonify({'access_token': access_token}), 200
+            return jsonify({'access_token': access_token}), STATUS_CODES["ok"]
         else:
             return jsonify({'error': 'Invalid credentials'}), 401
     except Exception as e:
@@ -47,14 +47,14 @@ def login():
             origin_name=AUTH_SERVER_NAME_IN_LOG, 
             origin_host=AUTH_SERVER_HOST, 
             origin_port=AUTH_SERVER_PORT)
-        return jsonify({'error': 'An error occurred during login'}), 500
+        return jsonify({'error': 'An error occurred during login'}), STATUS_CODES["internal_error"]
 
 @app.route('/auth/validate', methods=['POST'])
 def validate():
     token = request.json.get('token')
     try:
         decoded_token = decode_token(token)
-        return jsonify({'valid': True, 'identity': decoded_token['sub']}), 200
+        return jsonify({'valid': True, 'identity': decoded_token['sub']}), STATUS_CODES["ok"]
     except Exception as e:
         return jsonify({'valid': False, 'error': str(e)}), 401
 
@@ -63,7 +63,7 @@ def health_check():
     """
     Health check endpoint to verify the server is running.
     """
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"status": "ok"}), STATUS_CODES["ok"]
 
 if __name__ == '__main__':
     app.run(host=AUTH_SERVER_HOST, 

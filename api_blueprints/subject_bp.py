@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, make_response
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
+from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response
 
 # Create the blueprint and API
 subject_bp = Blueprint('subjects', __name__)
@@ -17,7 +17,7 @@ class SubjectRegister(Resource):
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is not None:
-            return make_response(message={'outcome': 'error, specified subject already exists'}, status_code=400)
+            return create_response(message={'outcome': 'error, specified subject already exists'}, status_code=STATUS_CODES["bad_request"])
 
         # Insert the subject
         execute_query('INSERT INTO materie (materia, descr) VALUES (%s, %s)', (materia, descrizione))
@@ -29,7 +29,7 @@ class SubjectRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'subject successfully created'}, status_code=201)
+        return create_response(message={'outcome': 'subject successfully created'}, status_code=STATUS_CODES["created"])
 
 class SubjectDelete(Resource):
     @jwt_required_endpoint
@@ -40,7 +40,7 @@ class SubjectDelete(Resource):
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
-            return make_response(message={'outcome': 'error, specified subject does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, specified subject does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Delete the subject
         execute_query('DELETE FROM materie WHERE materia = %s', (materia,))
@@ -52,7 +52,7 @@ class SubjectDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'subject successfully deleted'}, status_code=200)
+        return create_response(message={'outcome': 'subject successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class SubjectUpdate(Resource):
     @jwt_required_endpoint
@@ -64,12 +64,12 @@ class SubjectUpdate(Resource):
 
         # Check if the field to modify is allowed
         if toModify in ['materia']:
-            return make_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=400)
+            return create_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
-            return make_response(message={'outcome': 'error, specified subject does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, specified subject does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Update the subject
         execute_query(f'UPDATE materie SET {toModify} = %s WHERE materia = %s', (newValue, materia))
@@ -81,7 +81,7 @@ class SubjectUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'subject successfully updated'}, status_code=200)
+        return create_response(message={'outcome': 'subject successfully updated'}, status_code=STATUS_CODES["ok"])
     
 class SubjectUnbind(Resource):
     @jwt_required_endpoint
@@ -93,12 +93,12 @@ class SubjectUnbind(Resource):
         # Check if turn exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
         if turn is None:
-            return make_response(message={'outcome': 'error, specified turn does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
         
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
-            return make_response(message={'outcome': 'error, specified subject does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, specified subject does not exist'}, status_code=STATUS_CODES["not_found"])
         
         # Unbind the turn from the subject
         execute_query('DELETE FROM turnoMateria WHERE idTurno = %s AND materia = %s', (idTurno, materia))
@@ -110,7 +110,7 @@ class SubjectUnbind(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'success, turn unbinded from subject successfully'}, status_code=200)
+        return create_response(message={'outcome': 'success, turn unbinded from subject successfully'}, status_code=STATUS_CODES["ok"])
     
 class SubjectRead(Resource):
     @jwt_required_endpoint
@@ -120,7 +120,7 @@ class SubjectRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return make_response(message={'error': 'invalid limit or offset parameter'}, status_code=400)
+            return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather json filters
         data = request.get_json()
@@ -128,7 +128,7 @@ class SubjectRead(Resource):
         # Validate filters
         outcome = validate_filters(data=data, table_name='materie')
         if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return make_response(jsonify(outcome), 400)
+            return create_response(message=outcome, status_code=STATUS_CODES["bad_request"])
 
         try:
             # Build the query
@@ -144,9 +144,9 @@ class SubjectRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return make_response(jsonify(subjects), 200)
+            return create_response(message=subjects, status_code=STATUS_CODES["ok"])
         except Exception as err:
-            return make_response(message={'error': str(err)}, status_code=500)
+            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
 # Add resources to the API
 api.add_resource(SubjectRegister, '/register')

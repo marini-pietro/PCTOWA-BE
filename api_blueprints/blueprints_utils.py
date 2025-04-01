@@ -1,17 +1,15 @@
 import json, os, threading
-from flask import jsonify
+from flask import jsonify, make_response, request
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
 from datetime import datetime
-from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, \
-                   CONNECTION_POOL_SIZE, LOG_SERVER_HOST, LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS
+from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS, STATUS_CODES
 from functools import wraps
-from flask import jsonify, request # From Flask import the jsonify function and request object
 from requests import post as requests_post # From requests import the post function
 from cachetools import TTLCache
 
 # Response related
-def make_response(message: dict, status_code: int) -> tuple:
+def create_response(message: dict, status_code: int) -> tuple:
     """
     Create a response with a message and status code.
 
@@ -318,7 +316,7 @@ def log(type, message, origin_name, origin_host, origin_port) -> None:
                 'origin': f"{origin_name} ({origin_host}:{origin_port})",
             }
             response = requests_post(f"http://{LOG_SERVER_HOST}:{LOG_SERVER_PORT}/log", json=log_data)
-            if response.status_code != 200:
+            if response.status_code != STATUS_CODES["ok"]:
                 print(f"Failed to log message: {response.status_code} - {response.text}")
         except Exception as e:
             print(f"Failed to send log: {e}")
@@ -343,7 +341,7 @@ def jwt_required_endpoint(func):
         else:
             # Validate token with auth server
             response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
-            if response.status_code != 200 or not response.json().get('valid'):
+            if response.status_code != STATUS_CODES["ok"] or not response.json().get('valid'):
                 return jsonify({'error': 'Invalid or expired token'}), 401
 
             is_valid = response.json().get('valid')

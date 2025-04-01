@@ -40,3 +40,11 @@ STATUS_CODES_EXPLANATIONS = {
     502: "Bad Gateway - The server was acting as a gateway or proxy and received an invalid response from the upstream server.",
     503: "Service Unavailable - The server is not ready to handle the request."
 }
+
+STATUS_CODES = {
+    "not_found": 404,
+    "bad_request": 400,
+    "created": 201,
+    "ok": 200,
+    "internal_error": 500,
+}

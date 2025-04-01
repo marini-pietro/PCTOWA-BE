@@ -1,8 +1,8 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from requests import post as requests_post
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, make_response  # Import shared utilities
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST, STATUS_CODES
+from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response  # Import shared utilities
 
 # Create the blueprint and API
 user_bp = Blueprint('user', __name__)
@@ -29,9 +29,9 @@ class UserRegister(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
             
-            return make_response(message={"outcome": "user successfully created"}, status_code=201)
+            return create_response(message={"outcome": "user successfully created"}, status_code=STATUS_CODES["created"])
         except Exception:
-            return make_response(message={'outcome': 'error, user with provided credentials already exists'}, status_code=400)
+            return create_response(message={'outcome': 'error, user with provided credentials already exists'}, status_code=STATUS_CODES["bad_request"])
 
 class UserLogin(Resource):
     def post(self):
@@ -40,9 +40,9 @@ class UserLogin(Resource):
 
         # Forward login request to the authentication service
         response = requests_post(f'{AUTH_SERVER_HOST}/auth/login', json={'email': email, 'password': password})
-        if response.status_code == 200:
-            return response.json(), 200
-        return make_response(message={'error': 'Invalid credentials'}, status_code=401)
+        if response.status_code == STATUS_CODES["ok"]:
+            return response.json(), STATUS_CODES["ok"]
+        return create_response(message={'error': 'Invalid credentials'}, status_code=401)
 
 class UserUpdate(Resource):
     @jwt_required_endpoint
@@ -53,12 +53,12 @@ class UserUpdate(Resource):
 
         # Check if the field to modify is allowed
         if to_modify in ['email']:
-            return make_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=400)
+            return create_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if user exists
         user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
         if user is None:
-            return make_response(message={'outcome': 'error, user with provided email does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, user with provided email does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Update the user
         execute_query(f'UPDATE utente SET {to_modify} = %s WHERE emailUtente = %s', (new_value, email))
@@ -70,7 +70,7 @@ class UserUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'user successfully updated'}, status_code=200)
+        return create_response(message={'outcome': 'user successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class UserDelete(Resource):
     @jwt_required_endpoint
@@ -80,7 +80,7 @@ class UserDelete(Resource):
         # Check if user exists
         user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
         if user is None:
-            return make_response(message={'outcome': 'error, user with provided email does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, user with provided email does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Delete the user
         execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
@@ -92,7 +92,7 @@ class UserDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'user successfully deleted'}, status_code=200)
+        return create_response(message={'outcome': 'user successfully deleted'}, status_code=STATUS_CODES["ok"])
     
 class UserRead(Resource):
     #@jwt_required_endpoint
@@ -103,7 +103,7 @@ class UserRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return make_response(message={'error': 'invalid limit or offset parameter'}, status_code=400)
+            return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather json filters
         data = request.get_json()
@@ -111,7 +111,7 @@ class UserRead(Resource):
         # Validate filters
         outcome = validate_filters(data=data, table_name='utenti')
         if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return outcome, 400
+            return outcome, STATUS_CODES["bad_request"]
 
         try:
             # Build the query
@@ -127,9 +127,9 @@ class UserRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return make_response(jsonify(users), 200)
+            return create_response(message=users, status_code=STATUS_CODES["ok"])
         except Exception as err:
-            return make_response(message={'error': str(err)}, status_code=500)
+            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
 # Add resources to the API
 api.add_resource(UserRegister, '/register')

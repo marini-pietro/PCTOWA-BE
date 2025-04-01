@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from api_blueprints.blueprints_utils import log
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_DEBUG_MODE, API_SERVER_NAME_IN_LOG
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_DEBUG_MODE, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from api_blueprints import *  # Import all the blueprints
 import os, importlib
 
@@ -36,7 +36,7 @@ def health_check():
     """
     Health check endpoint to verify the server is running.
     """
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"status": "ok"}), STATUS_CODES["ok"]
 
 # Functions used for testing purposes, should be removed in production
 @app.route('/api/endpoints', methods=['GET']) # Only used for testing purposes should be removed in production

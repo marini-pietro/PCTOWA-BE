@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from config import LOG_SERVER_HOST, LOG_SERVER_PORT, LOG_SERVER_DEBUG_MODE
+from config import LOG_SERVER_HOST, LOG_SERVER_PORT, LOG_SERVER_DEBUG_MODE, STATUS_CODES
 import logging
 
 app = Flask(__name__)
@@ -56,24 +56,24 @@ def log_message():
     origin = data.get("origin", "unknown")
 
     if not message:
-        return jsonify({"error": "Message is required"}), 400
+        return jsonify({"error": "Message is required"}), STATUS_CODES["bad_request"]
 
     if log_type not in ["debug", "info", "warning", "error", "critical"]:
-        return jsonify({"error": "invalid log type"}), 400
+        return jsonify({"error": "invalid log type"}), STATUS_CODES["bad_request"]
 
     try: 
         logger.log(log_type, message, origin)
     except Exception as ex: 
-        return jsonify({"error": f"unable to log due to error {ex}"}), 500
+        return jsonify({"error": f"unable to log due to error {ex}"}), STATUS_CODES["internal_error"]
 
-    return jsonify({"status": "success"}), 200
+    return jsonify({"status": "success"}), STATUS_CODES["ok"]
 
 @app.route('/health', methods=['GET'])
 def health_check():
     """
     Health check endpoint to verify the server is running.
     """
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"status": "ok"}), STATUS_CODES["ok"]
 
 if __name__ == "__main__":
     try:
