@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from .blueprints_utils import fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
+from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
+from .blueprints_utils import fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response
 
 # Create the blueprint and API
 legalform_bp = Blueprint('legalform', __name__)
@@ -28,7 +28,7 @@ class LegalFormRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'legal form successfully created'}, status_code=201)
+        return create_response(message={'outcome': 'legal form successfully created'}, status_code=STATUS_CODES["created"])
 
 class LegalFormDelete(Resource):
     @jwt_required_endpoint
@@ -39,7 +39,7 @@ class LegalFormDelete(Resource):
         # Check if legal form exists
         form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (legalform,))
         if form is None:
-            return {'outcome': 'error, specified legal form does not exist'}, 404
+            return {'outcome': 'error, specified legal form does not exist'}, STATUS_CODES["not_found"]
 
         # Delete the legal form
         execute_query('DELETE FROM formaGiuridica WHERE forma = %s', (legalform,))
@@ -51,7 +51,7 @@ class LegalFormDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'legal form successfully deleted'}, status_code=200)
+        return create_response(message={'outcome': 'legal form successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class LegalFormUpdate(Resource):
     @jwt_required_endpoint
@@ -63,7 +63,7 @@ class LegalFormUpdate(Resource):
         # Check if legal form exists
         form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (legalform,))
         if form is None:
-            return make_response(message={'outcome': 'error, specified legal form does not exist'}, status_code=404)
+            return create_response(message={'outcome': 'error, specified legal form does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Update the legal form
         execute_query('UPDATE formaGiuridica SET forma = %s WHERE forma = %s', (newValue, legalform))
@@ -75,7 +75,7 @@ class LegalFormUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(message={'outcome': 'legal form successfully updated'}, status_code=200)
+        return create_response(message={'outcome': 'legal form successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class LegalFormRead(Resource):
     @jwt_required_endpoint
@@ -85,7 +85,7 @@ class LegalFormRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError) as ex:
-            return make_response(message={'error': f'invalid limit or offset parameter: {ex}'}, status_code=400)
+            return create_response(message={'error': f'invalid limit or offset parameter: {ex}'}, status_code=STATUS_CODES["bad_request"])
 
         # This endpoint does not require filters as the table has only one column 
 
@@ -103,9 +103,9 @@ class LegalFormRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return make_response(jsonify(forms), 200)
+            return create_response(message=forms, status_code=STATUS_CODES["ok"])
         except Exception as err:
-            return make_response(message={'error': str(err)}, status_code=500)
+            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
 # Add resources to the API
 api.add_resource(LegalFormRegister, '/register')
