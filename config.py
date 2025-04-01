@@ -23,3 +23,20 @@ DB_NAME = "pctowa"
 DB_USER = "pctowa"
 DB_PASSWORD = "pctowa2025"
 CONNECTION_POOL_SIZE = 20 # The maximum number of connections in the pool
+
+# HTTP status codes and their explanations
+STATUS_CODES_EXPLANATIONS = {
+    200: "OK - The request has succeeded.",
+    201: "Created - The request has been fulfilled and resulted in a new resource being created.",
+    202: "Accepted - The request has been accepted for processing, but the processing has not been completed.",
+    204: "No Content - The server successfully processed the request, but is not returning any content.",
+    400: "Bad Request - The server could not understand the request due to invalid syntax.",
+    401: "Unauthorized - The client must authenticate itself to get the requested response.",
+    403: "Forbidden - The client does not have access rights to the content.",
+    404: "Not Found - The server can not find the requested resource.",
+    405: "Method Not Allowed - The request method is known by the server but is not supported by the target resource.",
+    409: "Conflict - The request could not be completed due to a conflict with the current state of the resource.",
+    500: "Internal Server Error - The server has encountered a situation it doesn't know how to handle.",
+    502: "Bad Gateway - The server was acting as a gateway or proxy and received an invalid response from the upstream server.",
+    503: "Service Unavailable - The server is not ready to handle the request."
+}
