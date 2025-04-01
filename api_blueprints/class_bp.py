@@ -1,8 +1,8 @@
-from flask import Blueprint, request, make_response, jsonify
+from flask import Blueprint, request
 from flask_restful import Api, Resource
 import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
+from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, make_response
 
 class_bp = Blueprint('class', __name__)
 api = Api(class_bp)
@@ -22,24 +22,23 @@ class ClassRegister(Resource):
             log(type='info', message=f'User {request.user_identity} created class',
                 origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
             
-            return make_response(jsonify({'outcome': 'Class created'}), 201)
+            return make_response(message={'outcome': 'Class created'}, status_code=201)
         except mysql.connector.IntegrityError:
-            return make_response(jsonify({'outcome': 'Class already exists'}), 400)
+            return make_response(message={'outcome': 'Class already exists'}, status_code=400)
 
 class ClassDelete(Resource):
     @jwt_required_endpoint
     def delete(self):
         class_id = request.args.get('idClasse')
         if not fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (class_id,)):
-            return make_response(jsonify({'outcome': 'Class not found'}), 404)
-            
-        
+            return make_response(message={'outcome': 'Class not found'}, status_code=404)
+              
         execute_query('DELETE FROM classi WHERE idClasse = %s', (class_id,))
         
         log(type='info', message=f'User {request.user_identity} deleted class',
             origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
         
-        return make_response(jsonify({'outcome': 'Class deleted'}), 200)
+        return make_response(message={'outcome': 'Class deleted'}, status_code=200)
 
 class ClassUpdate(Resource):
     allowed_fields = ['classe', 'anno', 'emailResponsabile']
@@ -51,7 +50,7 @@ class ClassUpdate(Resource):
         value = request.args.get('newValue')
 
         if field not in self.allowed_fields:
-            return make_response(jsonify({'outcome': 'Invalid field'}), 400)
+            return make_response(message={'outcome': 'Invalid field'}, status_code=400)
 
         if not fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (class_id,)):
             return {'outcome': 'Class not found'}, 404
@@ -61,7 +60,7 @@ class ClassUpdate(Resource):
         log(type='info', message=f'User {request.user_identity} updated class',
             origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
         
-        return make_response(jsonify({'outcome': 'class updated'}), 200)
+        return make_response(message={'outcome': 'class updated'}, status_code=200)
 
 class ClassRead(Resource):
     @jwt_required_endpoint
@@ -70,7 +69,7 @@ class ClassRead(Resource):
             limit = int(request.args.get('limit', 10))
             offset = int(request.args.get('offset', 0))
         except ValueError:
-            return make_response(jsonify({'error': 'Invalid pagination'}), 400)
+            return make_response(message={'error': 'Invalid pagination'}, status_code=400)
 
         data = request.get_json()
         if (validation := validate_filters(data, 'classi')) is not True:
@@ -84,7 +83,7 @@ class ClassRead(Resource):
             classes = [dict(row) for row in fetchall_query(query, tuple(params))]
             return classes, 200
         except Exception as err:
-            return make_response(jsonify({'error': str(err)}), 500)
+            return make_response(message={'error': str(err)}, status_code=500)
 
 api.add_resource(ClassRegister, '/register')
 api.add_resource(ClassDelete, '/delete')

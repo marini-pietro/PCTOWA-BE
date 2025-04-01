@@ -3,11 +3,35 @@ from flask import jsonify
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
 from datetime import datetime
-from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL
+from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, \
+                   CONNECTION_POOL_SIZE, LOG_SERVER_HOST, LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS
 from functools import wraps
 from flask import jsonify, request # From Flask import the jsonify function and request object
 from requests import post as requests_post # From requests import the post function
 from cachetools import TTLCache
+
+# Response related
+def make_response(message: dict, status_code: int) -> tuple:
+    """
+    Create a response with a message and status code.
+
+    params:
+        message - The message to include in the response
+        status_code - The HTTP status code to return
+
+    returns:
+        A tuple containing the response message and status code
+
+    raises:
+        TypeError - If the message is not a dictionary or the status code is not an integer
+    """
+
+    if not isinstance(message, dict):
+        raise TypeError("Message must be a dictionary")
+
+    message = f"{message}\n{STATUS_CODES_EXPLANATIONS.get(status_code, 'Unknown status code')}"
+
+    return make_response(jsonify(message), status_code)
 
 # Validation related
 metadata_cache = None # Cache the metadata file in memory

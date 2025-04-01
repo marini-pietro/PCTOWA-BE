@@ -1,4 +1,4 @@
-from flask import Blueprint, request, make_response, jsonify
+from flask import Blueprint, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
 from .blueprints_utils import fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
@@ -28,7 +28,7 @@ class LegalFormRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(jsonify({'outcome': 'legal form successfully created'}), 201)
+        return make_response(message={'outcome': 'legal form successfully created'}, status_code=201)
 
 class LegalFormDelete(Resource):
     @jwt_required_endpoint
@@ -51,7 +51,7 @@ class LegalFormDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(jsonify({'outcome': 'legal form successfully deleted'}), 200)
+        return make_response(message={'outcome': 'legal form successfully deleted'}, status_code=200)
 
 class LegalFormUpdate(Resource):
     @jwt_required_endpoint
@@ -63,7 +63,7 @@ class LegalFormUpdate(Resource):
         # Check if legal form exists
         form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (legalform,))
         if form is None:
-            return make_response(jsonify({'outcome': 'error, specified legal form does not exist'}), 404)
+            return make_response(message={'outcome': 'error, specified legal form does not exist'}, status_code=404)
 
         # Update the legal form
         execute_query('UPDATE formaGiuridica SET forma = %s WHERE forma = %s', (newValue, legalform))
@@ -75,7 +75,7 @@ class LegalFormUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(jsonify({'outcome': 'legal form successfully updated'}), 200)
+        return make_response(message={'outcome': 'legal form successfully updated'}, status_code=200)
 
 class LegalFormRead(Resource):
     @jwt_required_endpoint
@@ -85,7 +85,7 @@ class LegalFormRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError) as ex:
-            return make_response(jsonify({'error': f'invalid limit or offset parameter: {ex}'}), 400)
+            return make_response(message={'error': f'invalid limit or offset parameter: {ex}'}, status_code=400)
 
         # This endpoint does not require filters as the table has only one column 
 
@@ -105,7 +105,7 @@ class LegalFormRead(Resource):
 
             return make_response(jsonify(forms), 200)
         except Exception as err:
-            return make_response(jsonify({'error': str(err)}), 500)
+            return make_response(message={'error': str(err)}, status_code=500)
 
 # Add resources to the API
 api.add_resource(LegalFormRegister, '/register')

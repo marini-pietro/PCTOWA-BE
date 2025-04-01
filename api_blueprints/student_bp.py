@@ -1,8 +1,8 @@
-from flask import Blueprint, request, make_response, jsonify
+from flask import Blueprint, request
 from flask_restful import Api, Resource
 import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint
+from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, make_response
 
 # Create the blueprint and API
 student_bp = Blueprint('student', __name__)
@@ -28,9 +28,9 @@ class StudentRegister(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return make_response(jsonify({"outcome": "student successfully created"}), 201)
+            return make_response(message={"outcome": "student successfully created"}, status_code=201)
         except mysql.connector.IntegrityError:
-            return make_response(jsonify({'outcome': 'error, student with provided matricola already exists'}), 400)
+            return make_response(message={'outcome': 'error, student with provided matricola already exists'}, status_code=400)
 
 class StudentDelete(Resource):
     @jwt_required_endpoint
@@ -53,7 +53,7 @@ class StudentDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(jsonify({'outcome': 'student successfully deleted'}), 200)
+        return make_response(message={'outcome': 'student successfully deleted'}, status_code=200)
 
 class StudentUpdate(Resource):
     @jwt_required_endpoint
@@ -65,12 +65,12 @@ class StudentUpdate(Resource):
 
         # Check if the field to modify is allowed
         if toModify in ['matricola']:
-            return make_response(jsonify({'outcome': 'error, specified field cannot be modified'}), 400)
+            return make_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=400)
 
         # Check if student exists
         student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
         if student is None:
-            return make_response(jsonify({'outcome': 'error, specified student does not exist'}), 404)
+            return make_response(message={'outcome': 'error, specified student does not exist'}, status_code=404)
 
         # Update the student
         execute_query(f'UPDATE studenti SET {toModify} = %s WHERE matricola = %s', (newValue, matricola))
@@ -82,7 +82,7 @@ class StudentUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(jsonify({'outcome': 'student successfully updated'}), 200)
+        return make_response(message={'outcome': 'student successfully updated'}, status_code=200)
 
 class StudentRead(Resource):
     @jwt_required_endpoint
@@ -92,7 +92,7 @@ class StudentRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return make_response(jsonify({'error': 'invalid limit or offset parameter'}), 400)
+            return make_response(message={'error': 'invalid limit or offset parameter'}, status_code=400)
 
         # Gather json filters
         data = request.get_json()
@@ -119,7 +119,7 @@ class StudentRead(Resource):
             return make_response(jsonify(students), 200)
         
         except Exception as err:
-            return make_response(jsonify({'error': str(err)}), 500)
+            return make_response(message={'error': str(err)}, status_code=500)
 
 class StudentBindTurn(Resource):
     @jwt_required_endpoint
@@ -131,17 +131,17 @@ class StudentBindTurn(Resource):
         # Check if turn exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
         if turn is None:
-            return make_response(jsonify({'outcome': 'error, specified turn does not exist'}), 404)
+            return make_response(message={'outcome': 'error, specified turn does not exist'}, status_code=404)
         
         # Check if student exists
         student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
         if student is None:
-            return make_response(jsonify({'outcome': 'error, specified student does not exist'}), 404)
+            return make_response(message={'outcome': 'error, specified student does not exist'}, status_code=404)
         
         # Check if student is already bound to the turn
         binding = fetchone_query('SELECT * FROM studenti_turni WHERE idTurno = %s AND matricola = %s', (idTurno, matricola))
         if binding is not None:
-            return make_response(jsonify({'outcome': 'error, student is already bound to the turn'}), 400)
+            return make_response(message={'outcome': 'error, student is already bound to the turn'}, status_code=400)
         
         # Bind the student to the turn
         execute_query('INSERT INTO studenti_turni VALUES (%s, %s)', (matricola, idTurno))
@@ -153,7 +153,7 @@ class StudentBindTurn(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
         
-        return make_response(jsonify({'outcome': 'student successfully bound to the turn'}), 201)
+        return make_response(message={'outcome': 'student successfully bound to the turn'}, status_code=201)
 
 # Add resources to the API
 api.add_resource(StudentRegister, '/register')

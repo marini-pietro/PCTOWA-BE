@@ -1,7 +1,7 @@
-from flask import Blueprint, request, make_response, jsonify
+from flask import Blueprint, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, parse_date_string, parse_time_string
+from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, make_response, parse_date_string, parse_time_string
 
 # Create the blueprint and API
 turn_bp = Blueprint('turn', __name__)
@@ -25,25 +25,25 @@ class TurnRegister(Resource):
         # Check if idAzienda exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         if company is None:
-            return make_response(jsonify({'outcome': 'error, specified company does not exist'}), 404)
+            return make_response(message={'outcome': 'error, specified company does not exist'}, status_code=404)
 
         # Check that idIndirizzo exists if provided
         if idIndirizzo is not None:
             address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (int(idIndirizzo),))
             if address is None:
-                return make_response(jsonify({'outcome': 'error, specified address does not exist'}), 404)
+                return make_response(message={'outcome': 'error, specified address does not exist'}, status_code=404)
 
         # Check that settore exists if provided
         if settore is not None:
             sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
             if sector is None:
-                return make_response(jsonify({'outcome': 'error, specified sector does not exist'}), 404)
+                return make_response(message={'outcome': 'error, specified sector does not exist'}, status_code=404)
 
         # Check that idTutor exists if provided
         if idTutor is not None:
             tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (int(idTutor),))
             if tutor is None:
-                return make_response(jsonify({'outcome': 'error, specified tutor does not exist'}), 404)
+                return make_response(message={'outcome': 'error, specified tutor does not exist'}, status_code=404)
 
         # Insert the turn
         execute_query(
@@ -58,7 +58,7 @@ class TurnRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(jsonify({'outcome': 'turn successfully created'}), 201)
+        return make_response(message={'outcome': 'turn successfully created'}, status_code=201)
 
 class TurnDelete(Resource):
     @jwt_required_endpoint
@@ -69,7 +69,7 @@ class TurnDelete(Resource):
         # Check if turn exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
         if turn is None:
-            return make_response(jsonify({'outcome': 'error, specified turn does not exist'}), 404)
+            return make_response(message={'outcome': 'error, specified turn does not exist'}, status_code=404)
 
         # Delete the turn
         execute_query('DELETE FROM turni WHERE idTurno = %s', (idTurno,))
@@ -81,7 +81,7 @@ class TurnDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(jsonify({'outcome': 'turn successfully deleted'}), 200)
+        return make_response(message={'outcome': 'turn successfully deleted'}, status_code=200)
 
 class TurnUpdate(Resource):
     @jwt_required_endpoint
@@ -93,7 +93,7 @@ class TurnUpdate(Resource):
 
         # Check if the field to modify is allowed
         if toModify in ['idTurno']:
-            return make_response(jsonify({'outcome': 'error, specified field cannot be modified'}), 400)
+            return make_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=400)
 
         # Check if any casting operations are needed
         if toModify in ['posti', 'ore']:
@@ -106,7 +106,7 @@ class TurnUpdate(Resource):
         # Check if turn exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
         if turn is None:
-            return make_response(jsonify({'outcome': 'error, specified turn does not exist'}), 404)
+            return make_response(message={'outcome': 'error, specified turn does not exist'}, status_code=404)
 
         # Update the turn
         execute_query(f'UPDATE turni SET {toModify} = %s WHERE idTurno = %s', (newValue, idTurno))
@@ -118,7 +118,7 @@ class TurnUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(jsonify({'outcome': 'turn successfully updated'}), 200)
+        return make_response(message={'outcome': 'turn successfully updated'}, status_code=200)
 
 class TurnRead(Resource):
     @jwt_required_endpoint
@@ -128,7 +128,7 @@ class TurnRead(Resource):
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
-            return make_response(jsonify({'error': 'invalid limit or offset parameter'}), 400)
+            return make_response(message={'error': 'invalid limit or offset parameter'}, status_code=400)
 
         # Gather json filters
         data = request.get_json()
@@ -154,7 +154,7 @@ class TurnRead(Resource):
 
             return make_response(jsonify(turns), 200)
         except Exception as err:
-            return make_response(jsonify({'error': str(err)}), 500)
+            return make_response(message={'error': str(err)}, status_code=500)
 
 class TurnBind(Resource):
     @jwt_required_endpoint
@@ -171,7 +171,7 @@ class TurnBind(Resource):
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
         if sector is None:
-            return make_response(jsonify({'outcome': 'error, specified sector does not exist'}), 404)
+            return make_response(message={'outcome': 'error, specified sector does not exist'}, status_code=404)
 
         # Bind the sector to the turn
         execute_query('INSERT INTO turniSettore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
@@ -183,7 +183,7 @@ class TurnBind(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return make_response(jsonify({'outcome': 'sector binded to turn successfully'}), 201)
+        return make_response(message={'outcome': 'sector binded to turn successfully'}, status_code=201)
 
 # Add resources to the API
 api.add_resource(TurnRegister, '/register')
