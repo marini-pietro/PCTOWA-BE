@@ -2,7 +2,11 @@ from flask import Blueprint, request
 from flask_restful import Api, Resource
 from requests import post as requests_post
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST, STATUS_CODES
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response  # Import shared utilities
+from .blueprints_utils import (validate_filters, fetchone_query, 
+                               fetchall_query, execute_query, 
+                               log, jwt_required_endpoint, 
+                               create_response, build_update_query_from_filters,
+                               build_select_query_from_filters)
 
 # Create the blueprint and API
 user_bp = Blueprint('user', __name__)
@@ -29,104 +33,141 @@ class UserRegister(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
             
+            # Return success message
             return create_response(message={"outcome": "user successfully created"}, status_code=STATUS_CODES["created"])
         except Exception:
             return create_response(message={'outcome': 'error, user with provided credentials already exists'}, status_code=STATUS_CODES["bad_request"])
 
 class UserLogin(Resource):
     def post(self):
+        # Gather parameters
         email = request.json.get('email')
         password = request.json.get('password')
+        
+        # Validate parameters
+        if email is None or password is None:
+            return create_response(message={'error': 'missing email or password'}, status_code=STATUS_CODES["bad_request"])
 
         # Forward login request to the authentication service
         response = requests_post(f'{AUTH_SERVER_HOST}/auth/login', json={'email': email, 'password': password})
-        if response.status_code == STATUS_CODES["ok"]:
+        if response.status_code == STATUS_CODES["ok"]: # If the login is successful send the token back to the user
             return response.json(), STATUS_CODES["ok"]
-        return create_response(message={'error': 'Invalid credentials'}, status_code=401)
+        
+        # If the login fails, return an error message with unauthorized status code
+        return create_response(message={'error': 'Invalid credentials'}, status_code=STATUS_CODES["unauthorized"])
 
 class UserUpdate(Resource):
     @jwt_required_endpoint
     def patch(self):
         email = request.args.get('email')
-        to_modify = request.args.get('toModify')
-        new_value = request.args.get('newValue')
+        toModify: list[str] = request.args.get('toModify').split(',')
+        newValues: list[str] = request.args.get('newValue').split(',')
 
-        # Check if the field to modify is allowed
-        if to_modify in ['email']:
-            return create_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+        # Validate parameters
+        if len(toModify) != len(newValues):
+            return create_response(message={'outcome': 'Mismatched fields and values lists lengths'}, status_code=STATUS_CODES["bad_request"])
+
+        # Build a dictionary with fields as keys and values as values
+        updates = dict(zip(toModify, newValues))  # {field1: value1, field2: value2, ...}
+
+        # Check that the specified fields can be modified (in this case all fields can be modified)
+
+        # Check that the specified fields actually exist in the database
+        outcome = validate_filters(data=updates, table_name='utenti')
+        if outcome is not True:  # if the validation fails, outcome will be a dict with the error message
+            return create_response(outcome, STATUS_CODES["bad_request"])
 
         # Check if user exists
         user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
         if user is None:
             return create_response(message={'outcome': 'error, user with provided email does not exist'}, status_code=STATUS_CODES["not_found"])
 
+        # Build the update query
+        query, params = build_update_query_from_filters(data=updates, table_name='utenti', id=email)
+
         # Update the user
-        execute_query(f'UPDATE utente SET {to_modify} = %s WHERE emailUtente = %s', (new_value, email))
+        execute_query(query, params)
 
         # Log the update
         log(type='info', 
-            message=f'User {request.user_identity} updated', 
+            message=f'User {request.user_identity} updated user {email}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return success message
         return create_response(message={'outcome': 'user successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class UserDelete(Resource):
     @jwt_required_endpoint
     def delete(self):
+        # Gather parameters
         email = request.args.get('email')
 
-        # Check if user exists
-        user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
-        if user is None:
-            return create_response(message={'outcome': 'error, user with provided email does not exist'}, status_code=STATUS_CODES["not_found"])
+        # Validate parameters
+        if email is None:
+            return create_response(message={'error': 'missing email'}, status_code=STATUS_CODES["bad_request"])
 
         # Delete the user
         execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
 
         # Log the deletion
         log(type='info', 
-            message=f'User {request.user_identity} deleted', 
+            message=f'User {request.user_identity} deleted user {email}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return success message
         return create_response(message={'outcome': 'user successfully deleted'}, status_code=STATUS_CODES["ok"])
     
 class UserRead(Resource):
     #@jwt_required_endpoint
     def get(self):
-
-        # Gather URL parameters
+        # Gather parameters
+        email = request.args.get('email')
+        password = request.args.get('password')
+        nome = request.args.get('nome')
+        cognome = request.args.get('cognome')
+        try:
+            tipo = int(request.args.get('tipo'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid tipo parameter'}, status_code=STATUS_CODES["bad_request"])
         try:
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
-        # Gather json filters
-        data = request.get_json()
-
-        # Validate filters
-        outcome = validate_filters(data=data, table_name='utenti')
-        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return outcome, STATUS_CODES["bad_request"]
+        # Build the filters dictionary (only include non-null values)
+        data = {key: value for key, value in {
+            'emailUtente': email,
+            'password': password,
+            'nome': nome,
+            'cognome': cognome,
+            'tipo': tipo
+        }.items() if value}
 
         try:
             # Build the query
-            query, params = build_query_from_filters(data=data, table_name='utenti', limit=limit, offset=offset)
+            query, params = build_update_query_from_filters(
+                data=data, 
+                table_name='utenti',
+                limit=limit, 
+                offset=offset
+            )
 
             # Execute query
-            users = fetchall_query(query, tuple(params))
+            users = fetchall_query(query, params)
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read users with filters: {data}', 
+                message=f'User {request.user_identity} read users', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
+            # Return the users
             return create_response(message=users, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])

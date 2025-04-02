@@ -1,7 +1,11 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response
+from .blueprints_utils import (validate_filters, fetchone_query, 
+                               fetchall_query, execute_query, 
+                               log, jwt_required_endpoint, 
+                               create_response, build_select_query_from_filters,
+                               build_update_query_from_filters)
 
 # Create the blueprint and API
 tutor_bp = Blueprint('tutor', __name__)
@@ -22,18 +26,19 @@ class TutorRegister(Resource):
             return create_response(message={'outcome': 'error, specified tutor already exists'}, status_code=409)
 
         # Insert the tutor
-        execute_query(
+        lastrowid = execute_query(
             'INSERT INTO tutor (nome, cognome, telefonoTutor, emailTutor) VALUES (%s, %s, %s, %s)',
             (nome, cognome, telefono, email)
         )
 
         # Log the tutor creation
         log(type='info', 
-            message=f'User {request.user_identity} created a tutor', 
+            message=f'User {request.user_identity} created tutor {lastrowid}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'tutor successfully created'}, status_code=STATUS_CODES["created"])
 
 class TutorDelete(Resource):
@@ -41,11 +46,6 @@ class TutorDelete(Resource):
     def delete(self):
         # Gather parameters
         idTutor = int(request.args.get('idTutor'))
-
-        # Check if tutor exists
-        tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
-        if tutor is None:
-            return create_response(message={'outcome': 'error, specified tutor does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Delete the tutor
         execute_query('DELETE FROM tutor WHERE idTutor = %s', (idTutor,))
@@ -57,27 +57,48 @@ class TutorDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'tutor successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class TutorUpdate(Resource):
     @jwt_required_endpoint
     def patch(self):
         # Gather parameters
-        idTutor = int(request.args.get('idTutor'))
-        toModify = request.args.get('toModify')
-        newValue = request.args.get('newValue')
+        try:
+            idTutor = int(request.args.get('idTutor'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid idTutor'}, status_code=STATUS_CODES["bad_request"])
+        toModify: list[str] = request.args.get('toModify').split(',')
+        newValues: list[str] = request.args.get('newValue').split(',')
 
-        # Check if the field to modify is allowed
-        if toModify in ['idTutor']:
-            return create_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+        # Validate parameters
+        if len(toModify) != len(newValues):
+            return create_response(message={'outcome': 'Mismatched fields and values lists lengths'}, status_code=STATUS_CODES["bad_request"])
+
+        # Build a dictionary with fields as keys and values as values
+        updates = dict(zip(toModify, newValues))  # {field1: value1, field2: value2, ...}
+
+        # Check that the specified fields can be modified
+        not_allowed_fields: list[str] = ['idTutor']
+        for field in toModify:
+            if field in not_allowed_fields:
+                return create_response(message={'outcome': f'error, specified field "{field}" cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+
+        # Check that the specified fields actually exist in the database
+        outcome = validate_filters(data=updates, table_name='tutor')
+        if outcome is not True:  # if the validation fails, outcome will be a dict with the error message
+            return create_response(message=outcome, status_code=STATUS_CODES["bad_request"])
 
         # Check if tutor exists
         tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
         if tutor is None:
             return create_response(message={'outcome': 'error, specified tutor does not exist'}, status_code=STATUS_CODES["not_found"])
 
+        # Build the update query
+        query, params = build_update_query_from_filters(data=updates, table_name='tutor', id=idTutor)
+
         # Update the tutor
-        execute_query(f'UPDATE tutor SET {toModify} = %s WHERE idTutor = %s', (newValue, idTutor))
+        execute_query(query, params)
 
         # Log the update
         log(type='info', 
@@ -86,40 +107,56 @@ class TutorUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'tutor successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class TutorRead(Resource):
     @jwt_required_endpoint
     def get(self):
-        # Gather URL parameters
+        # Gather parameters
+        nome = request.args.get('nome')
+        cognome = request.args.get('cognome')
+        emailTutor = request.args.get('emailTutor')
+        telefonoTutor = request.args.get('telefonoTutor')
+        try:
+            idTutor = int(request.args.get('idTutor'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idTutor parameter'}, status_code=STATUS_CODES["bad_request"])
         try:
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
-        # Gather json filters
-        data = request.get_json()
-
-        # Validate filters
-        outcome = validate_filters(data=data, table_name='tutor')
-        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return create_response(message=outcome, status_code=STATUS_CODES["bad_request"])
+        # Build the filters dictionary (only include non-null values)
+        data = {key: value for key, value in {
+            'idTutor': idTutor,
+            'nome': nome,
+            'cognome': cognome,
+            'emailTutor': emailTutor,
+            'telefonoTutor': telefonoTutor
+        }.items() if value is not None}
 
         try:
             # Build the query
-            query, params = build_query_from_filters(data=data, table_name='tutor', limit=limit, offset=offset)
+            query, params = build_select_query_from_filters(
+                data=data, 
+                table_name='tutor',
+                limit=limit, 
+                offset=offset
+            )
 
             # Execute query
-            tutors = fetchone_query(query, tuple(params))
+            tutors = fetchone_query(query, params)
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read tutors with filters: {data}', 
+                message=f'User {request.user_identity} read tutors', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
+            # Return the results
             return create_response(message=tutors, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])

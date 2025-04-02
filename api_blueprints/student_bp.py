@@ -1,8 +1,11 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
-import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response
+from .blueprints_utils import (validate_filters, fetchone_query, 
+                               fetchall_query, execute_query,
+                               log, jwt_required_endpoint, 
+                               create_response, build_update_query_from_filters,
+                               build_select_query_from_filters)
 
 # Create the blueprint and API
 student_bp = Blueprint('student', __name__)
@@ -12,10 +15,16 @@ class StudentRegister(Resource):
     @jwt_required_endpoint
     def post(self):
         # Gather parameters
-        matricola = request.args.get('matricola')
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')
-        idClasse = request.args.get('idClasse')
+        try:
+            matricola = int(request.args.get('matricola'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid matricola parameter'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            idClasse = int(request.args.get('idClasse'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idClasse parameter'}, status_code=STATUS_CODES["bad_request"])
 
         try:
             # Insert the student
@@ -29,19 +38,17 @@ class StudentRegister(Resource):
                 origin_port=API_SERVER_PORT)
 
             return create_response(message={"outcome": "student successfully created"}, status_code=STATUS_CODES["created"])
-        except mysql.connector.IntegrityError:
+        except Exception as err:
             return create_response(message={'outcome': 'error, student with provided matricola already exists'}, status_code=STATUS_CODES["bad_request"])
 
 class StudentDelete(Resource):
     @jwt_required_endpoint
     def delete(self):
         # Gather parameters
-        matricola = request.args.get('matricola')
-
-        # Check if student exists
-        student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
-        if student is None:
-            return {'outcome': 'error, specified student does not exist'}, STATUS_CODES["not_found"]
+        try:
+            matricola = int(request.args.get('matricola'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid matricola parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Delete the student
         execute_query('DELETE FROM studenti WHERE matricola = %s', (matricola,))
@@ -53,27 +60,48 @@ class StudentDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'student successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class StudentUpdate(Resource):
     @jwt_required_endpoint
     def patch(self):
         # Gather parameters
-        matricola = request.args.get('matricola')
-        toModify = request.args.get('toModify')
-        newValue = request.args.get('newValue')
+        toModify: list[str] = request.args.get('toModify').split(',')  # toModify is a list of fields to modify
+        newValues: list[str] = request.args.get('newValue').split(',')  # newValue is a list of values to set
+        try:
+            matricola = int(request.args.get('matricola'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid matricola parameter'}, status_code=STATUS_CODES["bad_request"])
 
-        # Check if the field to modify is allowed
-        if toModify in ['matricola']:
-            return create_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+        # Validate parameters
+        if len(toModify) != len(newValues):
+            return create_response(message={'outcome': 'Mismatched fields and values lists lengths'}, status_code=STATUS_CODES["bad_request"])
 
-        # Check if student exists
+        # Build a dictionary with fields as keys and values as values
+        updates = dict(zip(toModify, newValues))  # {field1: value1, field2: value2, ...}
+
+        # Check that the specified fields can be modified
+        not_allowed_fields: list[str] = ['matricola']
+        for field in toModify:
+            if field in not_allowed_fields:
+                return create_response(message={'outcome': f'error, field "{field} cannot be modified"'}, status_code=STATUS_CODES["bad_request"])
+            
+        # Check that the specified fields actually exist in the database
+        outcome = validate_filters(data=updates, table_name='studenti')
+        if outcome is not True:  # if the validation fails, outcome will be a dict with the error message
+            return create_response(message=outcome, status_code=STATUS_CODES["bad_request"])
+        
+        # Check that the specified student exists
         student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
         if student is None:
             return create_response(message={'outcome': 'error, specified student does not exist'}, status_code=STATUS_CODES["not_found"])
 
+        # Build the update query
+        query, params = build_update_query_from_filters(data=updates, table_name='studenti', id=matricola)
+
         # Update the student
-        execute_query(f'UPDATE studenti SET {toModify} = %s WHERE matricola = %s', (newValue, matricola))
+        execute_query(query, params)
 
         # Log the update
         log(type='info', 
@@ -82,82 +110,63 @@ class StudentUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'student successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class StudentRead(Resource):
     @jwt_required_endpoint
     def get(self):
-        # Gather URL parameters
+        # Gather parameters
+        nome = request.args.get('nome')
+        cognome = request.args.get('cognome')
+        try:
+            idClasse = int(request.args.get('idClasse'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idClasse parameter'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            matricola = int(request.args.get('matricola'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid matricola parameter'}, status_code=STATUS_CODES["bad_request"])
         try:
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
-        # Gather json filters
-        data = request.get_json()
-
-        # Validate filters
-        outcome = validate_filters(data=data, table_name='studenti')
-        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return create_response(message=outcome, status_code=STATUS_CODES["bad_request"])
+        # Build the filters dictionary (only include non-null values)
+        data = {key: value for key, value in {
+            'nome': nome,
+            'cognome': cognome,
+            'idClasse': idClasse,
+            'matricola': matricola
+        }.items() if value}
 
         try:
             # Build the query
-            query, params = build_query_from_filters(data=data, table_name='studenti', limit=limit, offset=offset)
+            query, params = build_select_query_from_filters(
+                data=data, 
+                table_name='studenti',
+                limit=limit, 
+                offset=offset
+            )
 
             # Execute query
-            students = fetchall_query(query, tuple(params))
+            students = fetchall_query(query, params)
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read students with filters {data}', 
+                message=f'User {request.user_identity} read students', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return create_response(message=students, status_code=STATUS_CODES["ok"])
-        
+            # Return the results
+            return create_response(message=students, status_code=STATUS_CODES["ok"])        
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
-
-class StudentBindTurn(Resource):
-    @jwt_required_endpoint
-    def post(self):
-        # Gather parameters
-        idTurno = int(request.args.get('idTurno'))
-        matricola = request.args.get('matricola')
-
-        # Check if turn exists
-        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-        if turn is None:
-            return create_response(message={'outcome': 'error, specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
-        
-        # Check if student exists
-        student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
-        if student is None:
-            return create_response(message={'outcome': 'error, specified student does not exist'}, status_code=STATUS_CODES["not_found"])
-        
-        # Check if student is already bound to the turn
-        binding = fetchone_query('SELECT * FROM studenti_turni WHERE idTurno = %s AND matricola = %s', (idTurno, matricola))
-        if binding is not None:
-            return create_response(message={'outcome': 'error, student is already bound to the turn'}, status_code=STATUS_CODES["bad_request"])
-        
-        # Bind the student to the turn
-        execute_query('INSERT INTO studenti_turni VALUES (%s, %s)', (matricola, idTurno))
-
-        # Log the bind
-        log(type="info", 
-            message=f"User {request.user_identity} binded student {matricola} to turn {idTurno}", 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-        
-        return create_response(message={'outcome': 'student successfully bound to the turn'}, status_code=STATUS_CODES["created"])
 
 # Add resources to the API
 api.add_resource(StudentRegister, '/register')
 api.add_resource(StudentDelete, '/delete')
 api.add_resource(StudentUpdate, '/update')
 api.add_resource(StudentRead, '/read')
-api.add_resource(StudentBindTurn, '/bind_turn')

@@ -9,7 +9,7 @@ import secrets
 app = Flask(__name__)
 
 # Configure JWT
-app.config['JWT_SECRET_KEY'] = secrets.token_hex(32) # Use a secure key (dinamic key, so if jwt are validated, cache and then the server is restarted those same jwt will not be valid with the new key)
+app.config['JWT_SECRET_KEY'] = secrets.token_hex(32) # Use a secure key (dinamic key, so if jwt are validated, cached and then the server is restarted those same jwt will not be valid with the new key)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=JWT_TOKEN_DURATION)
 jwt = JWTManager(app)
 
