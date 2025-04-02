@@ -1,4 +1,4 @@
-import json, os, threading
+import threading, json, os
 from flask import jsonify, make_response, request
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
@@ -8,38 +8,13 @@ from functools import wraps
 from requests import post as requests_post # From requests import the post function
 from cachetools import TTLCache
 
-# Response related
-def create_response(message: dict, status_code: int) -> tuple:
-    """
-    Create a response with a message and status code.
-
-    params:
-        message - The message to include in the response
-        status_code - The HTTP status code to return
-
-    returns:
-        A tuple containing the response message and status code
-
-    raises:
-        TypeError - If the message is not a dictionary or the status code is not an integer
-    """
-
-    if not isinstance(message, dict):
-        raise TypeError("Message must be a dictionary")
-
-    message = f"{message}\n{STATUS_CODES_EXPLANATIONS.get(status_code, 'Unknown status code')}"
-
-    return make_response(jsonify(message), status_code)
-
 # Validation related
-metadata_cache = None # Cache the metadata file in memory
-
-def validate_filters(data, table_name):
+def validate_filters(fields: list[str], table_name: str):
     """
-    Validate the filters in the request data against the metadata file.
+    Checks if the provided filters are actually column names in the database..
 
     params:
-        data - The request data containing the filters in JSON format
+        fields - The filters to validate
         table_name - The name of the table to validate against
 
     returns:
@@ -72,89 +47,34 @@ def validate_filters(data, table_name):
     if not isinstance(available_filters, list) or not all(isinstance(item, str) for item in available_filters):
         return {'error': f'invalid {table_name} column values in metadata'}
 
-    filters_keys = list(data.keys()) if isinstance(data, dict) else []
-    invalid_filters = [key for key in filters_keys if key not in available_filters]
+    invalid_filters = [key for key in fields if key not in available_filters]
     if invalid_filters:
         return {'error': f'Invalid filter(s): {", ".join(invalid_filters)}'}
 
     return True
-            
-input_validation_cache = None # Cache the nullable column file in memory
 
-def validate_inputs(table_name: str, inputs: list):
+# Response related
+def create_response(message: dict, status_code: int) -> tuple:
     """
-    Validate the inputs against the input validation metadata file.
+    Create a response with a message and status code.
 
     params:
-        table_name - The name of the table to validate against
-        inputs - A list of dictionaries containing column-value pairs to validate
+        message - The message to include in the response
+        status_code - The HTTP status code to return
 
     returns:
-        True if validation succeeds, or a string containing the invalid inputs if validation fails.
+        A tuple containing the response message and status code
 
     raises:
-        JSONDecodeError - If the input validation metadata file cannot be parsed
-        FileNotFoundError - If the input validation metadata file is not found
-        TypeError - If the inputs are not in the expected format
+        TypeError - If the message is not a dictionary or the status code is not an integer
     """
-    global input_validation_cache
 
-    # Load input validation metadata into cache if not already loaded
-    if input_validation_cache is None:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        input_validation_path = os.path.join(base_dir, '..', 'input_validation.json')
-        try:
-            with open(input_validation_path) as input_validation_file:
-                input_validation_metadata = json.load(input_validation_file)
-                input_validation_cache = input_validation_metadata
-        except (json.JSONDecodeError, FileNotFoundError) as e:
-            return f'Failed to load input validation metadata: {str(e)}'
+    if not isinstance(message, dict):
+        raise TypeError("Message must be a dictionary")
 
-    # Validate inputs
-    table_metadata = input_validation_cache.get(table_name, [])
-    if not isinstance(table_metadata, list) or not all(isinstance(column, dict) for column in table_metadata):
-        return f'Invalid metadata structure for table "{table_name}" in input validation metadata'
+    message = f"{message}\n{STATUS_CODES_EXPLANATIONS.get(status_code, 'Unknown status code')}"
 
-    invalid_inputs = []
-    for input_data in inputs:
-        if not isinstance(input_data, dict):
-            return 'Invalid input format, expected a list of dictionaries'
-
-        for column, value in input_data.items():
-            # Find column metadata
-            column_metadata = next((col for col in table_metadata if col["column_name"] == column), None)
-            if not column_metadata:
-                invalid_inputs.append(f"Unknown column '{column}'")
-                continue
-
-            # Check nullability
-            if not column_metadata["is_nullable"] and value is None:
-                invalid_inputs.append(f"Column '{column}' cannot be null")
-
-            # Check data type
-            expected_data_type = column_metadata["data_type"]
-            if value is not None:
-                if expected_data_type == "int" and not isinstance(value, int):
-                    invalid_inputs.append(f"Column '{column}' must be an integer")
-                elif expected_data_type == "varchar" and not isinstance(value, str):
-                    invalid_inputs.append(f"Column '{column}' must be a string")
-                elif expected_data_type == "float" and not isinstance(value, (float, int)):
-                    invalid_inputs.append(f"Column '{column}' must be a float")
-                elif expected_data_type == "date":
-                    try:
-                        datetime.strptime(value, "%Y-%m-%d")
-                    except ValueError:
-                        invalid_inputs.append(f"Column '{column}' must be a valid date in 'YYYY-MM-DD' format")
-                elif expected_data_type == "datetime":
-                    try:
-                        datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-                    except ValueError:
-                        invalid_inputs.append(f"Column '{column}' must be a valid datetime in 'YYYY-MM-DD HH:MM:SS' format")
-
-    if invalid_inputs:
-        return f"Validation failed for the following inputs: {', '.join(invalid_inputs)}"
-
-    return True
+    return make_response(jsonify(message), status_code)
 
 # Data handling related
 def parse_time_string(time_string) -> datetime:
@@ -202,17 +122,48 @@ except Exception as ex:
     print(f"Couldn't access database, see next line for full exception.\n{ex}\n\nhost: {DB_HOST}, dbname: {DB_NAME}, user: {REDACTED_USER}, password: {REDACTED_PASSWORD}")
     exit(1)
 
-def build_query_from_filters(data, table_name, limit=1, offset=0):
+def build_select_query_from_filters(data, table_name, limit=1, offset=0):
     """
     Build a SQL query from filters.
+    Does not support complex queries with joins or subqueries.
+
+    params:
+        data - The filters to apply to the query
+        table_name - The name of the table to query
+        limit - The maximum number of results to return
+        offset - The offset for pagination
+    
+    returns:
+        A tuple containing the query and the parameters to pass to the query
+
+    raises:
+        None
     """
-    if not isinstance(data, dict):
-        return "SELECT * FROM indirizzi LIMIT %s OFFSET %s", [limit, offset]
 
     filters = " AND ".join([f"{key} = %s" for key in data.keys()])
     params = list(data.values()) + [limit, offset]
-    query = f"SELECT * FROM {table_name} WHERE {filters} LIMIT %s OFFSET %s" if filters else \
-            "SELECT * FROM indirizzi LIMIT %s OFFSET %s"
+    query = f"SELECT * FROM {table_name} WHERE {filters} LIMIT %s OFFSET %s"
+    return query, params
+
+def build_update_query_from_filters(data, table_name, id_column):
+    """
+    Build a SQL update query from filters.
+    
+    params:
+        data - The filters to apply to the query
+        table_name - The name of the table to query
+        id_column - The name of the ID column to use for the update
+    
+    returns:
+        A tuple containing the query and the parameters to pass to the query
+
+    raises:
+        None
+    """
+
+    filters = ", ".join([f"{key} = %s" for key in data.keys()])
+    params = list(data.values())
+    query = f"UPDATE {table_name} SET {filters} WHERE {id_column} = %s"
     return query, params
 
 # Function to get a connection from the pool
@@ -272,13 +223,14 @@ def execute_query(query, params):
         params - The parameters to pass to the query
         
     returns: 
-        None
+        The ID of the last inserted row, if applicable
     """
     # Use a context manager to ensure the connection is closed after use
     with get_db_connection() as connection:
         with connection.cursor(dictionary=True) as cursor:
             cursor.execute(query, params)
             connection.commit()
+            return cursor.lastrowid
 
 def execute_batch_queries(queries_with_params):
     """

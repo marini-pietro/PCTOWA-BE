@@ -1,8 +1,12 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
-import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response
+from .blueprints_utils import (
+     validate_filters, build_select_query_from_filters, 
+     fetchone_query, fetchall_query, 
+     execute_query, log, 
+     jwt_required_endpoint, create_response,
+     build_update_query_from_filters)
 
 contact_bp = Blueprint('contact', __name__)
 api = Api(contact_bp)
@@ -23,78 +27,155 @@ class ContactRegister(Resource):
             return create_response(message={'outcome': 'Company not found'}, status_code=STATUS_CODES["not_found"])
 
         try:
-            execute_query(
+            # Execute query to insert the contact
+            lastrowid: int = execute_query(
                 '''INSERT INTO contatti 
                 (nome, cognome, telefono, email, ruolo, idAzienda)
                 VALUES (%s, %s, %s, %s, %s, %s)''',
                 tuple(params.values())
             )
-            log(type='info', message=f'User {request.user_identity} created contact',
-                origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
-            return create_response(message={'outcome': 'Contact created'}, status_code=STATUS_CODES["created"])
-        except mysql.connector.IntegrityError:
-            return create_response(message={'outcome': 'Contact already exists'}, status_code=STATUS_CODES["bad_request"])
+            
+            # Log the creation of the contact
+            log(type='info', 
+                message=f'User {request.user_identity} created contact {lastrowid}',
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
+            
+            # Return a success message
+            return create_response(message={'outcome': 'contact created'}, status_code=STATUS_CODES["created"])
+        except Exception as err:
+            return create_response(message={'outcome': 'contact already exists'}, status_code=STATUS_CODES["bad_request"])
 
 class ContactDelete(Resource):
     @jwt_required_endpoint
     def delete(self):
-        contact_id = int(request.args.get('idContatto'))
-        if not fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (contact_id,)):
-            return create_response(message={'outcome': 'Contact not found'}, status_code=STATUS_CODES["not_found"])
-            
+        # Gather parameters
+        try:
+            contact_id = int(request.args.get('idContatto'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid contact ID'}, status_code=STATUS_CODES["bad_request"])
+        
+        # Execute query to delete the contact    
         execute_query('DELETE FROM contatti WHERE idContatto = %s', (contact_id,))
         
-        log(type='info', message=f'User {request.user_identity} deleted contact',
-            origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
+        # Log the deletion of the contact
+        log(type='info', 
+            message=f'User {request.user_identity} deleted contact {contact_id}',
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST,
+            origin_port=API_SERVER_PORT)
         
+        # Return a success message
         return create_response(message={'outcome': 'contact successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class ContactUpdate(Resource):
-    allowed_fields = ['nome', 'cognome', 'telefono', 'email', 'ruolo', 'idAzienda']
-    
     @jwt_required_endpoint
     def patch(self):
-        contact_id = int(request.args.get('idContatto'))
-        field = request.args.get('toModify')
-        value = request.args.get('newValue')
+        # Gather parameters
+        toModify = request.args.get('toModify')
+        newValues = request.args.get('newValue')
+        try:
+            contact_id = int(request.args.get('idContatto'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid contact ID'}, status_code=STATUS_CODES["bad_request"])
 
-        if field not in self.allowed_fields:
-            return create_response(message={'outcome': 'Invalid field'}, status_code=STATUS_CODES["bad_request"])
+        # Validate parameters
+        if len(toModify) != len(newValues):
+            return create_response(message={'outcome': 'Mismatched fields and values lists lengths'}, status_code=STATUS_CODES["bad_request"])
 
-        if not fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (contact_id,)):
-            return create_response(message={'outcome': 'Contact not found'}, status_code=STATUS_CODES["not_found"])
+        # Build a dictionary with fields as keys and values as values
+        updates = dict(zip(toModify, newValues))  # {field1: value1, field2: value2, ...}
 
-        if field == 'telefono':
-            value = int(value)
+        # Check that the specified fields can be modified
+        not_allowed_fields = ['idContatto']
+        for field in toModify:
+            if field in not_allowed_fields:
+                return create_response(message={'outcome': f'error, field "{field} cannot be modified"'}, status_code=STATUS_CODES["bad_request"])
 
-        execute_query(f'UPDATE contatti SET {field} = %s WHERE idContatto = %s', (value, contact_id))
+        # Check that the specified fields actually exist in the database
+        outcome = validate_filters(toModify, 'contatti')
+        if outcome is not True:
+            return create_response(message=outcome, status_code=STATUS_CODES["bad_request"])
+
+        # Check that the specified contact exists
+        contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (contact_id,))
+        if not contact:
+            return create_response(message={'outcome': 'specified contact not found'}, status_code=STATUS_CODES["not_found"])
+
+        # Build the update query
+        query, params = build_update_query_from_filters(
+            data=updates, table_name='contatti', 
+            id=contact_id
+        )
+
+        # Execute the update query
+        execute_query(query, params)
         
-        log(type='info', message=f'User {request.user_identity} updated contact',
-            origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
+        # Log the update of the contact
+        log(type='info', 
+            message=f'User {request.user_identity} updated contact {contact_id}',
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
         
+        # Return a success message
         return create_response(message={'outcome': 'contact successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class ContactRead(Resource):
     @jwt_required_endpoint
     def get(self):
+        # Gather parameters
+        nome = request.args.get('nome')
+        cognome = request.args.get('cognome')
+        telefono = request.args.get('telefono')
+        email = request.args.get('email')
+        ruolo = request.args.get('ruolo')
         try:
-            limit = int(request.args.get('limit', 10))
-            offset = int(request.args.get('offset', 0))
-        except (ValueError, TypeError) as ex:
-            return create_response(message={'error': f'invalid limit or offset value: {ex}'}, status_code=STATUS_CODES["bad_request"])
+            idAzienda = int(request.args.get('idAzienda'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            idContatto = int(request.args.get('idContatto'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid contact ID'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            limit = int(request.args.get('limit'))
+            offset = int(request.args.get('offset'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'Invalid limit or offset values'}, status_code=STATUS_CODES["bad_request"])
 
-        data = request.get_json()
-        if (validation := validate_filters(data, 'contatti')) is not True:
-            return validation, STATUS_CODES["bad_request"]
+        # Build the filters dictionary (only include non-null values)
+        filters = {key: value for key, value in {
+            "nome": nome,
+            "cognome": cognome,
+            "telefono": telefono,
+            "email": email,
+            "ruolo": ruolo,
+            "idAzienda": idAzienda,
+            "idContatto": idContatto
+        }.items() if value}
+
 
         try:
-            query, params = build_query_from_filters(
-                data=data, table_name='contatti',
+            # Build the select query
+            query, params = build_select_query_from_filters(
+                data=filters, table_name='contatti',
                 limit=limit, offset=offset
             )
+
+            # Execute the query
+            contacts = fetchall_query(query, params)
             
-            contacts = [dict(row) for row in fetchall_query(query, tuple(params))]
-            
+            # Log the read operation
+            log(type='info', 
+                message=f'User {request.user_identity} read contacts',
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT
+            )
+
+            # Return the contacts
             return create_response(message=contacts, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])

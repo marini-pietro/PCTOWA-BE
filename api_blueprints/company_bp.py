@@ -3,10 +3,10 @@ from flask_restful import Api, Resource
 import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from .blueprints_utils import (
-    validate_filters, build_query_from_filters, 
+    validate_filters, build_select_query_from_filters, 
     fetchone_query, fetchall_query, execute_query, 
     log, jwt_required_endpoint, parse_date_string,
-    create_response
+    create_response, validate_filters, build_update_query_from_filters
 )
 
 # Create the blueprint and API
@@ -34,8 +34,10 @@ class CompanyRegister(Resource):
             'categoria': request.args.get('categoria')
         }
 
+        #TODO: add regex validation for each field
+
         try:
-            execute_query(
+            lastrowid = execute_query(
                 '''INSERT INTO aziende 
                 (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, 
                  partitaIVA, telefonoAzienda, fax, emailAzienda, pec, 
@@ -44,14 +46,16 @@ class CompanyRegister(Resource):
                 tuple(params.values())
             )
 
+            # Log the creation of the company
             log(
                 type='info',
-                message=f'User {request.user_identity} created a company',
+                message=f'User {request.user_identity} created company {lastrowid}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT
             )
 
+            # Return a success message
             return create_response(message={'outcome': 'company successfully created'}, status_code=STATUS_CODES["created"])
         except mysql.connector.IntegrityError as ex:
             return create_response(message={'outcome': f'error, company already exists: {ex}'}, status_code=STATUS_CODES["bad_request"])
@@ -59,14 +63,21 @@ class CompanyRegister(Resource):
 class CompanyDelete(Resource):
     @jwt_required_endpoint
     def delete(self):
-        idAzienda = int(request.args.get('idAzienda'))
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
+        # Gather parameters
+        try:
+            idAzienda = int(request.args.get('idAzienda'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
         
+        # Check if specified company exists
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         if not company:
             return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
 
+        # Delete the company
         execute_query('DELETE FROM aziende WHERE idAzienda = %s', (idAzienda,))
         
+        # Log the deletion of the company
         log(
             type='info',
             message=f'User {request.user_identity} deleted company {idAzienda}',
@@ -75,29 +86,44 @@ class CompanyDelete(Resource):
             origin_port=API_SERVER_PORT
         )
 
+        # Return a success message
         return create_response(message={'outcome': 'company successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class CompanyUpdate(Resource):
     @jwt_required_endpoint
     def patch(self):
-        idAzienda = int(request.args.get('idAzienda'))
-        to_modify = request.args.get('toModify')
-        new_value = request.args.get('newValue')
+        # Gather parameters
+        toModify: list[str] = request.args.get('toModify').split(',')  # list of fields to modify
+        newValues: list[str] = request.args.get('newValue').split(',')  # list of values to set
+        try:
+            idAzienda = int(request.args.get('idAzienda'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
 
-        if to_modify in ['idAzienda']:
-            return create_response(message={'outcome': 'error, invalid field to modify'}, status_code=STATUS_CODES["bad_request"])
+        # Validate parameters
+        if len(toModify) != len(newValues):
+            return create_response(message={'outcome': 'Mismatched fields and values lists lengths'}, status_code=STATUS_CODES["bad_request"])
 
-        if to_modify in ['telefonoAzienda', 'fax']:
-            new_value = int(new_value)
-        elif to_modify in ['dataConvenzione', 'scadenzaConvenzione']:
-            new_value = parse_date_string(new_value)
+        # Build a dictionary with fields as keys and values as values
+        updates = dict(zip(toModify, newValues))  # {field1: value1, field2: value2, ...}
 
+        # Check that the specified fields can be modified
+        not_allowed_fields = ['idAzienda']
+        for field in toModify:
+            if field in not_allowed_fields:
+                return create_response(message={'outcome': f'error, field "{field}" cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+
+        # Check that the specified fields actually exist in the database
+        outcome = validate_filters(data=updates, table_name='aziende')
+        if outcome is not True:
+            return outcome, STATUS_CODES["bad_request"]
+
+        # Check if the company exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         if not company:
             return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
 
-        execute_query(f'UPDATE aziende SET {to_modify} = %s WHERE idAzienda = %s', (new_value, idAzienda))
-        
+        # Log the update of the company        
         log(
             type='info',
             message=f'User {request.user_identity} updated company {idAzienda}',
@@ -106,39 +132,72 @@ class CompanyUpdate(Resource):
             origin_port=API_SERVER_PORT
         )
 
+        # Build the update query
+        query, params = build_update_query_from_filters(
+            data=updates, table_name='aziende', id=idAzienda
+        )
+
+        # Execute the update query
+        execute_query(query, params)
+
+        # Return a success message
         return create_response(message={'outcome': 'company successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class CompanyRead(Resource):
     @jwt_required_endpoint
     def get(self):
+        # Gather parameters
+        idAzienda = request.args.get('idAzienda')
+        ragioneSociale = request.args.get('ragioneSociale')
+        codiceAteco = request.args.get('codiceAteco')
+        partitaIVA = request.args.get('partitaIVA')
+        fax = request.args.get('fax')
+        pec = request.args.get('pec')
+        telefonoAzienda = request.args.get('telefonoAzienda')
+        emailAzienda = request.args.get('emailAzienda')
+        dataConvenzione = request.args.get('dataConvenzione')
+        scadenzaConvenzione = request.args.get('scadenzaConvenzione')
+        categoria = request.args.get('categoria')
+        indirizzoLogo = request.args.get('indirizzoLogo')
+        sitoWeb = request.args.get('sitoWeb')
+        formaGiuridica = request.args.get('formaGiuridica')
         try:
             limit = int(request.args.get('limit', 10))
             offset = int(request.args.get('offset', 0))
         except ValueError:
-            return {'error': 'invalid limit/offset format'}, STATUS_CODES["bad_request"]
-
-        data = request.get_json()
-        validation = validate_filters(data=data, table_name='aziende')
+            return {'error': 'invalid limit or offset values'}, STATUS_CODES["bad_request"]
         
-        if validation is not True:
-            return validation, STATUS_CODES["bad_request"]
+        # Build the filters dictionary (only include non-null values)
+        data = {key: value for key, value in {
+            'idAzienda': idAzienda,
+            'ragioneSociale': ragioneSociale,
+            'codiceAteco': codiceAteco,
+            'partitaIVA': partitaIVA,
+            'fax': fax,
+            'pec': pec,
+            'telefonoAzienda': telefonoAzienda,
+            'emailAzienda': emailAzienda,
+            'dataConvenzione': dataConvenzione,
+            'scadenzaConvenzione': scadenzaConvenzione,
+            'categoria': categoria,
+            'indirizzoLogo': indirizzoLogo,
+            'sitoWeb': sitoWeb,
+            'formaGiuridica': formaGiuridica
+        }.items() if value}
 
         try:
-            query, params = build_query_from_filters(
+            # Build the select query
+            query, params = build_select_query_from_filters(
                 data=data,
                 table_name='aziende',
                 limit=limit,
                 offset=offset
             )
             
-            companies = fetchall_query(query, tuple(params))
-            
-            if not companies:
-                return create_response(message={'outcome': 'no companies found'}, status_code=STATUS_CODES["not_found"])
+            # Execute the query
+            companies = fetchall_query(query, params)
 
-            # Convert rows to dictionaries
-            companies = [dict(row) for row in companies]
-            
+            # Log the read operation            
             log(
                 type='info',
                 message=f'User {request.user_identity} read companies',
@@ -147,63 +206,13 @@ class CompanyRead(Resource):
                 origin_port=API_SERVER_PORT
             )
 
+            # Return the companies
             return companies, STATUS_CODES["ok"]
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
-
-class CompanyBindTurn(Resource):
-    @jwt_required_endpoint
-    def post(self):
-        idAzienda = int(request.args.get('idAzienda'))
-        idTurno = int(request.args.get('idTurno'))
-
-        if not fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,)):
-            return create_response(message={'outcome': 'error, company not found'}, status_code=STATUS_CODES["not_found"])
-
-        if not fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,)):
-            return create_response(message={'outcome': 'error, turn not found'}, status_code=STATUS_CODES["not_found"])
-
-        execute_query('INSERT INTO aziendaTurno (idAzienda, idTurno) VALUES (%s, %s)', (idAzienda, idTurno))
-        
-        log(
-            type='info',
-            message=f'User {request.user_identity} bound company {idAzienda} to turn {idTurno}',
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT
-        )
-
-        return create_response(message={'outcome': 'company-turn binding successful'}, status_code=STATUS_CODES["ok"])
-
-class CompanyBindUser(Resource):
-    @jwt_required_endpoint
-    def post(self):
-        idAzienda = int(request.args.get('idAzienda'))
-        email = request.args.get('email')
-        anno = request.args.get('anno')
-
-        if not fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,)):
-            return create_response(message={'outcome': 'error, company not found'}, status_code=STATUS_CODES["not_found"])
-
-        if not fetchone_query('SELECT * FROM utenti WHERE emailUtente = %s', (email,)):
-            return create_response(message={'outcome': 'error, user not found'}, status_code=STATUS_CODES["not_found"])
-
-        execute_query('INSERT INTO aziendaUtente (idAzienda, emailUtente, anno) VALUES (%s, %s, %s)', (idAzienda, email, anno))
-        
-        log(
-            type='info',
-            message=f'User {request.user_identity} bound company {idAzienda} to user {email}',
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT
-        )
-
-        return create_response(message={'outcome': 'company-user binding successful'}, status_code=STATUS_CODES["ok"])
 
 # Add resources to the API
 api.add_resource(CompanyRegister, '/register')
 api.add_resource(CompanyDelete, '/delete')
 api.add_resource(CompanyUpdate, '/update')
 api.add_resource(CompanyRead, '/read')
-api.add_resource(CompanyBindTurn, '/bind-turn')
-api.add_resource(CompanyBindUser, '/bind-user')
