@@ -1,7 +1,9 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from .blueprints_utils import fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response
+from .blueprints_utils import (fetchone_query, fetchall_query, 
+                               execute_query, log, 
+                               jwt_required_endpoint, create_response)
 
 # Create the blueprint and API
 legalform_bp = Blueprint('legalform', __name__)
@@ -13,21 +15,22 @@ class LegalFormRegister(Resource):
         # Gather parameters
         legalform = request.args.get('forma')
 
-        # Check if legal form exists
+        # Check if legal form already exists
         form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (legalform,))
         if form is not None:
             return {'outcome': 'error, specified legal form already exists'}, 403
 
         # Insert the legal form
-        execute_query('INSERT INTO formaGiuridica (forma) VALUES (%s)', (legalform,))
+        lastrowid = execute_query('INSERT INTO formaGiuridica (forma) VALUES (%s)', (legalform,))
 
         # Log the legal form creation
         log(type='info',
-            message=f'User {request.user_identity} created legal form {legalform}', 
+            message=f'User {request.user_identity} created legal form {lastrowid}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'legal form successfully created'}, status_code=STATUS_CODES["created"])
 
 class LegalFormDelete(Resource):
@@ -35,11 +38,6 @@ class LegalFormDelete(Resource):
     def delete(self):
         # Gather parameters
         legalform = request.args.get('forma')
-
-        # Check if legal form exists
-        form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (legalform,))
-        if form is None:
-            return {'outcome': 'error, specified legal form does not exist'}, STATUS_CODES["not_found"]
 
         # Delete the legal form
         execute_query('DELETE FROM formaGiuridica WHERE forma = %s', (legalform,))
@@ -51,6 +49,7 @@ class LegalFormDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'legal form successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class LegalFormUpdate(Resource):
@@ -70,11 +69,12 @@ class LegalFormUpdate(Resource):
 
         # Log the update
         log(type='info', 
-            message=f'User {request.user_identity} updated legal form {legalform}', 
+            message=f'User {request.user_identity} updated legal form {legalform} to {newValue}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'legal form successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class LegalFormRead(Resource):
@@ -103,6 +103,7 @@ class LegalFormRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
+            # Return the result
             return create_response(message=forms, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])

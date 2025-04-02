@@ -1,7 +1,12 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from .blueprints_utils import validate_filters, validate_inputs, build_query_from_filters, fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response, parse_date_string, parse_time_string
+from .blueprints_utils import (validate_filters, fetchone_query, 
+                               fetchall_query, execute_query, 
+                               log, jwt_required_endpoint, 
+                               create_response, parse_date_string, 
+                               parse_time_string, build_select_query_from_filters,
+                               build_update_query_from_filters)
 
 # Create the blueprint and API
 turn_bp = Blueprint('turn', __name__)
@@ -14,15 +19,18 @@ class TurnRegister(Resource):
         settore = request.args.get('settore')
         posti = request.args.get('posti')
         ore = request.args.get('ore')
-        idAzienda = int(request.args.get('idAzienda'))
         idIndirizzo = request.args.get('idIndirizzo')
         idTutor = request.args.get('idTutor')
         dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
         dataFine = parse_date_string(date_string=request.args.get('dataFine'))
         oraInizio = parse_time_string(time_string=request.args.get('oraInizio'))
         oraFine = parse_time_string(time_string=request.args.get('oraFine'))
+        try:
+            idAzienda = int(request.args.get('idAzienda'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid idAzienda value'}, status_code=STATUS_CODES["bad_request"])
 
-        # Check if idAzienda exists
+        # Check that specified company exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         if company is None:
             return create_response(message={'outcome': 'error, specified company does not exist'}, status_code=STATUS_CODES["not_found"])
@@ -58,89 +66,146 @@ class TurnRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'turn successfully created'}, status_code=STATUS_CODES["created"])
 
 class TurnDelete(Resource):
     @jwt_required_endpoint
     def delete(self):
         # Gather parameters
-        idTurno = int(request.args.get('idTurno'))
-
-        # Check if turn exists
-        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-        if turn is None:
-            return create_response(message={'outcome': 'error, specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
+        try:
+            idTurno = int(request.args.get('idTurno'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idTurno value'}, status_code=STATUS_CODES["bad_request"])
 
         # Delete the turn
         execute_query('DELETE FROM turni WHERE idTurno = %s', (idTurno,))
 
         # Log the deletion
         log(type='info', 
-            message=f'User {request.user_identity} deleted turn', 
+            message=f'User {request.user_identity} deleted turn {idTurno}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'turn successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class TurnUpdate(Resource):
     @jwt_required_endpoint
     def patch(self):
         # Gather parameters
-        idTurno = int(request.args.get('idTurno'))
-        toModify = request.args.get('toModify')
-        newValue = request.args.get('newValue')
+        toModify = request.args.get('toModify').split(',')
+        newValues = request.args.get('newValue').split(',')
+        try:
+            idTurno = int(request.args.get('idTurno'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idTurno value'}, status_code=STATUS_CODES["bad_request"])
+        
+        # Validate parameters
+        if len(toModify) != len(newValues):
+            return create_response(message={'outcome': 'Mismatched fields and values lists lengths'}, status_code=STATUS_CODES["bad_request"])
 
-        # Check if the field to modify is allowed
-        if toModify in ['idTurno']:
-            return create_response(message={'outcome': 'error, specified field cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+        # Build a dictionary with fields as keys and values as values
+        updates = dict(zip(toModify, newValues))  # {field1: value1, field2: value2, ...}
 
-        # Check if any casting operations are needed
-        if toModify in ['posti', 'ore']:
-            newValue = int(newValue)
-        elif toModify in ['dataInizio', 'dataFine']:
-            newValue = parse_date_string(date_string=newValue)
-        elif toModify in ['oraInizio', 'oraFine']:
-            newValue = parse_time_string(time_string=newValue)
-
-        # Check if turn exists
+        # Check that the specified fields can be modified
+        not_allowed_fields = ['idTurno']
+        for field in toModify:
+            if field in not_allowed_fields:
+                return create_response(message={'outcome': f'error, field {field} cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+            
+        # Check that the specified fields actually exist in the database
+        outcome = validate_filters(data=updates, table_name='turni')
+        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
+            return create_response(outcome, STATUS_CODES["bad_request"])
+        
+        # Check that the specified class exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-        if turn is None:
-            return create_response(message={'outcome': 'error, specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
+        if not turn:
+            return create_response(message={'outcome': 'specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
 
-        # Update the turn
-        execute_query(f'UPDATE turni SET {toModify} = %s WHERE idTurno = %s', (newValue, idTurno))
+        # Build the update query
+        query, params = build_update_query_from_filters(data=updates, table_name='turni', id=idTurno)
+
+        # Execute the update query
+        execute_query(query, params)
 
         # Log the update
         log(type='info', 
-            message=f'User {request.user_identity} updated turn', 
+            message=f'User {request.user_identity} updated turn {idTurno}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'turn successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class TurnRead(Resource):
     @jwt_required_endpoint
     def get(self):
-        # Gather URL parameters
+        # Gather parameters
+        dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
+        dataFine = parse_date_string(date_string=request.args.get('dataFine'))
+        oraInizio = parse_time_string(time_string=request.args.get('oraInizio'))
+        oraFine = parse_time_string(time_string=request.args.get('oraFine'))
+        try:
+            posti = int(request.args.get('posti'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid posti value'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            postiOccupati = int(request.args.get('postiOccupati'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid postiOccupati value'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            ore = request.args.get('ore')
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid ore value'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            idAzienda = int(request.args.get('idAzienda'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idAzienda value'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            idTutor = int(request.args.get('idTutor'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idTutor value'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            idIndirizzo = request.args.get('idIndirizzo')
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idIndirizzo value'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            idTurno = int(request.args.get('idTurno'))
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idTurno value'}, status_code=STATUS_CODES["bad_request"])
         try:
             limit = int(request.args.get('limit'))
             offset = int(request.args.get('offset'))
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
-        # Gather json filters
-        data = request.get_json()
-
-        # Validate filters
-        outcome = validate_filters(data=data, table_name='turni')
-        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return outcome, STATUS_CODES["bad_request"]
+        # Build the filters dictionary (only include non-null values)
+        data = {key: value for key, value in {
+            'dataInizio': dataInizio,
+            'dataFine': dataFine,
+            'oraInizio': oraInizio,
+            'oraFine': oraFine,
+            'posti': posti,
+            'postiOccupati': postiOccupati,
+            'ore': ore,
+            'idAzienda': idAzienda,
+            'idTutor': idTutor,
+            'idIndirizzo': idIndirizzo,
+            'idTurno': idTurno
+        }.items() if value}
 
         try:
             # Build the query
-            query, params = build_query_from_filters(data=data, table_name='turni', limit=limit, offset=offset)
+            query, params = build_select_query_from_filters(
+                data=data, 
+                table_name='turni',
+                limit=limit, 
+                offset=offset
+            )
 
             # Execute query
             turns = fetchall_query(query, tuple(params))
@@ -152,42 +217,13 @@ class TurnRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
+            # Return the results
             return create_response(message=turns, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
-
-class TurnBind(Resource):
-    @jwt_required_endpoint
-    def post(self):
-        # Gather parameters
-        idTurno = int(request.args.get('idTurno'))
-        settore = request.args.get('settore')
-
-        # Check if turn exists
-        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
-        if turn is None:
-            return create_response(message={'outcome': 'error, specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
-
-        # Check if sector exists
-        sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
-        if sector is None:
-            return create_response(message={'outcome': 'error, specified sector does not exist'}, status_code=STATUS_CODES["not_found"])
-
-        # Bind the sector to the turn
-        execute_query('INSERT INTO turniSettore (idTurno, settore) VALUES (%s, %s)', (idTurno, settore))
-
-        # Log the binding
-        log(type='info', 
-            message=f'User {request.user_identity} binded sector to turn', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-
-        return create_response(message={'outcome': 'sector binded to turn successfully'}, status_code=STATUS_CODES["created"])
 
 # Add resources to the API
 api.add_resource(TurnRegister, '/register')
 api.add_resource(TurnDelete, '/delete')
 api.add_resource(TurnUpdate, '/update')
 api.add_resource(TurnRead, '/read')
-api.add_resource(TurnBind, '/bind_sector')

@@ -1,7 +1,9 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from .blueprints_utils import fetchone_query, fetchall_query, execute_query, log, jwt_required_endpoint, create_response
+from .blueprints_utils import (fetchone_query, fetchall_query, 
+                               execute_query, log, 
+                               jwt_required_endpoint, create_response)
 
 # Create the blueprint and API
 sector_bp = Blueprint('sector', __name__)
@@ -28,6 +30,7 @@ class SectorRegister(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'sector successfully created'}, status_code=STATUS_CODES["created"])
 
 class SectorDelete(Resource):
@@ -51,6 +54,7 @@ class SectorDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'sector successfully deleted'}, status_code=STATUS_CODES["ok"])
 
 class SectorUpdate(Resource):
@@ -75,6 +79,7 @@ class SectorUpdate(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
+        # Return a success message
         return create_response(message={'outcome': 'sector successfully updated'}, status_code=STATUS_CODES["ok"])
 
 class SectorRead(Resource):
@@ -103,6 +108,7 @@ class SectorRead(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
+            # Return result
             return create_response(message=sectors, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
