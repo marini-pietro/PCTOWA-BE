@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Mar 31, 2025 alle 12:10
+-- Creato il: Apr 02, 2025 alle 12:54
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -237,28 +237,28 @@ CREATE TABLE `utenti` (
 ALTER TABLE `aziende`
   ADD PRIMARY KEY (`idAzienda`),
   ADD UNIQUE KEY `partitaIVA` (`partitaIVA`),
-  ADD KEY `formaGiuridica` (`formaGiuridica`);
+  ADD KEY `fk_formaGiuridica` (`formaGiuridica`);
 
 --
 -- Indici per le tabelle `classi`
 --
 ALTER TABLE `classi`
   ADD PRIMARY KEY (`idClasse`),
-  ADD KEY `emailResponsabile` (`emailResponsabile`);
+  ADD KEY `classi_ibfk_1` (`emailResponsabile`);
 
 --
 -- Indici per le tabelle `contatti`
 --
 ALTER TABLE `contatti`
   ADD PRIMARY KEY (`idContatto`),
-  ADD KEY `idAzienda` (`idAzienda`);
+  ADD KEY `contatti_ibfk_1` (`idAzienda`);
 
 --
 -- Indici per le tabelle `docenteReferente`
 --
 ALTER TABLE `docenteReferente`
   ADD PRIMARY KEY (`emailDocente`,`idAzienda`),
-  ADD KEY `idAzienda` (`idAzienda`);
+  ADD KEY `docenteReferente_ibfk_2` (`idAzienda`);
 
 --
 -- Indici per le tabelle `formaGiuridica`
@@ -271,7 +271,7 @@ ALTER TABLE `formaGiuridica`
 --
 ALTER TABLE `indirizzi`
   ADD PRIMARY KEY (`idIndirizzo`),
-  ADD KEY `idAzienda` (`idAzienda`);
+  ADD KEY `indirizzi_ibfk_1` (`idAzienda`);
 
 --
 -- Indici per le tabelle `materie`
@@ -290,37 +290,37 @@ ALTER TABLE `settori`
 --
 ALTER TABLE `studenteTurno`
   ADD PRIMARY KEY (`matricola`,`idTurno`),
-  ADD KEY `idTurno` (`idTurno`);
+  ADD KEY `studenteTurno_ibfk_2` (`idTurno`);
 
 --
 -- Indici per le tabelle `studenti`
 --
 ALTER TABLE `studenti`
   ADD PRIMARY KEY (`matricola`),
-  ADD KEY `idClasse` (`idClasse`);
+  ADD KEY `studenti_ibfk_1` (`idClasse`);
 
 --
 -- Indici per le tabelle `turni`
 --
 ALTER TABLE `turni`
   ADD PRIMARY KEY (`idTurno`),
-  ADD KEY `idAzienda` (`idAzienda`),
-  ADD KEY `idTutor` (`idTutor`),
-  ADD KEY `idIndirizzo` (`idIndirizzo`);
+  ADD KEY `turni_ibfk_1` (`idAzienda`),
+  ADD KEY `turni_ibfk_2` (`idTutor`),
+  ADD KEY `turni_ibfk_3` (`idIndirizzo`);
 
 --
 -- Indici per le tabelle `turnoMateria`
 --
 ALTER TABLE `turnoMateria`
   ADD PRIMARY KEY (`materia`,`idTurno`),
-  ADD KEY `idTurno` (`idTurno`);
+  ADD KEY `turnoMateria_ibfk_2` (`idTurno`);
 
 --
 -- Indici per le tabelle `turnoSettore`
 --
 ALTER TABLE `turnoSettore`
   ADD PRIMARY KEY (`settore`,`idTurno`),
-  ADD KEY `idTurno` (`idTurno`);
+  ADD KEY `turnoSettore_ibfk_2` (`idTurno`);
 
 --
 -- Indici per le tabelle `tutor`
@@ -382,67 +382,74 @@ ALTER TABLE `tutor`
 -- Limiti per la tabella `aziende`
 --
 ALTER TABLE `aziende`
-  ADD CONSTRAINT `aziende_ibfk_1` FOREIGN KEY (`formaGiuridica`) REFERENCES `formaGiuridica` (`forma`);
+  ADD CONSTRAINT `aziende_ibfk_1` FOREIGN KEY (`formaGiuridica`) REFERENCES `formaGiuridica` (`forma`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_formaGiuridica` FOREIGN KEY (`formaGiuridica`) REFERENCES `formaGiuridica` (`forma`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `classi`
 --
 ALTER TABLE `classi`
-  ADD CONSTRAINT `classi_ibfk_1` FOREIGN KEY (`emailResponsabile`) REFERENCES `utenti` (`emailUtente`) ON DELETE CASCADE;
+  ADD CONSTRAINT `classi_ibfk_1` FOREIGN KEY (`emailResponsabile`) REFERENCES `utenti` (`emailUtente`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `contatti`
 --
 ALTER TABLE `contatti`
-  ADD CONSTRAINT `contatti_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON DELETE CASCADE;
+  ADD CONSTRAINT `contatti_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `docenteReferente`
 --
 ALTER TABLE `docenteReferente`
-  ADD CONSTRAINT `docenteReferente_ibfk_1` FOREIGN KEY (`emailDocente`) REFERENCES `utenti` (`emailUtente`) ON DELETE CASCADE,
-  ADD CONSTRAINT `docenteReferente_ibfk_2` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON DELETE CASCADE;
+  ADD CONSTRAINT `docenteReferente_ibfk_1` FOREIGN KEY (`emailDocente`) REFERENCES `utenti` (`emailUtente`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `docenteReferente_ibfk_2` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `indirizzi`
 --
 ALTER TABLE `indirizzi`
-  ADD CONSTRAINT `indirizzi_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON DELETE CASCADE;
+  ADD CONSTRAINT `indirizzi_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `studenteTurno`
 --
 ALTER TABLE `studenteTurno`
-  ADD CONSTRAINT `studenteTurno_ibfk_1` FOREIGN KEY (`matricola`) REFERENCES `studenti` (`matricola`) ON DELETE CASCADE,
-  ADD CONSTRAINT `studenteTurno_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON DELETE CASCADE;
+  ADD CONSTRAINT `studenteTurno_ibfk_1` FOREIGN KEY (`matricola`) REFERENCES `studenti` (`matricola`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `studenteTurno_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `studenti`
 --
 ALTER TABLE `studenti`
-  ADD CONSTRAINT `studenti_ibfk_1` FOREIGN KEY (`idClasse`) REFERENCES `classi` (`idClasse`) ON DELETE CASCADE;
+  ADD CONSTRAINT `studenti_ibfk_1` FOREIGN KEY (`idClasse`) REFERENCES `classi` (`idClasse`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `turni`
 --
 ALTER TABLE `turni`
-  ADD CONSTRAINT `turni_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON DELETE CASCADE,
-  ADD CONSTRAINT `turni_ibfk_2` FOREIGN KEY (`idTutor`) REFERENCES `tutor` (`idTutor`) ON DELETE CASCADE,
-  ADD CONSTRAINT `turni_ibfk_3` FOREIGN KEY (`idIndirizzo`) REFERENCES `indirizzi` (`idIndirizzo`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_azienda` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_tutor` FOREIGN KEY (`idTutor`) REFERENCES `tutor` (`idTutor`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `turni_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `turni_ibfk_2` FOREIGN KEY (`idTutor`) REFERENCES `tutor` (`idTutor`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `turni_ibfk_3` FOREIGN KEY (`idIndirizzo`) REFERENCES `indirizzi` (`idIndirizzo`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `turnoMateria`
 --
 ALTER TABLE `turnoMateria`
-  ADD CONSTRAINT `turnoMateria_ibfk_1` FOREIGN KEY (`materia`) REFERENCES `materie` (`materia`) ON DELETE CASCADE,
-  ADD CONSTRAINT `turnoMateria_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_materia` FOREIGN KEY (`materia`) REFERENCES `materie` (`materia`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_turno_cascade` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `turnoMateria_ibfk_1` FOREIGN KEY (`materia`) REFERENCES `materie` (`materia`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `turnoMateria_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `turnoSettore`
 --
 ALTER TABLE `turnoSettore`
-  ADD CONSTRAINT `turnoSettore_ibfk_1` FOREIGN KEY (`settore`) REFERENCES `settori` (`settore`) ON DELETE CASCADE,
-  ADD CONSTRAINT `turnoSettore_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_settore` FOREIGN KEY (`settore`) REFERENCES `settori` (`settore`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_turno` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `turnoSettore_ibfk_1` FOREIGN KEY (`settore`) REFERENCES `settori` (`settore`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `turnoSettore_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
