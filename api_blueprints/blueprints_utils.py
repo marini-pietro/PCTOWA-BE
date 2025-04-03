@@ -8,6 +8,29 @@ from functools import wraps
 from requests import post as requests_post # From requests import the post function
 from cachetools import TTLCache
 
+# Authorization related
+def check_authorization(allowed_user_types):
+    """
+    Decorator to check if the user's type is in the allowed list.
+    
+    params:
+        allowed_user_types: list[str] - List of user types that are permitted to execute the function.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Check if user_type exists in the request and is allowed
+            user_type = getattr(request, 'user_type', None)
+            if user_type not in allowed_user_types:
+                return create_response(
+                    message={'outcome': 'not permitted'}, 
+                    status_code=STATUS_CODES["forbidden"]
+                )
+            # Proceed with the original function
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
 # Validation related
 def validate_filters(fields: list[str], table_name: str):
     """

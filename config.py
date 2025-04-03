@@ -43,8 +43,20 @@ STATUS_CODES_EXPLANATIONS = {
 
 STATUS_CODES = {
     "not_found": 404,
+    "unauthorized": 401,
+    "forbidden": 403,
     "bad_request": 400,
     "created": 201,
     "ok": 200,
     "internal_error": 500,
 }
+
+# Authorization related
+ROLES = {
+    0: "admin",
+    1: "teacher",
+    2: "tutor",
+    3: "supertutor"
+}
+
+NOT_AUTHORIZED_MESSAGE: dict[str, str] = {'outcome': 'error, action not permitted with current user'}
