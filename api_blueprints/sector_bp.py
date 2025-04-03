@@ -1,9 +1,10 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from .blueprints_utils import (fetchone_query, fetchall_query, 
-                               execute_query, log, 
-                               jwt_required_endpoint, create_response)
+from .blueprints_utils import (check_authorization, fetchone_query, 
+                               fetchall_query, execute_query, 
+                               log, jwt_required_endpoint, 
+                               create_response)
 
 # Create the blueprint and API
 sector_bp = Blueprint('sector', __name__)
