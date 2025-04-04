@@ -12,6 +12,7 @@ api = Api(legalform_bp)
 
 class LegalFormRegister(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
         # Gather parameters
         legalform = request.args.get('forma')
@@ -36,6 +37,7 @@ class LegalFormRegister(Resource):
 
 class LegalFormDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def delete(self):
         # Gather parameters
         legalform = request.args.get('forma')
@@ -55,6 +57,7 @@ class LegalFormDelete(Resource):
 
 class LegalFormUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def patch(self):
         # Gather parameters
         legalform = request.args.get('forma')
@@ -80,6 +83,7 @@ class LegalFormUpdate(Resource):
 
 class LegalFormRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather URL parameters
         try:

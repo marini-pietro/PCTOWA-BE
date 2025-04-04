@@ -12,6 +12,7 @@ api = Api(sector_bp)
 
 class SectorRegister(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def post(self):
         # Gather parameters
         settore = request.args.get('settore')
@@ -36,6 +37,7 @@ class SectorRegister(Resource):
 
 class SectorDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def delete(self):
         # Gather parameters
         settore = request.args.get('settore')
@@ -60,6 +62,7 @@ class SectorDelete(Resource):
 
 class SectorUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def patch(self):
         # Gather parameters
         settore = request.args.get('settore')
@@ -85,6 +88,7 @@ class SectorUpdate(Resource):
 
 class SectorRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather URL parameters
         try:

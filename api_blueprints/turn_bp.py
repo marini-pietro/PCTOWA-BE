@@ -14,6 +14,7 @@ api = Api(turn_bp)
 
 class TurnRegister(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
         # Gather parameters
         settore = request.args.get('settore')
@@ -71,6 +72,7 @@ class TurnRegister(Resource):
 
 class TurnDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
     def delete(self):
         # Gather parameters
         try:
@@ -93,6 +95,7 @@ class TurnDelete(Resource):
 
 class TurnUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
     def patch(self):
         # Gather parameters
         toModify = request.args.get('toModify').split(',')
@@ -143,6 +146,7 @@ class TurnUpdate(Resource):
 
 class TurnRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather parameters
         dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
