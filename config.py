@@ -50,6 +50,7 @@ STATUS_CODES = {
     "bad_request": 400,
     "created": 201,
     "ok": 200,
+    "no_content": 204,
     "internal_error": 500,
 }
 
