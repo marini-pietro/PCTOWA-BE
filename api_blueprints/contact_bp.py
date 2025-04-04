@@ -165,10 +165,13 @@ class ContactRead(Resource):
 
             # Execute the query
             contacts = fetchall_query(query, params)
+
+            # Get the ids to log
+            ids = [contact['idContatto'] for contact in contacts]
             
             # Log the read operation
             log(type='info', 
-                message=f'User {request.user_identity} read contacts',
+                message=f'User {request.user_identity} read contacts {ids}',
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT

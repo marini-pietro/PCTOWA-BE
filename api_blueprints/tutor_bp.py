@@ -149,9 +149,12 @@ class TutorRead(Resource):
             # Execute query
             tutors = fetchone_query(query, params)
 
+            # Get the ids to log
+            ids = [tutor['idTutor'] for tutor in tutors]
+
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read tutors', 
+                message=f'User {request.user_identity} read tutors {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
