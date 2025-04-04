@@ -1,3 +1,5 @@
+from typing import Dict
+
 # Define authentication server data
 AUTH_SERVER_HOST = 'localhost' # The host of the authentication server
 AUTH_SERVER_PORT = 5002 # The port of the authentication server
@@ -59,4 +61,4 @@ ROLES = {
     3: "supertutor"
 }
 
-NOT_AUTHORIZED_MESSAGE: dict[str, str] = {'outcome': 'error, action not permitted with current user'}
+NOT_AUTHORIZED_MESSAGE: Dict[str, str] = {'outcome': 'error, action not permitted with current user'}
