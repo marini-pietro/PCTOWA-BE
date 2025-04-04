@@ -89,7 +89,7 @@ class TurnDelete(Resource):
             origin_port=API_SERVER_PORT)
 
         # Return a success message
-        return create_response(message={'outcome': 'turn successfully deleted'}, status_code=STATUS_CODES["ok"])
+        return create_response(message={'outcome': 'turn successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
 class TurnUpdate(Resource):
     @jwt_required_endpoint
