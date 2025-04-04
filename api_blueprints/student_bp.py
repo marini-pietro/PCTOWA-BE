@@ -13,6 +13,7 @@ api = Api(student_bp)
 
 class StudentRegister(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
         # Gather parameters
         nome = request.args.get('nome')
@@ -43,6 +44,7 @@ class StudentRegister(Resource):
 
 class StudentDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
     def delete(self):
         # Gather parameters
         try:
@@ -65,6 +67,7 @@ class StudentDelete(Resource):
 
 class StudentUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
     def patch(self):
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')  # toModify is a list of fields to modify
@@ -115,6 +118,7 @@ class StudentUpdate(Resource):
 
 class StudentRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather parameters
         nome = request.args.get('nome')

@@ -13,6 +13,7 @@ api = Api(tutor_bp)
 
 class TutorRegister(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
         # Gather parameters
         nome = request.args.get('nome')
@@ -43,6 +44,7 @@ class TutorRegister(Resource):
 
 class TutorDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
     def delete(self):
         # Gather parameters
         idTutor = int(request.args.get('idTutor'))
@@ -62,6 +64,7 @@ class TutorDelete(Resource):
 
 class TutorUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
     def patch(self):
         # Gather parameters
         try:
@@ -112,6 +115,7 @@ class TutorUpdate(Resource):
 
 class TutorRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather parameters
         nome = request.args.get('nome')
