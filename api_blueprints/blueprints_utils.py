@@ -7,6 +7,78 @@ from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, CONNECTION_POOL_SIZE,
 from functools import wraps
 from requests import post as requests_post # From requests import the post function
 from cachetools import TTLCache
+from typing import Dict, Any
+
+# Casting related
+input_validation_cache = None
+
+def perform_casting_operations(data: Dict[str, str]) -> Dict[str, Any]:
+    """
+    Given a dictionary of data it compares the data type of the value of a key in data to the data type written in the input_validation json and if they are different it performs the necessary casting and returns the dictionary with the correct types.
+    If a value that cannot be null is passed as null in the data dictionary it returns False
+    """
+    global input_validation_cache
+
+    # Load input validation metadata into cache if not already loaded
+    if input_validation_cache is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        metadata_path = os.path.join(base_dir, '..', 'input_validation.json')
+        if not os.path.exists(metadata_path): # Check if the file exists
+            # If the file doesn't exist, generate it using the input_validation_generator.py script
+            os.system("python3 input_validation_generator.py")
+        try:
+            with open(metadata_path) as metadata_file:
+                input_validation_cache = json.load(metadata_file)
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            return {'error': f'Failed to load metadata: {str(e)}'}
+        
+    # Validate input data against metadata
+    for key, value in data.items():
+        # Check if the key exists in the metadata
+        if key in input_validation_cache:
+            expected_type = input_validation_cache[key].get('type')
+            is_nullable = input_validation_cache[key].get('nullable', False)
+
+            # Perform casting based on expected type
+            if expected_type == 'int':
+                try:
+                    data[key] = int(value)
+                except (ValueError, TypeError):
+                    if not is_nullable:
+                        return False
+                    data[key] = None
+            elif expected_type == 'str' or expected_type == 'varchar' or expected_type == 'char':
+                data[key] = str(value)
+            elif expected_type == 'bool':
+                if value.lower() in ['true', '1', 'yes']:
+                    data[key] = True
+                elif value.lower() in ['false', '0', 'no']:
+                    data[key] = False
+                else:
+                    if not is_nullable:
+                        return False
+                    data[key] = None
+            elif expected_type == 'datetime':
+                try:
+                    data[key] = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                except (ValueError, TypeError):
+                    if not is_nullable:
+                        return False
+                    data[key] = None
+            elif expected_type == 'date':
+                try:
+                    data[key] = datetime.strptime(value, '%Y-%m-%d').date()
+                except (ValueError, TypeError):
+                    if not is_nullable:
+                        return False
+                    data[key] = None
+            elif expected_type == 'time':
+                try:
+                    data[key] = datetime.strptime(value, '%H:%M').time()
+                except (ValueError, TypeError):
+                    if not is_nullable:
+                        return False
+                    data[key] = None
 
 # Authorization related
 def check_authorization(allowed_user_types):
@@ -55,6 +127,8 @@ def validate_filters(fields: list[str], table_name: str):
     if metadata_cache is None:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         metadata_path = os.path.join(base_dir, '..', 'table_metadata.json')
+        if not os.path.exists(metadata_path):
+            os.system("python3 valid_filters_generator.py")
         try:
             with open(metadata_path) as metadata_file:
                 metadata = json.load(metadata_file)
