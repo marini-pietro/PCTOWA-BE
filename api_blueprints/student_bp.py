@@ -61,7 +61,7 @@ class StudentDelete(Resource):
             origin_port=API_SERVER_PORT)
 
         # Return a success message
-        return create_response(message={'outcome': 'student successfully deleted'}, status_code=STATUS_CODES["ok"])
+        return create_response(message={'outcome': 'student successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
 class StudentUpdate(Resource):
     @jwt_required_endpoint

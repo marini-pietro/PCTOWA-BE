@@ -64,7 +64,7 @@ class AddressDelete(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return create_response(message={'outcome': 'address successfully deleted'}, status_code=STATUS_CODES["ok"])
+        return create_response(message={'outcome': 'address successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
 class AddressUpdate(Resource):
     @jwt_required_endpoint

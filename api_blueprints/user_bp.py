@@ -119,7 +119,7 @@ class UserDelete(Resource):
             origin_port=API_SERVER_PORT)
 
         # Return success message
-        return create_response(message={'outcome': 'user successfully deleted'}, status_code=STATUS_CODES["ok"])
+        return create_response(message={'outcome': 'user successfully deleted'}, status_code=STATUS_CODES["no_content"])
     
 class UserRead(Resource):
     @jwt_required_endpoint
