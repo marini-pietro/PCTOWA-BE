@@ -160,9 +160,12 @@ class UserRead(Resource):
             # Execute query
             users = fetchall_query(query, params)
 
+            # Get the ids to log
+            ids = [user['emailUtente'] for user in users]
+
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read users', 
+                message=f'User {request.user_identity} read users {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)

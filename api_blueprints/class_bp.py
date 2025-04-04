@@ -150,10 +150,13 @@ class ClassRead(Resource):
 
             # Execute the query
             classes = fetchall_query(query, params)
+
+            # Get the ids to log
+            ids = [class_['idClasse'] for class_ in classes]
             
             # Log the read operation
             log(type='info', 
-                message=f'User {request.user_identity} read classes',
+                message=f'User {request.user_identity} read classes {ids}',
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT

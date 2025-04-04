@@ -153,9 +153,12 @@ class AddressRead(Resource):
             # Execute query
             addresses = fetchall_query(query, tuple(params))
 
+            # Get the ids to log
+            ids = [address['idIndirizzo'] for address in addresses]
+
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read addresses with filters: {data}', 
+                message=f'User {request.user_identity} read addresses {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)

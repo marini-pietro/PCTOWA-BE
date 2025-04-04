@@ -153,9 +153,12 @@ class StudentRead(Resource):
             # Execute query
             students = fetchall_query(query, params)
 
+            # Get the ids to log
+            ids = [student['matricola'] for student in students]
+
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read students', 
+                message=f'User {request.user_identity} read students {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)

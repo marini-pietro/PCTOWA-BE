@@ -197,10 +197,13 @@ class CompanyRead(Resource):
             # Execute the query
             companies = fetchall_query(query, params)
 
+            # Get the ids to log
+            ids = [company['idAzienda'] for company in companies]
+
             # Log the read operation            
             log(
                 type='info',
-                message=f'User {request.user_identity} read companies',
+                message=f'User {request.user_identity} read companies {ids}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT

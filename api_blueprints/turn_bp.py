@@ -210,9 +210,12 @@ class TurnRead(Resource):
             # Execute query
             turns = fetchall_query(query, tuple(params))
 
+            # Get the ids to log
+            ids = [turn['idTurno'] for turn in turns]
+
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read turns with filters: {data}', 
+                message=f'User {request.user_identity} read turns {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
