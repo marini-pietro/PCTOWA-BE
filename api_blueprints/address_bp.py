@@ -13,6 +13,7 @@ api = Api(address_bp)
 
 class AddressRegister(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
         # Gather parameters
         stato = request.args.get('stato')
@@ -47,6 +48,7 @@ class AddressRegister(Resource):
 
 class AddressDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def delete(self):
         # Gather parameters
         try:
@@ -68,6 +70,7 @@ class AddressDelete(Resource):
 
 class AddressUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def patch(self):
         """
         Updates an address in the database.
@@ -127,6 +130,7 @@ class AddressUpdate(Resource):
 
 class AddressRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather parameters with validation
         try:

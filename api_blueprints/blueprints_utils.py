@@ -3,7 +3,10 @@ from flask import jsonify, make_response, request
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
 from datetime import datetime
-from config import DB_HOST, REDACTED_USER, REDACTED_PASSWORD, DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS, STATUS_CODES
+from config import (DB_HOST, REDACTED_USER, REDACTED_PASSWORD, 
+                    DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, 
+                    LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS, 
+                    STATUS_CODES, ROLES)
 from functools import wraps
 from requests import post as requests_post # From requests import the post function
 from cachetools import TTLCache
@@ -92,8 +95,9 @@ def check_authorization(allowed_user_types):
         @wraps(func)
         def wrapper(*args, **kwargs):
             # Check if user_type exists in the request and is allowed
-            user_type = getattr(request, 'user_type', None)
-            if user_type not in allowed_user_types:
+            user_type: int = getattr(request, 'user_type', None)
+            user_string = ROLES.get(user_type, None)
+            if user_string not in allowed_user_types:
                 return create_response(
                     message={'outcome': 'not permitted'}, 
                     status_code=STATUS_CODES["forbidden"]

@@ -13,6 +13,8 @@ user_bp = Blueprint('user', __name__)
 api = Api(user_bp)
 
 class UserRegister(Resource):
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def post(self):
         email = request.json.get('email')
         password = request.json.get('password')
@@ -58,6 +60,7 @@ class UserLogin(Resource):
 
 class UserUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def patch(self):
         email = request.args.get('email')
         toModify: list[str] = request.args.get('toModify').split(',')
@@ -100,6 +103,7 @@ class UserUpdate(Resource):
 
 class UserDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def delete(self):
         # Gather parameters
         email = request.args.get('email')
@@ -123,6 +127,7 @@ class UserDelete(Resource):
     
 class UserRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather parameters
         email = request.args.get('email')

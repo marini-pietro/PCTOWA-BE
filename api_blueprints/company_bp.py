@@ -15,6 +15,7 @@ api = Api(company_bp)
 
 class CompanyRegister(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
         params = {
             'ragioneSociale': request.args.get('ragioneSociale'),
@@ -62,6 +63,7 @@ class CompanyRegister(Resource):
 
 class CompanyDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def delete(self):
         # Gather parameters
         try:
@@ -91,6 +93,7 @@ class CompanyDelete(Resource):
 
 class CompanyUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def patch(self):
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')  # list of fields to modify
@@ -145,6 +148,7 @@ class CompanyUpdate(Resource):
 
 class CompanyRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather parameters
         idAzienda = request.args.get('idAzienda')

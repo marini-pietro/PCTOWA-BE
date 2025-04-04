@@ -14,6 +14,7 @@ api = Api(subject_bp)
 
 class SubjectRegister(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def post(self):
         # Gather parameters
         materia = request.args.get('materia')
@@ -44,6 +45,7 @@ class SubjectRegister(Resource):
 
 class SubjectDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def delete(self):
         # Gather parameters
         materia = request.args.get('materia')
@@ -72,6 +74,7 @@ class SubjectDelete(Resource):
 
 class SubjectUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def patch(self):
         # Gather parameters
         materia = request.args.get('materia')
@@ -119,6 +122,7 @@ class SubjectUpdate(Resource):
     
 class SubjectRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather parameters
         materia = request.args.get('materia')

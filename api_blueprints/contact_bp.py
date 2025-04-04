@@ -12,6 +12,7 @@ api = Api(contact_bp)
 
 class ContactRegister(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
         params = {
             'nome': request.args.get('nome'),
@@ -48,6 +49,7 @@ class ContactRegister(Resource):
 
 class ContactDelete(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def delete(self):
         # Gather parameters
         try:
@@ -70,6 +72,7 @@ class ContactDelete(Resource):
 
 class ContactUpdate(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def patch(self):
         # Gather parameters
         toModify = request.args.get('toModify')
@@ -123,6 +126,7 @@ class ContactUpdate(Resource):
 
 class ContactRead(Resource):
     @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
         # Gather parameters
         nome = request.args.get('nome')
