@@ -125,7 +125,7 @@ class Contact(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self, id=None):
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')
@@ -133,30 +133,25 @@ class Contact(Resource):
         email = request.args.get('email')
         ruolo = request.args.get('ruolo')
         try:
-            idAzienda = int(request.args.get('idAzienda'))
+            idAzienda = int(request.args.get('idAzienda')) if request.args.get('idAzienda') else None
         except (ValueError, TypeError):
             return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
         try:
-            idContatto = int(request.args.get('idContatto'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid contact ID'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            limit = int(request.args.get('limit'))
-            offset = int(request.args.get('offset'))
+            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
+            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
         except (ValueError, TypeError):
             return create_response(message={'error': 'Invalid limit or offset values'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the filters dictionary (only include non-null values)
         filters = {key: value for key, value in {
+            "idContatto": id,  # Use the path variable 'id'
             "nome": nome,
             "cognome": cognome,
             "telefono": telefono,
             "email": email,
             "ruolo": ruolo,
-            "idAzienda": idAzienda,
-            "idContatto": idContatto
+            "idAzienda": idAzienda
         }.items() if value}
-
 
         try:
             # Build the select query
@@ -170,7 +165,7 @@ class Contact(Resource):
 
             # Get the ids to log
             ids = [contact['idContatto'] for contact in contacts]
-            
+
             # Log the read operation
             log(type='info', 
                 message=f'User {get_jwt_identity().get("email")} read contacts {ids}',
@@ -184,4 +179,4 @@ class Contact(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"]) 
 
-api.add_resource(Contact, '/contact')
+api.add_resource(Contact, '/contact', '/contact/<int:id>')
