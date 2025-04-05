@@ -117,21 +117,17 @@ class Student(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self, matricola=None):
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')
         try:
-            idClasse = int(request.args.get('idClasse'))
+            idClasse = int(request.args.get('idClasse')) if request.args.get('idClasse') else None
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid idClasse parameter'}, status_code=STATUS_CODES["bad_request"])
         try:
-            matricola = int(request.args.get('matricola'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid matricola parameter'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            limit = int(request.args.get('limit'))
-            offset = int(request.args.get('offset'))
+            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
+            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
@@ -140,7 +136,7 @@ class Student(Resource):
             'nome': nome,
             'cognome': cognome,
             'idClasse': idClasse,
-            'matricola': matricola
+            'matricola': matricola  # Use the path variable 'matricola'
         }.items() if value}
 
         try:
@@ -170,4 +166,4 @@ class Student(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Student, '/student')
+api.add_resource(Student, '/student', '/student/<int:matricola>')

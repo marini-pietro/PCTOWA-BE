@@ -129,7 +129,7 @@ class Address(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self, id=None):
         # Gather parameters with validation
         try:
             limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
@@ -147,20 +147,24 @@ class Address(Resource):
         data = {key: request.args.get(key) for key in ['idIndirizzo', 'stato', 'provincia', 'comune', 'cap', 'indirizzo']}
         if idAzienda is not None:
             data['idAzienda'] = idAzienda
-        
+
+        # If 'id' is provided, add it to the filter
+        if id is not None:
+            data['idIndirizzo'] = id
+
         try:
             # Build the query
             query, params = build_select_query_from_filters(data=data, table_name='indirizzi', limit=limit, offset=offset)
 
             # Execute query
-            addresses = fetchall_query(query, tuple(params))
+            addresses = fetchall_query(query, params)
 
             # Get the ids to log
             ids = [address['idIndirizzo'] for address in addresses]
 
             # Log the read
             log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} read addresses {ids}', 
+                message=f'User {get_jwt_identity().get("email")} read address {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
@@ -170,4 +174,4 @@ class Address(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
     
-api.add_resource(Address, '/address')
+api.add_resource(Address, '/address', '/address/<int:id>')

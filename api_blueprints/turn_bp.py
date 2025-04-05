@@ -145,18 +145,18 @@ class Turn(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self, id=None):
         # Gather parameters
         dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
         dataFine = parse_date_string(date_string=request.args.get('dataFine'))
         oraInizio = parse_time_string(time_string=request.args.get('oraInizio'))
         oraFine = parse_time_string(time_string=request.args.get('oraFine'))
         try:
-            posti = int(request.args.get('posti'))
+            posti = int(request.args.get('posti')) if request.args.get('posti') else None
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid posti value'}, status_code=STATUS_CODES["bad_request"])
         try:
-            postiOccupati = int(request.args.get('postiOccupati'))
+            postiOccupati = int(request.args.get('postiOccupati')) if request.args.get('postiOccupati') else None
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid postiOccupati value'}, status_code=STATUS_CODES["bad_request"])
         try:
@@ -164,11 +164,11 @@ class Turn(Resource):
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid ore value'}, status_code=STATUS_CODES["bad_request"])
         try:
-            idAzienda = int(request.args.get('idAzienda'))
+            idAzienda = int(request.args.get('idAzienda')) if request.args.get('idAzienda') else None
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid idAzienda value'}, status_code=STATUS_CODES["bad_request"])
         try:
-            idTutor = int(request.args.get('idTutor'))
+            idTutor = int(request.args.get('idTutor')) if request.args.get('idTutor') else None
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid idTutor value'}, status_code=STATUS_CODES["bad_request"])
         try:
@@ -176,17 +176,14 @@ class Turn(Resource):
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid idIndirizzo value'}, status_code=STATUS_CODES["bad_request"])
         try:
-            idTurno = int(request.args.get('idTurno'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idTurno value'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            limit = int(request.args.get('limit'))
-            offset = int(request.args.get('offset'))
+            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
+            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the filters dictionary (only include non-null values)
         data = {key: value for key, value in {
+            'idTurno': id,  # Use the path variable 'id'
             'dataInizio': dataInizio,
             'dataFine': dataFine,
             'oraInizio': oraInizio,
@@ -196,8 +193,7 @@ class Turn(Resource):
             'ore': ore,
             'idAzienda': idAzienda,
             'idTutor': idTutor,
-            'idIndirizzo': idIndirizzo,
-            'idTurno': idTurno
+            'idIndirizzo': idIndirizzo
         }.items() if value}
 
         try:
@@ -227,4 +223,4 @@ class Turn(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Turn, '/turn')
+api.add_resource(Turn, '/turn', '/turn/<int:id>')

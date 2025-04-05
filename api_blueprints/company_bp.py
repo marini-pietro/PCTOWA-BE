@@ -147,9 +147,8 @@ class Company(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self, id=None):
         # Gather parameters
-        idAzienda = request.args.get('idAzienda')
         ragioneSociale = request.args.get('ragioneSociale')
         codiceAteco = request.args.get('codiceAteco')
         partitaIVA = request.args.get('partitaIVA')
@@ -167,11 +166,11 @@ class Company(Resource):
             limit = int(request.args.get('limit', 10))
             offset = int(request.args.get('offset', 0))
         except ValueError:
-            return {'error': 'invalid limit or offset values'}, STATUS_CODES["bad_request"]
+            return create_response(message={'error': 'invalid limit or offset values'}, status_code=STATUS_CODES["bad_request"])
         
         # Build the filters dictionary (only include non-null values)
         data = {key: value for key, value in {
-            'idAzienda': idAzienda,
+            'idAzienda': id,  # Use the path variable 'id'
             'ragioneSociale': ragioneSociale,
             'codiceAteco': codiceAteco,
             'partitaIVA': partitaIVA,
@@ -212,8 +211,8 @@ class Company(Resource):
             )
 
             # Return the companies
-            return companies, STATUS_CODES["ok"]
+            return create_response(message=companies, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Company, '/company')
+api.add_resource(Company, '/company', '/company/<int:id>')

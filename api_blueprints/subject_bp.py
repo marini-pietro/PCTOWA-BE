@@ -121,20 +121,19 @@ class Subject(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self, materia=None):
         # Gather parameters
-        materia = request.args.get('materia')
         descrizione = request.args.get('descrizione')
         hexColor = request.args.get('hexColor')
         try:
-            limit = int(request.args.get('limit'))
-            offset = int(request.args.get('offset'))
+            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
+            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the filters dictionary (only include non-null values)
         data = {key: value for key, value in {
-            'materia': materia,
+            'materia': materia,  # Use the path variable 'materia'
             'descrizione': descrizione,
             'hexColor': hexColor
         }.items() if value}
@@ -161,4 +160,4 @@ class Subject(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Subject, '/subject')
+api.add_resource(Subject, '/subject', '/subject/<string:materia>')

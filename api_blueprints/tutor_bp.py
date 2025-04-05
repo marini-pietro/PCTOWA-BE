@@ -114,25 +114,21 @@ class Tutor(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self, id=None):
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')
         emailTutor = request.args.get('emailTutor')
         telefonoTutor = request.args.get('telefonoTutor')
         try:
-            idTutor = int(request.args.get('idTutor'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idTutor parameter'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            limit = int(request.args.get('limit'))
-            offset = int(request.args.get('offset'))
+            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
+            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the filters dictionary (only include non-null values)
         data = {key: value for key, value in {
-            'idTutor': idTutor,
+            'idTutor': id,  # Use the path variable 'id'
             'nome': nome,
             'cognome': cognome,
             'emailTutor': emailTutor,
@@ -149,14 +145,14 @@ class Tutor(Resource):
             )
 
             # Execute query
-            tutors = fetchone_query(query, params)
+            tutors = fetchall_query(query, params)
 
             # Get the ids to log
             ids = [tutor['idTutor'] for tutor in tutors]
 
             # Log the read
             log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} read tutors {ids}', 
+                message=f'User {get_jwt_identity().get("email")} read tutor {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
@@ -166,4 +162,4 @@ class Tutor(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Tutor, '/tutor')
+api.add_resource(Tutor, '/tutor', '/tutor/<int:id>')
