@@ -12,7 +12,7 @@ from .blueprints_utils import (check_authorization, validate_filters,
 tutor_bp = Blueprint('tutor', __name__)
 api = Api(tutor_bp)
 
-class TutorRegister(Resource):
+class Tutor(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
@@ -43,7 +43,6 @@ class TutorRegister(Resource):
         # Return a success message
         return create_response(message={'outcome': 'tutor successfully created'}, status_code=STATUS_CODES["created"])
 
-class TutorDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def delete(self):
@@ -63,7 +62,6 @@ class TutorDelete(Resource):
         # Return a success message
         return create_response(message={'outcome': 'tutor successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
-class TutorUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def patch(self):
@@ -114,7 +112,6 @@ class TutorUpdate(Resource):
         # Return a success message
         return create_response(message={'outcome': 'tutor successfully updated'}, status_code=STATUS_CODES["ok"])
 
-class TutorRead(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -169,8 +166,4 @@ class TutorRead(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-# Add resources to the API
-api.add_resource(TutorRegister, '/register')
-api.add_resource(TutorDelete, '/delete')
-api.add_resource(TutorUpdate, '/update')
-api.add_resource(TutorRead, '/read')
+api.add_resource(Tutor, '/tutor')

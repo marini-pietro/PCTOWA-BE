@@ -11,7 +11,7 @@ from .blueprints_utils import (check_authorization, fetchone_query,
 legalform_bp = Blueprint('legalform', __name__)
 api = Api(legalform_bp)
 
-class LegalFormRegister(Resource):
+class LegalForm(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
@@ -36,7 +36,6 @@ class LegalFormRegister(Resource):
         # Return a success message
         return create_response(message={'outcome': 'legal form successfully created'}, status_code=STATUS_CODES["created"])
 
-class LegalFormDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def delete(self):
@@ -56,7 +55,6 @@ class LegalFormDelete(Resource):
         # Return a success message
         return create_response(message={'outcome': 'legal form successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
-class LegalFormUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def patch(self):
@@ -82,7 +80,6 @@ class LegalFormUpdate(Resource):
         # Return a success message
         return create_response(message={'outcome': 'legal form successfully updated'}, status_code=STATUS_CODES["ok"])
 
-class LegalFormRead(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -114,8 +111,4 @@ class LegalFormRead(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-# Add resources to the API
-api.add_resource(LegalFormRegister, '/register')
-api.add_resource(LegalFormDelete, '/delete')
-api.add_resource(LegalFormUpdate, '/update')
-api.add_resource(LegalFormRead, '/read')
+api.add_resource(LegalForm, '/legalForm')

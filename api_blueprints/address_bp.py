@@ -12,7 +12,7 @@ from .blueprints_utils import (check_authorization, build_select_query_from_filt
 address_bp = Blueprint('address', __name__)
 api = Api(address_bp)
 
-class AddressRegister(Resource):
+class Address(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
@@ -46,8 +46,7 @@ class AddressRegister(Resource):
             origin_port=API_SERVER_PORT)
 
         return create_response(message={'outcome': 'address successfully created'}, status_code=STATUS_CODES["created"])
-
-class AddressDelete(Resource):
+    
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def delete(self):
@@ -68,8 +67,7 @@ class AddressDelete(Resource):
             origin_port=API_SERVER_PORT)
 
         return create_response(message={'outcome': 'address successfully deleted'}, status_code=STATUS_CODES["no_content"])
-
-class AddressUpdate(Resource):
+    
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def patch(self):
@@ -128,8 +126,7 @@ class AddressUpdate(Resource):
 
         # Return a success message
         return create_response(message={'outcome': f'address {idIndirizzo} successfully updated'}, status_code=STATUS_CODES["ok"])
-
-class AddressRead(Resource):
+    
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -172,9 +169,5 @@ class AddressRead(Resource):
             return create_response(message=addresses, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
-
-# Add resources to the API
-api.add_resource(AddressRegister, '/register')
-api.add_resource(AddressDelete, '/delete')
-api.add_resource(AddressUpdate, '/update')
-api.add_resource(AddressRead, '/read')
+    
+api.add_resource(Address, '/address')

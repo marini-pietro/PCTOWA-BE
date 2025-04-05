@@ -12,7 +12,7 @@ import re
 class_bp = Blueprint('class', __name__)
 api = Api(class_bp)
 
-class ClassRegister(Resource):
+class Class(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
@@ -41,7 +41,6 @@ class ClassRegister(Resource):
         except Exception as err:
             return create_response(message={'outcome': 'class already exists'}, status_code=STATUS_CODES["bad_request"])
 
-class ClassDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def delete(self):
@@ -67,7 +66,6 @@ class ClassDelete(Resource):
         # Return a success message
         return create_response(message={'outcome': 'class deleted'}, status_code=STATUS_CODES["no_content"])
 
-class ClassUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def patch(self):
@@ -117,8 +115,7 @@ class ClassUpdate(Resource):
         
         # Return a success message
         return create_response(message={'outcome': 'class updated'}, status_code=STATUS_CODES["ok"])
-
-class ClassRead(Resource):
+    
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -172,7 +169,4 @@ class ClassRead(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(ClassRegister, '/register')
-api.add_resource(ClassDelete, '/delete')
-api.add_resource(ClassUpdate, '/update')
-api.add_resource(ClassRead, '/read')
+api.add_resource(Class, '/class')

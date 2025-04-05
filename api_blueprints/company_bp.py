@@ -14,7 +14,7 @@ from .blueprints_utils import (check_authorization, validate_filters,
 company_bp = Blueprint('company', __name__)
 api = Api(company_bp)
 
-class CompanyRegister(Resource):
+class Company(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
@@ -62,7 +62,6 @@ class CompanyRegister(Resource):
         except mysql.connector.IntegrityError as ex:
             return create_response(message={'outcome': f'error, company already exists: {ex}'}, status_code=STATUS_CODES["bad_request"])
 
-class CompanyDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def delete(self):
@@ -92,7 +91,6 @@ class CompanyDelete(Resource):
         # Return a success message
         return create_response(message={'outcome': 'company successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
-class CompanyUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def patch(self):
@@ -147,7 +145,6 @@ class CompanyUpdate(Resource):
         # Return a success message
         return create_response(message={'outcome': 'company successfully updated'}, status_code=STATUS_CODES["ok"])
 
-class CompanyRead(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -219,8 +216,4 @@ class CompanyRead(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-# Add resources to the API
-api.add_resource(CompanyRegister, '/register')
-api.add_resource(CompanyDelete, '/delete')
-api.add_resource(CompanyUpdate, '/update')
-api.add_resource(CompanyRead, '/read')
+api.add_resource(Company, '/company')
