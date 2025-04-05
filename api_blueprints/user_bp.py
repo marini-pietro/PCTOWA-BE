@@ -2,7 +2,10 @@ from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from requests import post as requests_post
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST, STATUS_CODES
+from requests.exceptions import RequestException
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST, 
+                    AUTH_SERVER_PORT, STATUS_CODES)
 from .blueprints_utils import (check_authorization, validate_filters, 
                                fetchone_query, fetchall_query, 
                                execute_query, log, 
@@ -42,22 +45,53 @@ class UserRegister(Resource):
             return create_response(message={'outcome': 'error, user with provided credentials already exists'}, status_code=STATUS_CODES["bad_request"])
 
 class UserLogin(Resource):
-    def get(self):
+    def post(self):
         # Gather parameters
-        email = request.args.get('email')
-        password = request.args.get('password')
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
         
         # Validate parameters
         if email is None or password is None:
             return create_response(message={'error': 'missing email or password'}, status_code=STATUS_CODES["bad_request"])
 
-        # Forward login request to the authentication service
-        response = requests_post(f'http://{AUTH_SERVER_HOST}/auth/login', json={'email': email, 'password': password})
-        if response.status_code == STATUS_CODES["ok"]: # If the login is successful send the token back to the user
-            return response.json(), STATUS_CODES["ok"]
-        
-        # If the login fails, return an error message with unauthorized status code
-        return create_response(message={'error': 'Invalid credentials'}, status_code=STATUS_CODES["unauthorized"])
+        try:
+            # Forward login request to the authentication service
+            response = requests_post(f'http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/login', json={'email': email, 'password': password}, timeout=5)
+        except RequestException as e:
+            return create_response(message={'error': 'Authentication service unavailable'}, status_code=STATUS_CODES["internal_error"])
+
+        # Handle response from the authentication service
+        if response.status_code == STATUS_CODES["ok"]:  # If the login is successful, send the token back to the user
+            return create_response(message=response.json(), status_code=STATUS_CODES["ok"])
+        elif response.status_code == STATUS_CODES["unauthorized"]:
+            log(type='warning', 
+            message=f'Failed login attempt for email: {email}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'Invalid credentials'}, status_code=STATUS_CODES["unauthorized"])
+        elif response.status_code == STATUS_CODES["bad_request"]:
+            log(type='error', 
+            message=f'Bad request during login for email: {email}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'Bad request'}, status_code=STATUS_CODES["bad_request"])
+        elif response.status_code == STATUS_CODES["internal_error"]:
+            log(type='error', 
+            message=f'Internal error during login for email: {email}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'Internal error'}, status_code=STATUS_CODES["internal_error"])
+        else:
+            log(type='error', 
+            message=f'Unexpected error during login for email: {email} with status code: {response.status_code}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'Unexpected error during login'}, status_code=STATUS_CODES["internal_error"])
 
 class UserUpdate(Resource):
     @jwt_required_endpoint
