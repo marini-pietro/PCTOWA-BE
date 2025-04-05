@@ -118,24 +118,20 @@ class Class(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self, id=None):
         # Gather parameters
         classe = request.args.get('classe')
         anno = request.args.get('anno')
         emailResponsabile = request.args.get('emailResponsabile')
         try:
-            idClasse = int(request.args.get('idClasse'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'Invalid class ID'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            limit = int(request.args.get('limit'))
-            offset = int(request.args.get('offset'))
+            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
+            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
         except (ValueError, TypeError):
             return create_response(message={'error': 'Invalid limit or offset values'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the filters dictionary (only include non-null values)
         data = {key: value for key, value in {
-            'idClasse': idClasse,
+            'idClasse': id,  # Use the path variable 'id'
             'classe': classe,
             'anno': anno,
             'emailResponsabile': emailResponsabile
@@ -155,18 +151,18 @@ class Class(Resource):
 
             # Get the ids to log
             ids = [class_['idClasse'] for class_ in classes]
-            
+
             # Log the read operation
             log(type='info', 
                 message=f'User {get_jwt_identity().get("email")} read classes {ids}',
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT
-                )
+            )
 
             # Return the results
-            return classes, STATUS_CODES["ok"]
+            return create_response(message=classes, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Class, '/class')
+api.add_resource(Class, '/class', '/class/<int:id>')

@@ -111,34 +111,33 @@ class User(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self, email=None):
         # Gather parameters
-        email = request.args.get('email')
         password = request.args.get('password')
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')
         try:
-            tipo = int(request.args.get('tipo'))
+            tipo = int(request.args.get('tipo')) if request.args.get('tipo') else None
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid tipo parameter'}, status_code=STATUS_CODES["bad_request"])
         try:
-            limit = int(request.args.get('limit'))
-            offset = int(request.args.get('offset'))
+            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
+            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the filters dictionary (only include non-null values)
         data = {key: value for key, value in {
-            'emailUtente': email,
+            'emailUtente': email,  # Use the path variable 'email'
             'password': password,
             'nome': nome,
             'cognome': cognome,
             'tipo': tipo
-        }.items() if value}
+        }.items() if value is not None}
 
         try:
             # Build the query
-            query, params = build_update_query_from_filters(
+            query, params = build_select_query_from_filters(
                 data=data, 
                 table_name='utenti',
                 limit=limit, 
@@ -153,7 +152,7 @@ class User(Resource):
 
             # Log the read
             log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} read users {ids}', 
+                message=f'User {get_jwt_identity().get("email")} read user {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
@@ -212,5 +211,5 @@ class UserLogin(Resource):
             origin_port=API_SERVER_PORT)
             return create_response(message={'error': 'Unexpected error during login'}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(User, '/user')
+api.add_resource(User, '/user', '/user/<string:email>')
 api.add_resource(UserLogin, '/login')
