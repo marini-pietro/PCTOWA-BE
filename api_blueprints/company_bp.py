@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
+from flask_jwt_extended import get_jwt_identity
 import mysql.connector
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from .blueprints_utils import (check_authorization, validate_filters, 
@@ -50,7 +51,7 @@ class CompanyRegister(Resource):
             # Log the creation of the company
             log(
                 type='info',
-                message=f'User {request.user_identity} created company {lastrowid}',
+                message=f'User {get_jwt_identity().get("email")} created company {lastrowid}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT
@@ -82,7 +83,7 @@ class CompanyDelete(Resource):
         # Log the deletion of the company
         log(
             type='info',
-            message=f'User {request.user_identity} deleted company {idAzienda}',
+            message=f'User {get_jwt_identity().get("email")} deleted company {idAzienda}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             origin_port=API_SERVER_PORT
@@ -129,7 +130,7 @@ class CompanyUpdate(Resource):
         # Log the update of the company        
         log(
             type='info',
-            message=f'User {request.user_identity} updated company {idAzienda}',
+            message=f'User {get_jwt_identity().get("email")} updated company {idAzienda}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             origin_port=API_SERVER_PORT
@@ -207,7 +208,7 @@ class CompanyRead(Resource):
             # Log the read operation            
             log(
                 type='info',
-                message=f'User {request.user_identity} read companies {ids}',
+                message=f'User {get_jwt_identity().get("email")} read companies {ids}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT

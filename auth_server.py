@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
-from flask_jwt_extended import JWTManager, create_access_token, decode_token
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import timedelta
 from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, JWT_TOKEN_DURATION, STATUS_CODES
 from api_blueprints.blueprints_utils import log
 from api_blueprints.blueprints_utils import fetchone_query
+from werkzeug.security import check_password_hash
 import secrets
 
 app = Flask(__name__)
@@ -15,19 +16,19 @@ jwt = JWTManager(app)
 
 @app.route('/auth/login', methods=['POST'])
 def login():
-    email = request.json.get('email')
-    password = request.json.get('password')
+    data = request.json
+    email = data.get('email')
+    password = data.get('password')
 
     if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), STATUS_CODES["bad_request"]
+        return jsonify({'error': 'missing email or password'}), STATUS_CODES["bad_request"]
 
     try:
         # Query the database to validate the user's credentials
-        query = "SELECT email FROM users WHERE email = %s AND password = %s"
-        params = (email, password)  # Use parameterized queries to prevent SQL injection
-        user = fetchone_query(query, params)
+        query = "SELECT email, password FROM users WHERE email = %s"
+        user = fetchone_query(query, (email,))
 
-        if user:
+        if user and check_password_hash(user['password'], password):
             access_token = create_access_token(identity={'email': email})
 
             # Log the login operation
@@ -39,9 +40,8 @@ def login():
 
             return jsonify({'access_token': access_token}), STATUS_CODES["ok"]
         else:
-            return jsonify({'error': 'Invalid credentials'}), 401
+            return jsonify({'error': 'Invalid credentials'}), STATUS_CODES["unauthorized"]
     except Exception as e:
-        # Log the error
         log(type="error",    
             message=f"Error during login: {str(e)}",
             origin_name=AUTH_SERVER_NAME_IN_LOG, 
@@ -50,13 +50,10 @@ def login():
         return jsonify({'error': 'An error occurred during login'}), STATUS_CODES["internal_error"]
 
 @app.route('/auth/validate', methods=['POST'])
+@jwt_required()
 def validate():
-    token = request.json.get('token')
-    try:
-        decoded_token = decode_token(token)
-        return jsonify({'valid': True, 'identity': decoded_token['sub']}), STATUS_CODES["ok"]
-    except Exception as e:
-        return jsonify({'valid': False, 'error': str(e)}), 401
+    identity = get_jwt_identity()
+    return jsonify({'valid': True, 'identity': identity}), STATUS_CODES["ok"]
 
 @app.route('/health', methods=['GET'])
 def health_check():
