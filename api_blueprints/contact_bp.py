@@ -11,7 +11,7 @@ from .blueprints_utils import (check_authorization, validate_filters,
 contact_bp = Blueprint('contact', __name__)
 api = Api(contact_bp)
 
-class ContactRegister(Resource):
+class Contact(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
@@ -48,7 +48,6 @@ class ContactRegister(Resource):
         except Exception as err:
             return create_response(message={'outcome': 'contact already exists'}, status_code=STATUS_CODES["bad_request"])
 
-class ContactDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def delete(self):
@@ -71,7 +70,6 @@ class ContactDelete(Resource):
         # Return a success message
         return create_response(message={'outcome': 'contact successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
-class ContactUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def patch(self):
@@ -125,7 +123,6 @@ class ContactUpdate(Resource):
         # Return a success message
         return create_response(message={'outcome': 'contact successfully updated'}, status_code=STATUS_CODES["ok"])
 
-class ContactRead(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -185,9 +182,6 @@ class ContactRead(Resource):
             # Return the contacts
             return create_response(message=contacts, status_code=STATUS_CODES["ok"])
         except Exception as err:
-            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
+            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"]) 
 
-api.add_resource(ContactRegister, '/register')
-api.add_resource(ContactDelete, '/delete')
-api.add_resource(ContactUpdate, '/update')
-api.add_resource(ContactRead, '/read')
+api.add_resource(Contact, '/contact')

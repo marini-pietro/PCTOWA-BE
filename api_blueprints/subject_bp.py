@@ -13,7 +13,7 @@ import re
 subject_bp = Blueprint('subjects', __name__)
 api = Api(subject_bp)
 
-class SubjectRegister(Resource):
+class Subject(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def post(self):
@@ -44,7 +44,6 @@ class SubjectRegister(Resource):
         # Return a success message
         return create_response(message={'outcome': 'subject successfully created'}, status_code=STATUS_CODES["created"])
 
-class SubjectDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def delete(self):
@@ -73,7 +72,6 @@ class SubjectDelete(Resource):
         # Return a success message
         return create_response(message={'outcome': 'subject successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
-class SubjectUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def patch(self):
@@ -120,8 +118,7 @@ class SubjectUpdate(Resource):
 
         # Return a success message
         return create_response(message={'outcome': 'subject successfully updated'}, status_code=STATUS_CODES["ok"])
-    
-class SubjectRead(Resource):
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -164,8 +161,4 @@ class SubjectRead(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-# Add resources to the API
-api.add_resource(SubjectRegister, '/register')
-api.add_resource(SubjectDelete, '/delete')
-api.add_resource(SubjectUpdate, '/update')
-api.add_resource(SubjectRead, '/read')
+api.add_resource(Subject, '/subject')

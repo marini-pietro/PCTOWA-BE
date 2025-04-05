@@ -14,8 +14,8 @@ for filename in os.listdir(blueprints_dir):
         module_name = filename[:-3]  # Remove the .py extension
         module = importlib.import_module(f'api_blueprints.{module_name}')
         blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
-        app.register_blueprint(blueprint, url_prefix=f'/api/{module_name[:-3]}')  # Remove '_bp' for the URL prefix
-        print(f"Registered blueprint: {module_name} with prefix /api/{module_name[:-3]}")
+        app.register_blueprint(blueprint, url_prefix=f'/api/')  # Remove '_bp' for the URL prefix
+        print(f"Registered blueprint: {module_name} with prefix /api/")
 
 # Utility functions
 def close_api(signal, frame):  # Parameters are necessary to match the signal handler signature

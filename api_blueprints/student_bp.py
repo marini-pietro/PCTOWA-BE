@@ -12,7 +12,7 @@ from .blueprints_utils import (check_authorization, validate_filters,
 student_bp = Blueprint('student', __name__)
 api = Api(student_bp)
 
-class StudentRegister(Resource):
+class Student(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
@@ -43,7 +43,6 @@ class StudentRegister(Resource):
         except Exception as err:
             return create_response(message={'outcome': 'error, student with provided matricola already exists'}, status_code=STATUS_CODES["bad_request"])
 
-class StudentDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def delete(self):
@@ -66,7 +65,6 @@ class StudentDelete(Resource):
         # Return a success message
         return create_response(message={'outcome': 'student successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
-class StudentUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def patch(self):
@@ -117,7 +115,6 @@ class StudentUpdate(Resource):
         # Return a success message
         return create_response(message={'outcome': 'student successfully updated'}, status_code=STATUS_CODES["ok"])
 
-class StudentRead(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -173,8 +170,4 @@ class StudentRead(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-# Add resources to the API
-api.add_resource(StudentRegister, '/register')
-api.add_resource(StudentDelete, '/delete')
-api.add_resource(StudentUpdate, '/update')
-api.add_resource(StudentRead, '/read')
+api.add_resource(Student, '/student')

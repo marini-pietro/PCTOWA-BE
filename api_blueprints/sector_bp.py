@@ -11,7 +11,7 @@ from .blueprints_utils import (check_authorization, fetchone_query,
 sector_bp = Blueprint('sector', __name__)
 api = Api(sector_bp)
 
-class SectorRegister(Resource):
+class Sector(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def post(self):
@@ -36,7 +36,6 @@ class SectorRegister(Resource):
         # Return a success message
         return create_response(message={'outcome': 'sector successfully created'}, status_code=STATUS_CODES["created"])
 
-class SectorDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def delete(self):
@@ -61,7 +60,6 @@ class SectorDelete(Resource):
         # Return a success message
         return create_response(message={'outcome': 'sector successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
-class SectorUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def patch(self):
@@ -87,7 +85,6 @@ class SectorUpdate(Resource):
         # Return a success message
         return create_response(message={'outcome': 'sector successfully updated'}, status_code=STATUS_CODES["ok"])
 
-class SectorRead(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -119,8 +116,4 @@ class SectorRead(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-# Add resources to the API
-api.add_resource(SectorRegister, '/register')
-api.add_resource(SectorDelete, '/delete')
-api.add_resource(SectorUpdate, '/update')
-api.add_resource(SectorRead, '/read')
+api.add_resource(Sector, '/sector')

@@ -13,7 +13,7 @@ from .blueprints_utils import (check_authorization, validate_filters,
 turn_bp = Blueprint('turn', __name__)
 api = Api(turn_bp)
 
-class TurnRegister(Resource):
+class Turn(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
@@ -71,7 +71,6 @@ class TurnRegister(Resource):
         # Return a success message
         return create_response(message={'outcome': 'turn successfully created'}, status_code=STATUS_CODES["created"])
 
-class TurnDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def delete(self):
@@ -94,7 +93,6 @@ class TurnDelete(Resource):
         # Return a success message
         return create_response(message={'outcome': 'turn successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
-class TurnUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def patch(self):
@@ -145,7 +143,6 @@ class TurnUpdate(Resource):
         # Return a success message
         return create_response(message={'outcome': 'turn successfully updated'}, status_code=STATUS_CODES["ok"])
 
-class TurnRead(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -230,8 +227,4 @@ class TurnRead(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-# Add resources to the API
-api.add_resource(TurnRegister, '/register')
-api.add_resource(TurnDelete, '/delete')
-api.add_resource(TurnUpdate, '/update')
-api.add_resource(TurnRead, '/read')
+api.add_resource(Turn, '/turn')
