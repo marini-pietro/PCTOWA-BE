@@ -1,3 +1,4 @@
+from os.path import basename as os_path_basename
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
@@ -9,7 +10,11 @@ from .blueprints_utils import (check_authorization, build_select_query_from_filt
                                build_update_query_from_filters)
 import re
 
-class_bp = Blueprint('class', __name__)
+# Define constants
+BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
+
+# Create the blueprint and the API
+class_bp = Blueprint(BP_NAME, __name__)
 api = Api(class_bp)
 
 class Class(Resource):
@@ -38,7 +43,7 @@ class Class(Resource):
             
             # Return a success message
             return create_response(message={'outcome': 'class created',
-                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/class/{lastrowid}'}, status_code=STATUS_CODES["created"])
+                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
         except Exception as err:
             return create_response(message={'outcome': 'class already exists'}, status_code=STATUS_CODES["bad_request"])
 
@@ -166,4 +171,4 @@ class Class(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Class, '/class', '/class/<int:id>')
+api.add_resource(Class, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')

@@ -1,3 +1,4 @@
+from os.path import basename as os_path_basename
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
@@ -8,7 +9,11 @@ from .blueprints_utils import (check_authorization, validate_filters,
                                log, jwt_required_endpoint, 
                                create_response, build_update_query_from_filters)
 
-contact_bp = Blueprint('contact', __name__)
+# Define constants
+BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
+
+# Create the blueprint and the API
+contact_bp = Blueprint(BP_NAME, __name__)
 api = Api(contact_bp)
 
 class Contact(Resource):
@@ -45,7 +50,7 @@ class Contact(Resource):
             
             # Return a success message
             return create_response(message={'outcome': 'contact created',
-                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/contact/{lastrowid}'}, status_code=STATUS_CODES["created"])
+                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
         except Exception as err:
             return create_response(message={'outcome': 'contact already exists'}, status_code=STATUS_CODES["bad_request"])
 
@@ -180,4 +185,4 @@ class Contact(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"]) 
 
-api.add_resource(Contact, '/contact', '/contact/<int:id>')
+api.add_resource(Contact, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')

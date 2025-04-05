@@ -1,3 +1,4 @@
+from os.path import basename as os_path_basename
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
@@ -12,8 +13,11 @@ from .blueprints_utils import (check_authorization, validate_filters,
                                jwt_required_endpoint, create_response, 
                                build_update_query_from_filters, build_select_query_from_filters)
 
+# Define constants
+BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
+
 # Create the blueprint and API
-user_bp = Blueprint('user', __name__)
+user_bp = Blueprint(BP_NAME, __name__)
 api = Api(user_bp)
 
 class User(Resource):
@@ -41,7 +45,7 @@ class User(Resource):
             
             # Return success message
             return create_response(message={"outcome": "user successfully created",
-                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/user/{lastrowid}'}, status_code=STATUS_CODES["created"])
+                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
         except Exception:
             return create_response(message={'outcome': 'error, user with provided credentials already exists'}, status_code=STATUS_CODES["bad_request"])
 
@@ -212,5 +216,5 @@ class UserLogin(Resource):
             origin_port=API_SERVER_PORT)
             return create_response(message={'error': 'Unexpected error during login'}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(User, '/user', '/user/<string:email>')
+api.add_resource(User, f'/{BP_NAME}', f'/{BP_NAME}/<string:email>')
 api.add_resource(UserLogin, '/login')

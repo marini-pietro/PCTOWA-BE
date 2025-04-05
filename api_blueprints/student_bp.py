@@ -1,3 +1,4 @@
+from os.path import basename as os_path_basename
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
@@ -8,8 +9,11 @@ from .blueprints_utils import (check_authorization, validate_filters,
                                jwt_required_endpoint, create_response, 
                                build_update_query_from_filters, build_select_query_from_filters)
 
+# Define constants
+BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
+
 # Create the blueprint and API
-student_bp = Blueprint('student', __name__)
+student_bp = Blueprint(BP_NAME, __name__)
 api = Api(student_bp)
 
 class Student(Resource):
@@ -40,7 +44,7 @@ class Student(Resource):
                 origin_port=API_SERVER_PORT)
 
             return create_response(message={"outcome": "student successfully created",
-                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/student/{lastrowid}'}, status_code=STATUS_CODES["created"])
+                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
         except Exception as err:
             return create_response(message={'outcome': 'error, student with provided matricola already exists'}, status_code=STATUS_CODES["bad_request"])
 
@@ -167,4 +171,4 @@ class Student(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Student, '/student', '/student/<int:matricola>')
+api.add_resource(Student, f'/{BP_NAME}', f'/{BP_NAME}/<int:matricola>')
