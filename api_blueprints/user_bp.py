@@ -27,7 +27,7 @@ class User(Resource):
         user_type = request.json.get('tipo')
 
         try:
-            execute_query(
+            lastrowid = execute_query(
                 'INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)',
                 (email, password, name, surname, int(user_type))
             )
@@ -40,7 +40,8 @@ class User(Resource):
                 origin_port=API_SERVER_PORT)
             
             # Return success message
-            return create_response(message={"outcome": "user successfully created"}, status_code=STATUS_CODES["created"])
+            return create_response(message={"outcome": "user successfully created",
+                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/user/{lastrowid}'}, status_code=STATUS_CODES["created"])
         except Exception:
             return create_response(message={'outcome': 'error, user with provided credentials already exists'}, status_code=STATUS_CODES["bad_request"])
 

@@ -37,7 +37,8 @@ class Class(Resource):
                 origin_port=API_SERVER_PORT)
             
             # Return a success message
-            return create_response(message={'outcome': 'class created'}, status_code=STATUS_CODES["created"])
+            return create_response(message={'outcome': 'class created',
+                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/class/{lastrowid}'}, status_code=STATUS_CODES["created"])
         except Exception as err:
             return create_response(message={'outcome': 'class already exists'}, status_code=STATUS_CODES["bad_request"])
 

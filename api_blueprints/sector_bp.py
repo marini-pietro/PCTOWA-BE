@@ -24,7 +24,7 @@ class Sector(Resource):
             return {'outcome': 'error, specified sector already exists'}, 403
 
         # Insert the sector
-        execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
+        lastrowid = execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
 
         # Log the sector creation
         log(type='info',
@@ -34,7 +34,8 @@ class Sector(Resource):
             origin_port=API_SERVER_PORT)
 
         # Return a success message
-        return create_response(message={'outcome': 'sector successfully created'}, status_code=STATUS_CODES["created"])
+        return create_response(message={'outcome': 'sector successfully created',
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/sector/{lastrowid}'}, status_code=STATUS_CODES["created"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])

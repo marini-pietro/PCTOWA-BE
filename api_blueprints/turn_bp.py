@@ -56,7 +56,7 @@ class Turn(Resource):
                 return create_response(message={'outcome': 'error, specified tutor does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Insert the turn
-        execute_query(
+        lastrowid = execute_query(
             'INSERT INTO turni (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)',
             (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine)
         )
@@ -69,7 +69,8 @@ class Turn(Resource):
             origin_port=API_SERVER_PORT)
 
         # Return a success message
-        return create_response(message={'outcome': 'turn successfully created'}, status_code=STATUS_CODES["created"])
+        return create_response(message={'outcome': 'turn successfully created',
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/turn/{lastrowid}'}, status_code=STATUS_CODES["created"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])

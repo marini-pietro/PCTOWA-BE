@@ -58,7 +58,8 @@ class Company(Resource):
             )
 
             # Return a success message
-            return create_response(message={'outcome': 'company successfully created'}, status_code=STATUS_CODES["created"])
+            return create_response(message={'outcome': 'company successfully created',
+                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/company/{lastrowid}'}, status_code=STATUS_CODES["created"])
         except mysql.connector.IntegrityError as ex:
             return create_response(message={'outcome': f'error, company already exists: {ex}'}, status_code=STATUS_CODES["bad_request"])
 
