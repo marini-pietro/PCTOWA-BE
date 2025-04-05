@@ -4,7 +4,6 @@ from datetime import timedelta
 from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, JWT_TOKEN_DURATION, STATUS_CODES
 from api_blueprints.blueprints_utils import log
 from api_blueprints.blueprints_utils import fetchone_query
-from werkzeug.security import check_password_hash
 import secrets
 
 app = Flask(__name__)
@@ -25,10 +24,10 @@ def login():
 
     try:
         # Query the database to validate the user's credentials
-        query = "SELECT email, password FROM users WHERE email = %s"
-        user = fetchone_query(query, (email,))
+        query = "SELECT emailUtente, password FROM utenti WHERE emailUtente = %s AND password = %s"
+        user = fetchone_query(query, (email, password))
 
-        if user and check_password_hash(user['password'], password):
+        if user:
             access_token = create_access_token(identity={'email': email})
 
             # Log the login operation
@@ -40,6 +39,14 @@ def login():
 
             return jsonify({'access_token': access_token}), STATUS_CODES["ok"]
         else:
+            # Log the failed login attempt
+            log(type="warning",    
+                message=f"Failed login attempt for {email} with password {password}",
+                origin_name=AUTH_SERVER_NAME_IN_LOG, 
+                origin_host=AUTH_SERVER_HOST, 
+                origin_port=AUTH_SERVER_PORT)
+            
+            # Return unauthorized status
             return jsonify({'error': 'Invalid credentials'}), STATUS_CODES["unauthorized"]
     except Exception as e:
         log(type="error",    
