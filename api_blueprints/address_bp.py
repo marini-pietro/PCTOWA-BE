@@ -1,3 +1,4 @@
+from os.path import basename as os_path_basename
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
@@ -8,8 +9,11 @@ from .blueprints_utils import (check_authorization, build_select_query_from_filt
                                jwt_required_endpoint, create_response, 
                                validate_filters, build_update_query_from_filters)
 
+# Define constants
+BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
+
 # Create the blueprint and API
-address_bp = Blueprint('address', __name__)
+address_bp = Blueprint(BP_NAME, __name__)
 api = Api(address_bp)
 
 class Address(Resource):
@@ -46,7 +50,7 @@ class Address(Resource):
             origin_port=API_SERVER_PORT)
 
         return create_response(message={'outcome': 'address successfully created', 
-                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/address/{lastrowid}'}, status_code=STATUS_CODES["created"])
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
@@ -175,4 +179,4 @@ class Address(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
     
-api.add_resource(Address, '/address', '/address/<int:id>')
+api.add_resource(Address, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
