@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
+from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
@@ -27,7 +28,7 @@ class LegalFormRegister(Resource):
 
         # Log the legal form creation
         log(type='info',
-            message=f'User {request.user_identity} created legal form {lastrowid}', 
+            message=f'User {get_jwt_identity().get("email")} created legal form {lastrowid}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -47,7 +48,7 @@ class LegalFormDelete(Resource):
 
         # Log the deletion
         log(type='info',
-            message=f'User {request.user_identity} deleted legal form {legalform}', 
+            message=f'User {get_jwt_identity().get("email")} deleted legal form {legalform}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -73,7 +74,7 @@ class LegalFormUpdate(Resource):
 
         # Log the update
         log(type='info', 
-            message=f'User {request.user_identity} updated legal form {legalform} to {newValue}', 
+            message=f'User {get_jwt_identity().get("email")} updated legal form {legalform} to {newValue}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -103,7 +104,7 @@ class LegalFormRead(Resource):
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read all legal forms', 
+                message=f'User {get_jwt_identity().get("email")} read all legal forms', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)

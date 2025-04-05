@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
+from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from .blueprints_utils import (check_authorization, validate_filters, 
                                fetchone_query, fetchall_query, 
@@ -33,7 +34,7 @@ class StudentRegister(Resource):
 
             # Log the student creation
             log(type='info', 
-                message=f'User {request.user_identity} created student {matricola}', 
+                message=f'User {get_jwt_identity().get("email")} created student {matricola}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
@@ -57,7 +58,7 @@ class StudentDelete(Resource):
 
         # Log the deletion
         log(type='info', 
-            message=f'User {request.user_identity} deleted student {matricola}', 
+            message=f'User {get_jwt_identity().get("email")} deleted student {matricola}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -108,7 +109,7 @@ class StudentUpdate(Resource):
 
         # Log the update
         log(type='info', 
-            message=f'User {request.user_identity} updated student {matricola}', 
+            message=f'User {get_jwt_identity().get("email")} updated student {matricola}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -162,7 +163,7 @@ class StudentRead(Resource):
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read students {ids}', 
+                message=f'User {get_jwt_identity().get("email")} read students {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)

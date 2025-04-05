@@ -10,7 +10,7 @@ from config import (DB_HOST, REDACTED_USER, REDACTED_PASSWORD,
 from functools import wraps
 from requests import post as requests_post # From requests import the post function
 from cachetools import TTLCache
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 # Casting related
 input_validation_cache = None
@@ -84,12 +84,12 @@ def perform_casting_operations(data: Dict[str, str]) -> Dict[str, Any]:
                     data[key] = None
 
 # Authorization related
-def check_authorization(allowed_user_types):
+def check_authorization(allowed_roles: List[str]):
     """
     Decorator to check if the user's type is in the allowed list.
     
     params:
-        allowed_user_types: list[str] - List of user types that are permitted to execute the function.
+        allowed_roles: list[str] - List of user types that are permitted to execute the function.
     """
     def decorator(func):
         @wraps(func)
@@ -97,7 +97,7 @@ def check_authorization(allowed_user_types):
             # Check if user_type exists in the request and is allowed
             user_type: int = getattr(request, 'user_type', None)
             user_string = ROLES.get(user_type, None)
-            if user_string not in allowed_user_types:
+            if user_string not in allowed_roles:
                 return create_response(
                     message={'outcome': 'not permitted'}, 
                     status_code=STATUS_CODES["forbidden"]
@@ -385,7 +385,7 @@ def jwt_required_endpoint(func):
     def wrapper(*args, **kwargs):
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
         if not token:
-            return jsonify({'error': 'Missing token'}), 401
+            return create_response(message={'error': 'Missing token'}, status_code=STATUS_CODES["unauthorized"])
 
         # Check token cache
         cached_result = token_cache.get(token)
@@ -395,12 +395,10 @@ def jwt_required_endpoint(func):
             # Validate token with auth server
             response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
             if response.status_code != STATUS_CODES["ok"] or not response.json().get('valid'):
-                return jsonify({'error': 'Invalid or expired token'}), 401
+                return create_response(message={'error': 'Invalid or expired token'}, status_code=STATUS_CODES["unauthorized"])
 
             is_valid = response.json().get('valid')
-            identity = response.json().get('identity')
             token_cache[token] = (is_valid, identity)
 
-        request.user_identity = identity
         return func(*args, **kwargs)
     return wrapper

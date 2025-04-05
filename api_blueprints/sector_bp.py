@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
+from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
@@ -27,7 +28,7 @@ class SectorRegister(Resource):
 
         # Log the sector creation
         log(type='info',
-            message=f'User {request.user_identity} created sector {settore}', 
+            message=f'User {get_jwt_identity().get("email")} created sector {settore}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -52,7 +53,7 @@ class SectorDelete(Resource):
 
         # Log the deletion
         log(type='info',
-            message=f'User {request.user_identity} deleted sector {settore}', 
+            message=f'User {get_jwt_identity().get("email")} deleted sector {settore}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -78,7 +79,7 @@ class SectorUpdate(Resource):
 
         # Log the update
         log(type='info', 
-            message=f'User {request.user_identity} updated sector {settore}', 
+            message=f'User {get_jwt_identity().get("email")} updated sector {settore}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -108,7 +109,7 @@ class SectorRead(Resource):
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read all sectors', 
+                message=f'User {get_jwt_identity().get("email")} read all sectors', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)

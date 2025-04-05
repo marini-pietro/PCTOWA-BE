@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
+from flask_jwt_extended import get_jwt_identity
 from requests import post as requests_post
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST, STATUS_CODES
 from .blueprints_utils import (check_authorization, validate_filters, 
@@ -41,17 +42,17 @@ class UserRegister(Resource):
             return create_response(message={'outcome': 'error, user with provided credentials already exists'}, status_code=STATUS_CODES["bad_request"])
 
 class UserLogin(Resource):
-    def post(self):
+    def get(self):
         # Gather parameters
-        email = request.json.get('email')
-        password = request.json.get('password')
+        email = request.args.get('email')
+        password = request.args.get('password')
         
         # Validate parameters
         if email is None or password is None:
             return create_response(message={'error': 'missing email or password'}, status_code=STATUS_CODES["bad_request"])
 
         # Forward login request to the authentication service
-        response = requests_post(f'{AUTH_SERVER_HOST}/auth/login', json={'email': email, 'password': password})
+        response = requests_post(f'http://{AUTH_SERVER_HOST}/auth/login', json={'email': email, 'password': password})
         if response.status_code == STATUS_CODES["ok"]: # If the login is successful send the token back to the user
             return response.json(), STATUS_CODES["ok"]
         
@@ -93,7 +94,7 @@ class UserUpdate(Resource):
 
         # Log the update
         log(type='info', 
-            message=f'User {request.user_identity} updated user {email}', 
+            message=f'User {get_jwt_identity().get("email")} updated user {email}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -117,7 +118,7 @@ class UserDelete(Resource):
 
         # Log the deletion
         log(type='info', 
-            message=f'User {request.user_identity} deleted user {email}', 
+            message=f'User {get_jwt_identity().get("email")} deleted user {email}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -170,7 +171,7 @@ class UserRead(Resource):
 
             # Log the read
             log(type='info', 
-                message=f'User {request.user_identity} read users {ids}', 
+                message=f'User {get_jwt_identity().get("email")} read users {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)

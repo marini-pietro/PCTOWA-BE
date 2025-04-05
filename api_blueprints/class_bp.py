@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 from flask_restful import Api, Resource
+from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from .blueprints_utils import (check_authorization, build_select_query_from_filters, 
                                fetchone_query, fetchall_query, 
@@ -30,7 +31,7 @@ class ClassRegister(Resource):
             
             # Log the creation of the class
             log(type='info', 
-                message=f'User {request.user_identity} created class {lastrowid}',
+                message=f'User {get_jwt_identity().get("email")} created class {lastrowid}',
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
@@ -58,7 +59,7 @@ class ClassDelete(Resource):
         
         # Log the deletion of the class
         log(type='info', 
-            message=f'User {request.user_identity} deleted class {class_id}',
+            message=f'User {get_jwt_identity().get("email")} deleted class {class_id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -109,7 +110,7 @@ class ClassUpdate(Resource):
         
         # Log the update of the class
         log(type='info', 
-            message=f'User {request.user_identity} updated class {class_id}',
+            message=f'User {get_jwt_identity().get("email")} updated class {class_id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -160,7 +161,7 @@ class ClassRead(Resource):
             
             # Log the read operation
             log(type='info', 
-                message=f'User {request.user_identity} read classes {ids}',
+                message=f'User {get_jwt_identity().get("email")} read classes {ids}',
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT
