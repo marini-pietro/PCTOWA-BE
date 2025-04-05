@@ -16,7 +16,7 @@ from .blueprints_utils import (check_authorization, validate_filters,
 user_bp = Blueprint('user', __name__)
 api = Api(user_bp)
 
-class UserRegister(Resource):
+class User(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def post(self):
@@ -44,56 +44,6 @@ class UserRegister(Resource):
         except Exception:
             return create_response(message={'outcome': 'error, user with provided credentials already exists'}, status_code=STATUS_CODES["bad_request"])
 
-class UserLogin(Resource):
-    def post(self):
-        # Gather parameters
-        data = request.json
-        email = data.get('email')
-        password = data.get('password')
-        
-        # Validate parameters
-        if email is None or password is None:
-            return create_response(message={'error': 'missing email or password'}, status_code=STATUS_CODES["bad_request"])
-
-        try:
-            # Forward login request to the authentication service
-            response = requests_post(f'http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/login', json={'email': email, 'password': password}, timeout=5)
-        except RequestException as e:
-            return create_response(message={'error': 'Authentication service unavailable'}, status_code=STATUS_CODES["internal_error"])
-
-        # Handle response from the authentication service
-        if response.status_code == STATUS_CODES["ok"]:  # If the login is successful, send the token back to the user
-            return create_response(message=response.json(), status_code=STATUS_CODES["ok"])
-        elif response.status_code == STATUS_CODES["unauthorized"]:
-            log(type='warning', 
-            message=f'Failed login attempt for email: {email}', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-            return create_response(message={'error': 'Invalid credentials'}, status_code=STATUS_CODES["unauthorized"])
-        elif response.status_code == STATUS_CODES["bad_request"]:
-            log(type='error', 
-            message=f'Bad request during login for email: {email}', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-            return create_response(message={'error': 'Bad request'}, status_code=STATUS_CODES["bad_request"])
-        elif response.status_code == STATUS_CODES["internal_error"]:
-            log(type='error', 
-            message=f'Internal error during login for email: {email}', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-            return create_response(message={'error': 'Internal error'}, status_code=STATUS_CODES["internal_error"])
-        else:
-            log(type='error', 
-            message=f'Unexpected error during login for email: {email} with status code: {response.status_code}', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-            return create_response(message={'error': 'Unexpected error during login'}, status_code=STATUS_CODES["internal_error"])
-
-class UserUpdate(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def patch(self):
@@ -136,7 +86,6 @@ class UserUpdate(Resource):
         # Return success message
         return create_response(message={'outcome': 'user successfully updated'}, status_code=STATUS_CODES["ok"])
 
-class UserDelete(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def delete(self):
@@ -159,8 +108,7 @@ class UserDelete(Resource):
 
         # Return success message
         return create_response(message={'outcome': 'user successfully deleted'}, status_code=STATUS_CODES["no_content"])
-    
-class UserRead(Resource):
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self):
@@ -215,9 +163,54 @@ class UserRead(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-# Add resources to the API
-api.add_resource(UserRegister, '/register')
+class UserLogin(Resource):
+    def post(self):
+        # Gather parameters
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+        
+        # Validate parameters
+        if email is None or password is None:
+            return create_response(message={'error': 'missing email or password'}, status_code=STATUS_CODES["bad_request"])
+
+        try:
+            # Forward login request to the authentication service
+            response = requests_post(f'http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/login', json={'email': email, 'password': password}, timeout=5)
+        except RequestException as e:
+            return create_response(message={'error': 'Authentication service unavailable'}, status_code=STATUS_CODES["internal_error"])
+
+        # Handle response from the authentication service
+        if response.status_code == STATUS_CODES["ok"]:  # If the login is successful, send the token back to the user
+            return create_response(message=response.json(), status_code=STATUS_CODES["ok"])
+        elif response.status_code == STATUS_CODES["unauthorized"]:
+            log(type='warning', 
+            message=f'Failed login attempt for email: {email}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'Invalid credentials'}, status_code=STATUS_CODES["unauthorized"])
+        elif response.status_code == STATUS_CODES["bad_request"]:
+            log(type='error', 
+            message=f'Bad request during login for email: {email}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'Bad request'}, status_code=STATUS_CODES["bad_request"])
+        elif response.status_code == STATUS_CODES["internal_error"]:
+            log(type='error', 
+            message=f'Internal error during login for email: {email}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'Internal error'}, status_code=STATUS_CODES["internal_error"])
+        else:
+            log(type='error', 
+            message=f'Unexpected error during login for email: {email} with status code: {response.status_code}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'Unexpected error during login'}, status_code=STATUS_CODES["internal_error"])
+
+api.add_resource(User, '/user')
 api.add_resource(UserLogin, '/login')
-api.add_resource(UserRead, '/read')
-api.add_resource(UserUpdate, '/update')
-api.add_resource(UserDelete, '/delete')
