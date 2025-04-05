@@ -30,7 +30,7 @@ class Student(Resource):
 
         try:
             # Insert the student
-            execute_query('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
+            lastrowid = execute_query('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
 
             # Log the student creation
             log(type='info', 
@@ -39,7 +39,8 @@ class Student(Resource):
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
 
-            return create_response(message={"outcome": "student successfully created"}, status_code=STATUS_CODES["created"])
+            return create_response(message={"outcome": "student successfully created",
+                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/student/{lastrowid}'}, status_code=STATUS_CODES["created"])
         except Exception as err:
             return create_response(message={'outcome': 'error, student with provided matricola already exists'}, status_code=STATUS_CODES["bad_request"])
 

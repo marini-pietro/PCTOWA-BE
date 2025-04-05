@@ -45,7 +45,8 @@ class Address(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
-        return create_response(message={'outcome': 'address successfully created'}, status_code=STATUS_CODES["created"])
+        return create_response(message={'outcome': 'address successfully created', 
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/address/{lastrowid}'}, status_code=STATUS_CODES["created"])
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])

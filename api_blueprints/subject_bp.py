@@ -32,7 +32,7 @@ class Subject(Resource):
             return create_response(message={'outcome': 'error, specified subject already exists'}, status_code=STATUS_CODES["bad_request"])
 
         # Insert the subject
-        execute_query('INSERT INTO materie (materia, descr) VALUES (%s, %s)', (materia, descrizione))
+        lastrowid = execute_query('INSERT INTO materie (materia, descr) VALUES (%s, %s)', (materia, descrizione))
 
         # Log the subject creation
         log(type='info', 
@@ -42,7 +42,8 @@ class Subject(Resource):
             origin_port=API_SERVER_PORT)
 
         # Return a success message
-        return create_response(message={'outcome': 'subject successfully created'}, status_code=STATUS_CODES["created"])
+        return create_response(message={'outcome': 'subject successfully created',
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/subject/{lastrowid}'}, status_code=STATUS_CODES["created"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])

@@ -41,7 +41,8 @@ class Tutor(Resource):
             origin_port=API_SERVER_PORT)
 
         # Return a success message
-        return create_response(message={'outcome': 'tutor successfully created'}, status_code=STATUS_CODES["created"])
+        return create_response(message={'outcome': 'tutor successfully created',
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/tutor/{lastrowid}'}, status_code=STATUS_CODES["created"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
