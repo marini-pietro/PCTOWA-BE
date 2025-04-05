@@ -5,7 +5,7 @@ import logging
 app = Flask(__name__)
 
 class Logger:
-    def __init__(self, log_file="main_pctowa.log", console_level=logging.INFO, file_level=logging.DEBUG):
+    def __init__(self, log_file="pctowa_main.log", console_level=logging.INFO, file_level=logging.DEBUG):
         # Create a logger object
         self.logger = logging.getLogger("api_logger")
         self.logger.setLevel(logging.DEBUG)

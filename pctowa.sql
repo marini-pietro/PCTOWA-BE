@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Apr 02, 2025 alle 12:54
+-- Creato il: Apr 04, 2025 alle 19:25
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -53,9 +53,9 @@ CREATE TABLE `aziende` (
 CREATE TABLE `classi` (
   `idClasse` int NOT NULL,
   `classe` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `anno` char(9) COLLATE utf8_unicode_ci NOT NULL COMMENT 'e.g. 2024-2025',
-  `emailResponsabile` varchar(255) COLLATE utf8_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `emailResponsabile` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `anno` char(5) COLLATE utf8_unicode_ci NOT NULL
+) ;
 
 -- --------------------------------------------------------
 
@@ -119,9 +119,9 @@ CREATE TABLE `indirizzi` (
 
 CREATE TABLE `materie` (
   `materia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `descr` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `hexColor` char(7) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL COMMENT 'Colore della tag relativa alla materia nella webapp'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `descrizione` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
+  `hexColor` char(7) COLLATE utf8_unicode_ci NOT NULL
+) ;
 
 -- --------------------------------------------------------
 
@@ -154,7 +154,8 @@ CREATE TABLE `studenti` (
   `matricola` int NOT NULL,
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `idClasse` int NOT NULL
+  `idClasse` int NOT NULL,
+  `comune` varchar(255) COLLATE utf8_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -174,7 +175,9 @@ CREATE TABLE `turni` (
   `idTutor` int DEFAULT NULL,
   `idIndirizzo` int DEFAULT NULL,
   `oraInizio` time DEFAULT NULL,
-  `oraFine` time DEFAULT NULL
+  `oraFine` time DEFAULT NULL,
+  `giornoInizio` enum('lunedì','martedì','mercoledì','giovedì','venerdì') COLLATE utf8_unicode_ci DEFAULT NULL,
+  `giornoFine` enum('lunedì','martedì','mercoledì','giovedì','venerdì') COLLATE utf8_unicode_ci DEFAULT NULL
 ) ;
 
 -- --------------------------------------------------------
