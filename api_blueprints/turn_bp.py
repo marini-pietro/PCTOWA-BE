@@ -1,3 +1,4 @@
+from os.path import basename as os_path_basename
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
@@ -9,8 +10,11 @@ from .blueprints_utils import (check_authorization, validate_filters,
                                parse_date_string, parse_time_string, 
                                build_select_query_from_filters, build_update_query_from_filters)
 
+# Define constants
+BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
+
 # Create the blueprint and API
-turn_bp = Blueprint('turn', __name__)
+turn_bp = Blueprint(BP_NAME, __name__)
 api = Api(turn_bp)
 
 class Turn(Resource):
@@ -70,7 +74,7 @@ class Turn(Resource):
 
         # Return a success message
         return create_response(message={'outcome': 'turn successfully created',
-                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/turn/{lastrowid}'}, status_code=STATUS_CODES["created"])
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
@@ -224,4 +228,4 @@ class Turn(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Turn, '/turn', '/turn/<int:id>')
+api.add_resource(Turn, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
