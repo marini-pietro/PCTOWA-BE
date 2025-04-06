@@ -20,6 +20,10 @@ class LegalForm(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self, forma):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
         try:
             # Insert the legal form
             execute_query('INSERT INTO formaGiuridica (forma) VALUES (%s)', (forma,))

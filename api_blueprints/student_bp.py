@@ -20,12 +20,18 @@ api = Api(student_bp)
 class Student(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def post(self, matricola):
+    def post(self):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
         # Gather parameters
-        nome = request.args.get('nome')
-        cognome = request.args.get('cognome')
+        matricola = request.json.get('matricola')
+        nome = request.json.get('nome')
+        cognome = request.json.get('cognome')
         try:
-            idClasse = int(request.args.get('idClasse'))
+            idClasse = request.json.get('idClasse')
+            idClasse = int(idClasse) if idClasse is not None and str(idClasse).isdigit() else None
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid idClasse parameter'}, status_code=STATUS_CODES["bad_request"])
 

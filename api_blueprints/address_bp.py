@@ -20,16 +20,21 @@ class Address(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
         # Gather parameters
-        stato = request.args.get('stato')
-        provincia = request.args.get('provincia')
-        comune = request.args.get('comune')
-        cap = request.args.get('cap')
-        indirizzo = request.args.get('indirizzo')
-        try:
-            idAzienda = int(request.args.get('idAzienda'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idAzienda parameter'}, status_code=STATUS_CODES["bad_request"])
+        stato = request.json.get('stato')
+        provincia = request.json.get('provincia')
+        comune = request.json.get('comune')
+        cap = request.json.get('cap')
+        indirizzo = request.json.get('indirizzo')
+        idAzienda = request.json.get('idAzienda')
+        if isinstance(idAzienda, str) and idAzienda.isdigit():
+            idAzienda = int(idAzienda)
+        elif not isinstance(idAzienda, int):
+            return create_response(message={'error': 'invalid idAzienda JSON value'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if idAzienda exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
