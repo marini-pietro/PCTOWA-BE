@@ -21,26 +21,30 @@ class Turn(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        
         # Gather parameters
-        settore = request.args.get('settore')
-        posti = request.args.get('posti')
-        ore = request.args.get('ore')
+        settore = request.json.get('settore')
+        posti = request.json.get('posti')
+        ore = request.json.get('ore')
         try:
-            idIndirizzo = int(request.args.get('idIndirizzo'))
+            idIndirizzo = int(request.json.get('idIndirizzo'))
         except (ValueError, TypeError):
             return create_response(message={'outcome': 'invalid idIndirizzo value'}, status_code=STATUS_CODES["bad_request"])
         try:
-            idTutor = int(request.args.get('idTutor'))
+            idTutor = int(request.json.get('idTutor'))
         except (ValueError, TypeError):
             return create_response(message={'outcome': 'invalid idTutor value'}, status_code=STATUS_CODES["bad_request"])
         try:
-            idAzienda = int(request.args.get('idAzienda'))
+            idAzienda = int(request.json.get('idAzienda'))
         except (ValueError, TypeError):
             return create_response(message={'outcome': 'invalid idAzienda value'}, status_code=STATUS_CODES["bad_request"])
-        dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
-        dataFine = parse_date_string(date_string=request.args.get('dataFine'))
-        oraInizio = parse_time_string(time_string=request.args.get('oraInizio'))
-        oraFine = parse_time_string(time_string=request.args.get('oraFine'))
+        dataInizio = parse_date_string(date_string=request.json.get('dataInizio'))
+        dataFine = parse_date_string(date_string=request.json.get('dataFine'))
+        oraInizio = parse_time_string(time_string=request.json.get('oraInizio'))
+        oraFine = parse_time_string(time_string=request.json.get('oraFine'))
         
         # Check that specified company exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))

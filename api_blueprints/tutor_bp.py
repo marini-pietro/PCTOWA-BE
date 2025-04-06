@@ -20,11 +20,15 @@ class Tutor(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        
         # Gather parameters
-        nome = request.args.get('nome')
-        cognome = request.args.get('cognome')
-        telefono = request.args.get('telefono')
-        email = request.args.get('email')
+        nome = request.json.get('nome')
+        cognome = request.json.get('cognome')
+        telefono = request.json.get('telefono')
+        email = request.json.get('email')
 
         # Insert the tutor
         lastrowid = execute_query(

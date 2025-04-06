@@ -19,7 +19,14 @@ api = Api(sector_bp)
 class Sector(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def post(self, settore):
+    def post(self):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Gather parameters
+        settore = request.json.get('settore')
+
         try:
             # Insert the sector
             lastrowid = execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
