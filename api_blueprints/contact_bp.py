@@ -20,13 +20,24 @@ class Contact(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        
+        # Gather parameters
+        try:
+            idAzienda = request.json.get('idAzienda')
+            idAzienda = int(idAzienda) if idAzienda is not None and str(idAzienda).isdigit() else None
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
+
         params = {
-            'nome': request.args.get('nome'),
-            'cognome': request.args.get('cognome'),
-            'telefono': request.args.get('telefono'),
-            'email': request.args.get('email'),
-            'ruolo': request.args.get('ruolo'),
-            'idAzienda': int(request.args.get('idAzienda'))
+            'nome': request.json.get('nome'),
+            'cognome': request.json.get('cognome'),
+            'telefono': request.json.get('telefono'),
+            'email': request.json.get('email'),
+            'ruolo': request.json.get('ruolo'),
+            'idAzienda': idAzienda
         }
 
         # Check if azienda exists

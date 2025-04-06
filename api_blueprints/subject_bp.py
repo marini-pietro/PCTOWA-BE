@@ -22,9 +22,13 @@ class Subject(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def post(self, materia):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        
         # Gather parameters
-        descrizione = request.args.get('descrizione')
-        hexColor = request.args.get('hexColor')
+        descrizione = request.json.get('descrizione')
+        hexColor = request.json.get('hexColor')
 
         # Validate parameters
         if hexColor is not None and not re_match(r'^#[0-9A-Fa-f]{6}$', hexColor):

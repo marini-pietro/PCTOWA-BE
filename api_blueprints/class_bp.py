@@ -22,10 +22,14 @@ class Class(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
         # Gather parameters
-        classe = request.args.get('classe'),
-        anno = request.args.get('anno')
-        emailResponsabile = request.args.get('emailResponsabile')
+        classe = request.json.get('classe'),
+        anno = request.json.get('anno')
+        emailResponsabile = request.json.get('emailResponsabile')
 
         # Validate parameters
         if not re_match(r'^\d{4}-\d{4}$', anno):

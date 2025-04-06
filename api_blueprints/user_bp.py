@@ -163,10 +163,13 @@ class User(Resource):
 
 class UserLogin(Resource):
     def post(self):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        
         # Gather parameters
-        data = request.json
-        email = data.get('email')
-        password = data.get('password')
+        email = request.json.get('email')
+        password = request.json.get('password')
         
         # Validate parameters
         if email is None or password is None:

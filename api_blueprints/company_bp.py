@@ -9,7 +9,7 @@ from .blueprints_utils import (check_authorization, validate_filters,
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
                                create_response, validate_filters, 
-                               build_update_query_from_filters)
+                               build_update_query_from_filters, parse_date_string)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -22,22 +22,26 @@ class Company(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self):
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
         params = {
-            'ragioneSociale': request.args.get('ragioneSociale'),
-            'nome': request.args.get('nome'),
-            'sitoWeb': request.args.get('sitoWeb'),
-            'indirizzoLogo': request.args.get('indirizzoLogo'),
-            'codiceAteco': request.args.get('codiceAteco'),
-            'partitaIVA': request.args.get('partitaIVA'),
-            'telefonoAzienda': request.args.get('telefonoAzienda'),
-            'fax': request.args.get('fax'),
-            'emailAzienda': request.args.get('emailAzienda'),
-            'pec': request.args.get('pec'),
-            'formaGiuridica': request.args.get('formaGiuridica'),
-            'dataConvenzione': request.args.get('dataConvenzione'),
-            'scadenzaConvenzione': request.args.get('scadenzaConvenzione'),
-            'settore': request.args.get('settore'),
-            'categoria': request.args.get('categoria')
+            'ragioneSociale': request.json.get('ragioneSociale'),
+            'nome': request.json.get('nome'),
+            'sitoWeb': request.json.get('sitoWeb'),
+            'indirizzoLogo': request.json.get('indirizzoLogo'),
+            'codiceAteco': request.json.get('codiceAteco'),
+            'partitaIVA': request.json.get('partitaIVA'),
+            'telefonoAzienda': request.json.get('telefonoAzienda'),
+            'fax': request.json.get('fax'),
+            'emailAzienda': request.json.get('emailAzienda'),
+            'pec': request.json.get('pec'),
+            'formaGiuridica': request.json.get('formaGiuridica'),
+            'dataConvenzione': parse_date_string(request.json.get('dataConvenzione')),
+            'scadenzaConvenzione': parse_date_string(request.json.get('scadenzaConvenzione')),
+            'settore': request.json.get('settore'),
+            'categoria': request.json.get('categoria')
         }
 
         #TODO: add regex validation for each field
