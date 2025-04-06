@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
+from mysql.connector import IntegrityError
 from re import match as re_match
 from .blueprints_utils import (check_authorization, build_select_query_from_filters, 
                                fetchone_query, fetchall_query, 
@@ -29,42 +30,34 @@ class Class(Resource):
         # Validate parameters
         if not re_match(r'^\d{4}-\d{4}$', anno):
             return create_response(message={'outcome': 'invalid anno format'}, status_code=STATUS_CODES["bad_request"])
-        
-        try:
-            # Execute query to insert the class
-            lastrowid: int = execute_query('INSERT INTO classi (classe, anno, emailResponsabile) VALUES (%s, %s, %s)', (classe, anno, emailResponsabile))
+        if not re_match(r'^[a-zA-Z0-9]+$', classe):
+            return create_response(message={'outcome': 'invalid classe format'}, status_code=STATUS_CODES["bad_request"])
+        if not re_match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', emailResponsabile):
+            return create_response(message={'outcome': 'invalid email format'}, status_code=STATUS_CODES["bad_request"])
             
-            # Log the creation of the class
-            log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} created class {lastrowid}',
-                origin_name=API_SERVER_NAME_IN_LOG, 
-                origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
+        # Execute query to insert the class
+        lastrowid: int = execute_query('INSERT INTO classi (classe, anno, emailResponsabile) VALUES (%s, %s, %s)', (classe, anno, emailResponsabile))
+
+        # Log the creation of the class
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} created class {lastrowid}',
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
             
-            # Return a success message
-            return create_response(message={'outcome': 'class created',
+        # Return a success message
+        return create_response(message={'outcome': 'class created',
                                             'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
-        except Exception as err:
-            return create_response(message={'outcome': 'class already exists'}, status_code=STATUS_CODES["bad_request"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def delete(self):
-        # Gather parameters
-        try:
-            class_id = int(request.args.get('idClasse'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid class ID'}, status_code=STATUS_CODES["bad_request"])
-        
-        # Validate parameters
-        if not class_id: return create_response(message={'outcome': 'missing class ID'}, status_code=STATUS_CODES["bad_request"])
-              
+    def delete(self, id):
         # Delete the class
-        execute_query('DELETE FROM classi WHERE idClasse = %s', (class_id,))
+        execute_query('DELETE FROM classi WHERE idClasse = %s', (id,))
         
         # Log the deletion of the class
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} deleted class {class_id}',
+            message=f'User {get_jwt_identity().get("email")} deleted class {id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -74,14 +67,10 @@ class Class(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def patch(self):
+    def patch(self, id):
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')  # list of fields to modify
         newValues: list[str] = request.args.get('newValue').split(',')  # list of values to set
-        try:
-            class_id: int = int(request.args.get('idClasse'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid class ID'}, status_code=STATUS_CODES["bad_request"])
 
         # Validate parameters
         if len(toModify) != len(newValues):
@@ -102,19 +91,19 @@ class Class(Resource):
             return create_response(outcome, STATUS_CODES["bad_request"])
 
         # Check that the specified class exists
-        class_ = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (class_id,))
+        class_ = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (id,))
         if not class_:
             return create_response({'outcome': 'specified class does not exist'}, STATUS_CODES["not_found"])
 
         # Build the update query
-        query, params = build_update_query_from_filters(data=updates, table_name='classi', id=class_id)
+        query, params = build_update_query_from_filters(data=updates, table_name='classi', id=id)
 
         # Execute the update query
         execute_query(query, params)
         
         # Log the update of the class
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} updated class {class_id}',
+            message=f'User {get_jwt_identity().get("email")} updated class {id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -124,7 +113,7 @@ class Class(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id=None):
+    def get(self, id):
         # Gather parameters
         classe = request.args.get('classe')
         anno = request.args.get('anno')

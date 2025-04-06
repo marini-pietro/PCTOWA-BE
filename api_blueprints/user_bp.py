@@ -24,6 +24,7 @@ class User(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def post(self):
+        # Gather parameters
         email = request.json.get('email')
         password = request.json.get('password')
         name = request.json.get('nome')
@@ -51,8 +52,8 @@ class User(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def patch(self):
-        email = request.args.get('email')
+    def patch(self, email):
+        # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')
         newValues: list[str] = request.args.get('newValue').split(',')
 
@@ -93,14 +94,7 @@ class User(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def delete(self):
-        # Gather parameters
-        email = request.args.get('email')
-
-        # Validate parameters
-        if email is None:
-            return create_response(message={'error': 'missing email'}, status_code=STATUS_CODES["bad_request"])
-
+    def delete(self, email):
         # Delete the user
         execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
 
@@ -116,7 +110,7 @@ class User(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, email=None):
+    def get(self, email):
         # Gather parameters
         password = request.args.get('password')
         nome = request.args.get('nome')

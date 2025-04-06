@@ -25,17 +25,23 @@ class Turn(Resource):
         settore = request.args.get('settore')
         posti = request.args.get('posti')
         ore = request.args.get('ore')
-        idIndirizzo = request.args.get('idIndirizzo')
-        idTutor = request.args.get('idTutor')
-        dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
-        dataFine = parse_date_string(date_string=request.args.get('dataFine'))
-        oraInizio = parse_time_string(time_string=request.args.get('oraInizio'))
-        oraFine = parse_time_string(time_string=request.args.get('oraFine'))
+        try:
+            idIndirizzo = int(request.args.get('idIndirizzo'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid idIndirizzo value'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            idTutor = int(request.args.get('idTutor'))
+        except (ValueError, TypeError):
+            return create_response(message={'outcome': 'invalid idTutor value'}, status_code=STATUS_CODES["bad_request"])
         try:
             idAzienda = int(request.args.get('idAzienda'))
         except (ValueError, TypeError):
             return create_response(message={'outcome': 'invalid idAzienda value'}, status_code=STATUS_CODES["bad_request"])
-
+        dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
+        dataFine = parse_date_string(date_string=request.args.get('dataFine'))
+        oraInizio = parse_time_string(time_string=request.args.get('oraInizio'))
+        oraFine = parse_time_string(time_string=request.args.get('oraFine'))
+        
         # Check that specified company exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
         if company is None:
@@ -78,19 +84,13 @@ class Turn(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def delete(self):
-        # Gather parameters
-        try:
-            idTurno = int(request.args.get('idTurno'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idTurno value'}, status_code=STATUS_CODES["bad_request"])
-
+    def delete(self, id):
         # Delete the turn
-        execute_query('DELETE FROM turni WHERE idTurno = %s', (idTurno,))
+        execute_query('DELETE FROM turni WHERE idTurno = %s', (id,))
 
         # Log the deletion
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} deleted turn {idTurno}', 
+            message=f'User {get_jwt_identity().get("email")} deleted turn {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -100,14 +100,10 @@ class Turn(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def patch(self):
+    def patch(self, id):
         # Gather parameters
         toModify = request.args.get('toModify').split(',')
         newValues = request.args.get('newValue').split(',')
-        try:
-            idTurno = int(request.args.get('idTurno'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idTurno value'}, status_code=STATUS_CODES["bad_request"])
         
         # Validate parameters
         if len(toModify) != len(newValues):
@@ -128,19 +124,19 @@ class Turn(Resource):
             return create_response(outcome, STATUS_CODES["bad_request"])
         
         # Check that the specified class exists
-        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
+        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (id,))
         if not turn:
             return create_response(message={'outcome': 'specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Build the update query
-        query, params = build_update_query_from_filters(data=updates, table_name='turni', id=idTurno)
+        query, params = build_update_query_from_filters(data=updates, table_name='turni', id=id)
 
         # Execute the update query
         execute_query(query, params)
 
         # Log the update
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} updated turn {idTurno}', 
+            message=f'User {get_jwt_identity().get("email")} updated turn {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -150,7 +146,7 @@ class Turn(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id=None):
+    def get(self, id):
         # Gather parameters
         dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
         dataFine = parse_date_string(date_string=request.args.get('dataFine'))

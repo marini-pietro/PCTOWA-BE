@@ -20,14 +20,10 @@ api = Api(student_bp)
 class Student(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def post(self):
+    def post(self, matricola):
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')
-        try:
-            matricola = int(request.args.get('matricola'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid matricola parameter'}, status_code=STATUS_CODES["bad_request"])
         try:
             idClasse = int(request.args.get('idClasse'))
         except (ValueError, TypeError):
@@ -64,13 +60,7 @@ class Student(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def delete(self):
-        # Gather parameters
-        try:
-            matricola = int(request.args.get('matricola'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid matricola parameter'}, status_code=STATUS_CODES["bad_request"])
-
+    def delete(self, matricola):
         # Delete the student
         execute_query('DELETE FROM studenti WHERE matricola = %s', (matricola,))
 
@@ -86,14 +76,10 @@ class Student(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def patch(self):
+    def patch(self, matricola):
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')  # toModify is a list of fields to modify
         newValues: list[str] = request.args.get('newValue').split(',')  # newValue is a list of values to set
-        try:
-            matricola = int(request.args.get('matricola'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid matricola parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Validate parameters
         if len(toModify) != len(newValues):
@@ -136,7 +122,7 @@ class Student(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, matricola=None):
+    def get(self, matricola):
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')
@@ -185,4 +171,4 @@ class Student(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Student, f'/{BP_NAME}', f'/{BP_NAME}/<int:matricola>')
+api.add_resource(Student, f'/{BP_NAME}/<int:matricola>')
