@@ -38,7 +38,7 @@ class User(Resource):
 
             # Log the register
             log(type='info', 
-                message=f'User {email} registered', 
+                message=f'User {get_jwt_identity().get("email")} registered user {email}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)

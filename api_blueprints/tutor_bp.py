@@ -26,11 +26,6 @@ class Tutor(Resource):
         telefono = request.args.get('telefono')
         email = request.args.get('email')
 
-        # Check if tutor already exists
-        tutor = fetchone_query('SELECT * FROM tutor WHERE emailTutor = %s AND telefonoTutor = %s', (email, telefono))
-        if tutor is not None:
-            return create_response(message={'outcome': 'error, specified tutor already exists'}, status_code=409)
-
         # Insert the tutor
         lastrowid = execute_query(
             'INSERT INTO tutor (nome, cognome, telefonoTutor, emailTutor) VALUES (%s, %s, %s, %s)',
@@ -59,7 +54,7 @@ class Tutor(Resource):
 
         # Log the deletion
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} deleted tutor', 
+            message=f'User {get_jwt_identity().get("email")} deleted tutor {idTutor}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -109,7 +104,7 @@ class Tutor(Resource):
 
         # Log the update
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} updated tutor with id {idTutor}', 
+            message=f'User {get_jwt_identity().get("email")} updated tutor {idTutor}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
