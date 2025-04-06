@@ -45,16 +45,13 @@ class Tutor(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def delete(self):
-        # Gather parameters
-        idTutor = int(request.args.get('idTutor'))
-
+    def delete(self, id):
         # Delete the tutor
-        execute_query('DELETE FROM tutor WHERE idTutor = %s', (idTutor,))
+        execute_query('DELETE FROM tutor WHERE idTutor = %s', (id,))
 
         # Log the deletion
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} deleted tutor {idTutor}', 
+            message=f'User {get_jwt_identity().get("email")} deleted tutor {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -64,12 +61,8 @@ class Tutor(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def patch(self):
+    def patch(self, id):
         # Gather parameters
-        try:
-            idTutor = int(request.args.get('idTutor'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid idTutor'}, status_code=STATUS_CODES["bad_request"])
         toModify: list[str] = request.args.get('toModify').split(',')
         newValues: list[str] = request.args.get('newValue').split(',')
 
@@ -92,19 +85,19 @@ class Tutor(Resource):
             return create_response(message=outcome, status_code=STATUS_CODES["bad_request"])
 
         # Check if tutor exists
-        tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (idTutor,))
+        tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (id,))
         if tutor is None:
             return create_response(message={'outcome': 'error, specified tutor does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Build the update query
-        query, params = build_update_query_from_filters(data=updates, table_name='tutor', id=idTutor)
+        query, params = build_update_query_from_filters(data=updates, table_name='tutor', id=id)
 
         # Update the tutor
         execute_query(query, params)
 
         # Log the update
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} updated tutor {idTutor}', 
+            message=f'User {get_jwt_identity().get("email")} updated tutor {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -114,7 +107,7 @@ class Tutor(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id=None):
+    def get(self, id):
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')

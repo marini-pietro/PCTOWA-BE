@@ -19,10 +19,7 @@ api = Api(sector_bp)
 class Sector(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def post(self):
-        # Gather parameters
-        settore = request.args.get('settore')
-
+    def post(self, settore):
         try:
             # Insert the sector
             lastrowid = execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
@@ -57,10 +54,7 @@ class Sector(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def delete(self):
-        # Gather parameters
-        settore = request.args.get('settore')
-
+    def delete(self, settore):
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
         if sector is None:
@@ -81,9 +75,8 @@ class Sector(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def patch(self):
+    def patch(self, settore):
         # Gather parameters
-        settore = request.args.get('settore')
         newValue = request.args.get('newValue')
 
         # Check if sector exists
@@ -135,4 +128,4 @@ class Sector(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Sector, f'/{BP_NAME}')
+api.add_resource(Sector, f'/{BP_NAME}', f'{BP_NAME}/<string:settore>')
