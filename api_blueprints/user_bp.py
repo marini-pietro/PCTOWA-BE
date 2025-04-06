@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from requests import post as requests_post
@@ -23,7 +23,16 @@ api = Api(user_bp)
 class User(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def post(self):
+    def post(self) -> Response:
+        """
+        Register a new user.
+        The request body must be a JSON object with application/json content type.
+        """
+        
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        
         # Gather parameters
         email = request.json.get('email')
         password = request.json.get('password')
@@ -52,7 +61,11 @@ class User(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def patch(self, email):
+    def patch(self, email) -> Response:
+        """
+        Update an existing user.
+        The id is passed as a path variable.
+        """
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')
         newValues: list[str] = request.args.get('newValue').split(',')
@@ -94,7 +107,11 @@ class User(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def delete(self, email):
+    def delete(self, email) -> Response:
+        """
+        Delete an existing user.
+        The id is passed as a path variable.
+        """
         # Delete the user
         execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
 
@@ -110,7 +127,11 @@ class User(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, email):
+    def get(self, email) -> Response:
+        """
+        Get a user by email.
+        The email is passed as a path variable.
+        """
         # Gather parameters
         password = request.args.get('password')
         nome = request.args.get('nome')
@@ -162,7 +183,11 @@ class User(Resource):
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
 class UserLogin(Resource):
-    def post(self):
+    def post(self) -> Response:
+        """
+        User login endpoint.
+        The request body must be a JSON object with application/json content type.
+        """
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])

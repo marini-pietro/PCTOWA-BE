@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
@@ -19,10 +19,19 @@ api = Api(legalform_bp)
 class LegalForm(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def post(self, forma):
+    def post(self) -> Response:
+        """
+        Create a new legal form.
+        The request must contain a JSON body with application/json.
+        """
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Gather parameters
+        forma = request.json.get('forma')
+        if forma is None or not isinstance(forma, str) or len(forma) == 0:
+            return create_response(message={'error': 'Invalid legal form'}, status_code=STATUS_CODES["bad_request"])
 
         try:
             # Insert the legal form
@@ -33,7 +42,7 @@ class LegalForm(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT)
-            return create_response(message={'outcome': 'error, specified legal form already exists'}, status_code=STATUS_CODES["forbidden"])
+            return create_response(message={'outcome': 'error, specified legal form already exists'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create legal form {forma} with error: {str(ex)}',
@@ -55,7 +64,11 @@ class LegalForm(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def delete(self, forma):
+    def delete(self, forma) -> Response:
+        """
+        Delete a legal form.
+        The legal form is passed as a path variable.
+        """
         # Delete the legal form
         execute_query('DELETE FROM formaGiuridica WHERE forma = %s', (forma,))
 
@@ -71,7 +84,11 @@ class LegalForm(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def patch(self, forma):
+    def patch(self, forma) -> Response:
+        """
+        Update a legal form.
+        The legal form is passed as a path variable.
+        """
         # Gather parameters
         newValue = request.args.get('newValue')
 
@@ -95,7 +112,11 @@ class LegalForm(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self) -> Response:
+        """
+        Get all legal forms.
+        The results are paginated with limit and offset parameters.
+        """
         # Gather URL parameters
         try:
             limit = int(request.args.get('limit'))

@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from mysql.connector import IntegrityError
@@ -21,7 +21,11 @@ api = Api(company_bp)
 class Company(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def post(self):
+    def post(self) -> Response:
+        """
+        Create a new company in the database.
+        The request body must be a JSON object with application/json content type.
+        """
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
@@ -70,7 +74,11 @@ class Company(Resource):
         
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def delete(self, id):
+    def delete(self, id) -> Response:
+        """
+        Delete a company from the database.
+        The company ID is passed as a path variable.
+        """
         # Check if specified company exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
         if not company:
@@ -93,7 +101,11 @@ class Company(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def patch(self, id):
+    def patch(self, id) -> Response:
+        """
+        Update a company in the database.
+        The company ID is passed as a path variable.
+        """
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')  # list of fields to modify
         newValues: list[str] = request.args.get('newValue').split(',')  # list of values to set
@@ -143,7 +155,11 @@ class Company(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id):
+    def get(self, id) -> Response:
+        """
+        Retrieve a company from the database.
+        The company ID is passed as a path variable.
+        """
         # Gather parameters
         ragioneSociale = request.args.get('ragioneSociale')
         codiceAteco = request.args.get('codiceAteco')

@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
@@ -20,7 +20,11 @@ api = Api(turn_bp)
 class Turn(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def post(self):
+    def post(self) -> Response:
+        """
+        Create a new turn.
+        The request body must be a JSON object with application/json content type.
+        """
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
@@ -88,7 +92,11 @@ class Turn(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def delete(self, id):
+    def delete(self, id) -> Response:
+        """
+        Delete a turn.
+        The request must include the turn ID as a path variable.
+        """
         # Delete the turn
         execute_query('DELETE FROM turni WHERE idTurno = %s', (id,))
 
@@ -104,7 +112,11 @@ class Turn(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def patch(self, id):
+    def patch(self, id) -> Response:
+        """
+        Update a turn.
+        The request must include the turn ID as a path variable.
+        """
         # Gather parameters
         toModify = request.args.get('toModify').split(',')
         newValues = request.args.get('newValue').split(',')
@@ -150,7 +162,11 @@ class Turn(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id):
+    def get(self, id) -> Response:
+        """
+        Get a turn by ID.
+        The request must include the turn ID as a path variable.
+        """
         # Gather parameters
         dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
         dataFine = parse_date_string(date_string=request.args.get('dataFine'))

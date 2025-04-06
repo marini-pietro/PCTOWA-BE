@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
@@ -21,7 +21,12 @@ api = Api(class_bp)
 class Class(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def post(self):
+    def post(self) -> Response:
+        """
+        Create a new class in the database.
+        The request body must be a JSON object with application/json content type.
+        """
+
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
@@ -55,7 +60,11 @@ class Class(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def delete(self, id):
+    def delete(self, id) -> Response:
+        """
+        Delete a class from the database.
+        The class ID is passed as a path parameter.
+        """
         # Delete the class
         execute_query('DELETE FROM classi WHERE idClasse = %s', (id,))
         
@@ -71,7 +80,11 @@ class Class(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def patch(self, id):
+    def patch(self, id) -> Response:
+        """
+        Update a class in the database.
+        The class ID is passed as a path parameter.
+        """
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')  # list of fields to modify
         newValues: list[str] = request.args.get('newValue').split(',')  # list of values to set
@@ -117,7 +130,11 @@ class Class(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id):
+    def get(self, id) -> Response:
+        """
+        Get a class from the database.
+        The class ID is passed as a path parameter.
+        """
         # Gather parameters
         classe = request.args.get('classe')
         anno = request.args.get('anno')

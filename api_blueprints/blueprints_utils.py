@@ -1,5 +1,5 @@
 import threading, json, os
-from flask import jsonify, make_response, request
+from flask import jsonify, make_response, request, Response
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
 from datetime import datetime
@@ -84,7 +84,7 @@ def validate_filters(fields: List[str], table_name: str):
     return True
 
 # Response related
-def create_response(message: Dict, status_code: int) -> tuple:
+def create_response(message: Dict, status_code: int) -> Response:
     """
     Create a response with a message and status code.
 
@@ -93,7 +93,7 @@ def create_response(message: Dict, status_code: int) -> tuple:
         status_code - The HTTP status code to return
 
     returns:
-        A tuple containing the response message and status code
+        Response object with the message and status code
 
     raises:
         TypeError - If the message is not a dictionary or the status code is not an integer
