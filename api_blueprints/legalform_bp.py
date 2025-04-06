@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
+from mysql.connector import IntegrityError
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
@@ -22,13 +23,23 @@ class LegalForm(Resource):
         # Gather parameters
         legalform = request.args.get('forma')
 
-        # Check if legal form already exists
-        form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (legalform,))
-        if form is not None:
-            return {'outcome': 'error, specified legal form already exists'}, 403
-
-        # Insert the legal form
-        lastrowid = execute_query('INSERT INTO formaGiuridica (forma) VALUES (%s)', (legalform,))
+        try:
+            # Insert the legal form
+            lastrowid = execute_query('INSERT INTO formaGiuridica (forma) VALUES (%s)', (legalform,))
+        except IntegrityError: 
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} tried to create legal form {legalform} but it already existed',
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                origin_port=API_SERVER_PORT)
+            return create_response(message={'outcome': 'error, specified legal form already exists'}, status_code=STATUS_CODES["forbidden"])
+        except Exception as ex:
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} failed to create legal form {legalform} with error: {str(ex)}',
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                origin_port=API_SERVER_PORT)
+            return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
 
         # Log the legal form creation
         log(type='info',

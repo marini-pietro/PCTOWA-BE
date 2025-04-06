@@ -29,30 +29,30 @@ class Contact(Resource):
             'idAzienda': int(request.args.get('idAzienda'))
         }
 
-        if not fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (params['idAzienda'],)):
-            return create_response(message={'outcome': 'Company not found'}, status_code=STATUS_CODES["not_found"])
+        # Check if azienda exists
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (params['idAzienda'],))
+        if not company:
+            return create_response(message={'outcome': 'specified company does not exist'}, status_code=STATUS_CODES["not_found"])
 
-        try:
-            # Execute query to insert the contact
-            lastrowid: int = execute_query(
-                '''INSERT INTO contatti 
-                (nome, cognome, telefono, email, ruolo, idAzienda)
-                VALUES (%s, %s, %s, %s, %s, %s)''',
-                tuple(params.values())
-            )
+        
+        # Execute query to insert the contact
+        lastrowid: int = execute_query(
+            '''INSERT INTO contatti 
+            (nome, cognome, telefono, email, ruolo, idAzienda)
+            VALUES (%s, %s, %s, %s, %s, %s)''',
+            tuple(params.values())
+        )
             
-            # Log the creation of the contact
-            log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} created contact {lastrowid}',
-                origin_name=API_SERVER_NAME_IN_LOG, 
-                origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
+        # Log the creation of the contact
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} created contact {lastrowid}',
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
             
-            # Return a success message
-            return create_response(message={'outcome': 'contact created',
-                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
-        except Exception as err:
-            return create_response(message={'outcome': 'contact already exists'}, status_code=STATUS_CODES["bad_request"])
+        # Return a success message
+        return create_response(message={'outcome': 'contact created',
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])

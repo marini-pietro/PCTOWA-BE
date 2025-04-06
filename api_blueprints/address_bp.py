@@ -144,7 +144,7 @@ class Address(Resource):
 
         idAzienda = request.args.get('idAzienda')
         try:
-            idAzienda = int(idAzienda) if idAzienda else None
+            idAzienda = int(idAzienda)
         except ValueError:
             return create_response(message={'error': 'idAzienda must be an integer'}, status_code=STATUS_CODES["bad_request"])
 

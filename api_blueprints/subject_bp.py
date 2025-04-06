@@ -3,12 +3,13 @@ from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
+from re import match as re_match
+from mysql.connector import IntegrityError
 from .blueprints_utils import (check_authorization, validate_filters, 
                                fetchone_query, fetchall_query, 
                                execute_query, log, 
                                jwt_required_endpoint, create_response, 
                                build_update_query_from_filters, build_select_query_from_filters)
-import re
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -27,16 +28,26 @@ class Subject(Resource):
         hexColor = request.args.get('hexColor')
 
         # Validate parameters
-        if hexColor is not None and not re.match(r'^#[0-9A-Fa-f]{6}$', hexColor):
+        if hexColor is not None and not re_match(r'^#[0-9A-Fa-f]{6}$', hexColor):
             return create_response(message={'outcome': 'invalid hexColor format'}, status_code=STATUS_CODES["bad_request"])
 
-        # Check if subject already exists
-        subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
-        if subject is not None:
-            return create_response(message={'outcome': 'error, specified subject already exists'}, status_code=STATUS_CODES["bad_request"])
-
-        # Insert the subject
-        lastrowid = execute_query('INSERT INTO materie (materia, descr) VALUES (%s, %s)', (materia, descrizione))
+        try:
+            # Insert the subject
+            lastrowid = execute_query('INSERT INTO materie (materia, descrizione, hexColor) VALUES (%s, %s, %s)', (materia, descrizione, hex))
+        except IntegrityError:
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} tried to create subject {materia} but it already existed',
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                origin_port=API_SERVER_PORT)
+            return create_response(message={'outcome': 'error, specified subject already exists'}, status_code=STATUS_CODES["forbidden"])
+        except Exception as ex:
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} failed to create subject {materia} with error: {str(ex)}',
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                origin_port=API_SERVER_PORT)
+            return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
 
         # Log the subject creation
         log(type='info', 

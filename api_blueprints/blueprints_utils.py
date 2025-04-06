@@ -371,8 +371,8 @@ def log(type, message, origin_name, origin_host, origin_port) -> None:
             response = requests_post(f"http://{LOG_SERVER_HOST}:{LOG_SERVER_PORT}/log", json=log_data)
             if response.status_code != STATUS_CODES["ok"]:
                 print(f"Failed to log message: {response.status_code} - {response.text}")
-        except Exception as e:
-            print(f"Failed to send log: {e}")
+        except Exception as ex:
+            print(f"Failed to send log: {ex}")
 
     threading.Thread(target=send_log, daemon=True).start()
 
