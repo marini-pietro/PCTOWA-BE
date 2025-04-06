@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
@@ -21,7 +21,11 @@ api = Api(subject_bp)
 class Subject(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def post(self, materia):
+    def post(self, materia) -> Response:
+        """
+        Create a new subject.
+        The request body must be a JSON object with application/json content type.
+        """
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
@@ -43,7 +47,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT)
-            return create_response(message={'outcome': 'error, specified subject already exists'}, status_code=STATUS_CODES["forbidden"])
+            return create_response(message={'outcome': 'error, specified subject already exists'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create subject {materia} with error: {str(ex)}',
@@ -65,7 +69,11 @@ class Subject(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def delete(self, materia):
+    def delete(self, materia) -> Response:
+        """
+        Delete a subject.
+        The request must include the subject name as a path variable.
+        """
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
@@ -86,7 +94,11 @@ class Subject(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def patch(self, materia):
+    def patch(self, materia) -> Response:
+        """
+        Update a subject.
+        The request must include the subject name as a path variable.
+        """
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')
         newValues: list[str] = request.args.get('newValue').split(',')
@@ -132,7 +144,11 @@ class Subject(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, materia):
+    def get(self, materia) -> Response:
+        """
+        Get all subjects with pagination.
+        The request can include limit and offset as query parameters.
+        """
         # Gather parameters
         descrizione = request.args.get('descrizione')
         hexColor = request.args.get('hexColor')

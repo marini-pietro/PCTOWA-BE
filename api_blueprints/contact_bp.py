@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
@@ -19,7 +19,11 @@ api = Api(contact_bp)
 class Contact(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def post(self):
+    def post(self) -> Response:
+        """
+        Create a new contact.
+        The request must contain a JSON body with application/json.
+        """
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
@@ -66,7 +70,11 @@ class Contact(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def delete(self, id):
+    def delete(self, id) -> Response:
+        """
+        Delete a contact.
+        The id is passed as a path variable.
+        """
         # Execute query to delete the contact    
         execute_query('DELETE FROM contatti WHERE idContatto = %s', (id,))
         
@@ -82,7 +90,11 @@ class Contact(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def patch(self, id):
+    def patch(self, id) -> Response:
+        """
+        Update a contact.
+        The id is passed as a path variable.
+        """
         # Gather parameters
         toModify = request.args.get('toModify')
         newValues = request.args.get('newValue')
@@ -131,7 +143,11 @@ class Contact(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id):
+    def get(self, id) -> Response:
+        """
+        Get a contact by ID.
+        The id is passed as a path variable.
+        """
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')
