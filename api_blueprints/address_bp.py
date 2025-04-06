@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
@@ -19,7 +19,13 @@ api = Api(address_bp)
 class Address(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def post(self):
+    def post(self) -> Response:
+        """
+        Creates a new address in the database.
+        This endpoint requires authentication and authorization.
+        The request must contain a JSON in the body and application/json as Content-Type.
+        """
+
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
@@ -59,7 +65,12 @@ class Address(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def delete(self, id):
+    def delete(self, id) -> Response:
+        """
+        Deletes an address from the database.
+        This endpoint requires authentication and authorization.
+        The request must contain the id parameter in the URI as a path variable.
+        """
         # Delete the address
         execute_query('DELETE FROM indirizzi WHERE idIndirizzo = %s', (id,))
 
@@ -74,14 +85,11 @@ class Address(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def patch(self, id):
+    def patch(self, id) -> Response:
         """
         Updates an address in the database.
-        This endpoint requires authentication and authorization, only users with the 'admin' role can access it.
-        The request must contain the following parameters:
-        - idIndirizzo: The ID of the address to update.
-        - toModify: A comma-separated list of fields to modify (cannot contain primary key idIndirizzo).
-        - newValue: A comma-separated list of new values for the fields to modify.
+        This endpoint requires authentication and authorization.
+        The request must contain the id parameter in the URI as a path variable.
         """
 
         # Gather parameters
@@ -129,7 +137,12 @@ class Address(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id):
+    def get(self, id) -> Response:
+        """
+        Retrieves an address from the database.
+        This endpoint requires authentication and authorization.
+        The request must contain the id parameter in the URI as a path variable.
+        """
         # Gather parameters
         try:
             limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided

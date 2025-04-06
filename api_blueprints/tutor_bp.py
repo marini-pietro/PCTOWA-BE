@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
@@ -19,7 +19,11 @@ api = Api(tutor_bp)
 class Tutor(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def post(self):
+    def post(self) -> Response:
+        """
+        Create a new tutor.
+        The request body must be a JSON object with application/json content type.
+        """
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
@@ -49,7 +53,11 @@ class Tutor(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def delete(self, id):
+    def delete(self, id) -> Response:
+        """
+        Delete a tutor by ID.
+        The id must be provided as a path variable.
+        """
         # Delete the tutor
         execute_query('DELETE FROM tutor WHERE idTutor = %s', (id,))
 
@@ -65,7 +73,11 @@ class Tutor(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def patch(self, id):
+    def patch(self, id) -> Response:
+        """
+        Update a tutor by ID.
+        The id must be provided as a path variable.
+        """
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')
         newValues: list[str] = request.args.get('newValue').split(',')
@@ -111,7 +123,11 @@ class Tutor(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id):
+    def get(self, id) -> Response:
+        """
+        Get a tutor by ID.
+        The id must be provided as a path variable.
+        """
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')

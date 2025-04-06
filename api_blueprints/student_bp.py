@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
@@ -20,7 +20,11 @@ api = Api(student_bp)
 class Student(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def post(self):
+    def post(self) -> Response:
+        """
+        Create a new student.
+        The request body must be a JSON object with application/json content type.
+        """
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
@@ -45,7 +49,7 @@ class Student(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
-            return create_response(message={'outcome': 'error, student with provided matricola already exists'}, status_code=STATUS_CODES["bad_request"])
+            return create_response(message={'outcome': 'error, student with provided matricola already exists'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create student {matricola} with error: {str(ex)}',
@@ -66,7 +70,11 @@ class Student(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def delete(self, matricola):
+    def delete(self, matricola) -> Response:
+        """
+        Delete a student.
+        The request must include the student matricola as a path variable.
+        """
         # Delete the student
         execute_query('DELETE FROM studenti WHERE matricola = %s', (matricola,))
 
@@ -82,7 +90,11 @@ class Student(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
-    def patch(self, matricola):
+    def patch(self, matricola) -> Response:
+        """
+        Update a student.
+        The request must include the student matricola as a path variable.
+        """
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')  # toModify is a list of fields to modify
         newValues: list[str] = request.args.get('newValue').split(',')  # newValue is a list of values to set
@@ -128,7 +140,11 @@ class Student(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, matricola):
+    def get(self, matricola) -> Response:
+        """
+        Get a student by matricola.
+        The request must include the student matricola as a path variable.
+        """
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')

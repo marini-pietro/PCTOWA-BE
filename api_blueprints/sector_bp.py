@@ -1,5 +1,5 @@
 from os.path import basename as os_path_basename
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from mysql.connector import IntegrityError
@@ -19,7 +19,11 @@ api = Api(sector_bp)
 class Sector(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def post(self):
+    def post(self) -> Response:
+        """
+        Create a new sector.
+        The request body must be a JSON object with application/json content type.
+        """
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
@@ -36,7 +40,7 @@ class Sector(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT)
-            return create_response(message={'outcome': 'error, specified sector already exists'}, status_code=STATUS_CODES["forbidden"])
+            return create_response(message={'outcome': 'error, specified sector already exists'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create sector {settore} with error: {str(ex)}',
@@ -61,7 +65,11 @@ class Sector(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def delete(self, settore):
+    def delete(self, settore) -> Response:
+        """
+        Delete a sector.
+        The request must include the sector name as a path variable.
+        """
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
         if sector is None:
@@ -82,7 +90,11 @@ class Sector(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def patch(self, settore):
+    def patch(self, settore) -> Response:
+        """
+        Update a sector.
+        The request must include the sector name as a path variable.
+        """
         # Gather parameters
         newValue = request.args.get('newValue')
 
@@ -106,7 +118,11 @@ class Sector(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self):
+    def get(self) -> Response:
+        """
+        Get all sectors with pagination.
+        The request can include limit and offset as query parameters.
+        """
         # Gather URL parameters
         try:
             limit = int(request.args.get('limit'))
