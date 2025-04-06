@@ -67,7 +67,7 @@ class Turn(Resource):
 
         # Log the turn creation
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} created a turn', 
+            message=f'User {get_jwt_identity().get("email")} created turn {lastrowid}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)

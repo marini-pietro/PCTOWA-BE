@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
+from mysql.connector import IntegrityError
 from .blueprints_utils import (check_authorization, validate_filters, 
                                fetchone_query, fetchall_query, 
                                execute_query, log, 
@@ -35,18 +36,31 @@ class Student(Resource):
         try:
             # Insert the student
             lastrowid = execute_query('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
-
-            # Log the student creation
-            log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} created student {matricola}', 
+            
+        except IntegrityError:
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} tried to create student {matricola} but it already existed',
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
-
-            return create_response(message={"outcome": "student successfully created",
-                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
-        except Exception as err:
             return create_response(message={'outcome': 'error, student with provided matricola already exists'}, status_code=STATUS_CODES["bad_request"])
+        except Exception as ex:
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} failed to create student {matricola} with error: {str(ex)}',
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
+            return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
+
+        # Log the student creation
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} created student {matricola}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+
+        return create_response(message={"outcome": "student successfully created",
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
