@@ -21,9 +21,8 @@ api = Api(subject_bp)
 class Subject(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def post(self):
+    def post(self, materia):
         # Gather parameters
-        materia = request.args.get('materia')
         descrizione = request.args.get('descrizione')
         hexColor = request.args.get('hexColor')
 
@@ -62,14 +61,7 @@ class Subject(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def delete(self):
-        # Gather parameters
-        materia = request.args.get('materia')
-
-        # Validate parameters
-        if not materia:
-            return create_response(message={'outcome': 'missing subject name'}, status_code=STATUS_CODES["bad_request"])
-
+    def delete(self, materia):
         # Check if subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
@@ -90,9 +82,8 @@ class Subject(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
-    def patch(self):
+    def patch(self, materia):
         # Gather parameters
-        materia = request.args.get('materia')
         toModify: list[str] = request.args.get('toModify').split(',')
         newValues: list[str] = request.args.get('newValue').split(',')
 
@@ -137,7 +128,7 @@ class Subject(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, materia=None):
+    def get(self, materia):
         # Gather parameters
         descrizione = request.args.get('descrizione')
         hexColor = request.args.get('hexColor')
@@ -176,4 +167,4 @@ class Subject(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Subject, f'/{BP_NAME}', f'/{BP_NAME}/<string:materia>')
+api.add_resource(Subject, f'/{BP_NAME}/<string:materia>')

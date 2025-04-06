@@ -47,6 +47,7 @@ STATUS_CODES = {
     "not_found": 404,
     "unauthorized": 401,
     "forbidden": 403,
+    "conflict": 409,
     "bad_request": 400,
     "created": 201,
     "ok": 200,

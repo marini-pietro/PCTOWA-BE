@@ -19,23 +19,20 @@ api = Api(legalform_bp)
 class LegalForm(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def post(self):
-        # Gather parameters
-        legalform = request.args.get('forma')
-
+    def post(self, forma):
         try:
             # Insert the legal form
-            lastrowid = execute_query('INSERT INTO formaGiuridica (forma) VALUES (%s)', (legalform,))
+            execute_query('INSERT INTO formaGiuridica (forma) VALUES (%s)', (forma,))
         except IntegrityError: 
             log(type='error',
-                message=f'User {get_jwt_identity().get("email")} tried to create legal form {legalform} but it already existed',
+                message=f'User {get_jwt_identity().get("email")} tried to create legal form {forma} but it already existed',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT)
             return create_response(message={'outcome': 'error, specified legal form already exists'}, status_code=STATUS_CODES["forbidden"])
         except Exception as ex:
             log(type='error',
-                message=f'User {get_jwt_identity().get("email")} failed to create legal form {legalform} with error: {str(ex)}',
+                message=f'User {get_jwt_identity().get("email")} failed to create legal form {forma} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT)
@@ -43,27 +40,24 @@ class LegalForm(Resource):
 
         # Log the legal form creation
         log(type='info',
-            message=f'User {get_jwt_identity().get("email")} created legal form {lastrowid}', 
+            message=f'User {get_jwt_identity().get("email")} created legal form {forma}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
         # Return a success message
         return create_response(message={'outcome': 'legal form successfully created',
-                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{forma}'}, status_code=STATUS_CODES["created"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def delete(self):
-        # Gather parameters
-        legalform = request.args.get('forma')
-
+    def delete(self, forma):
         # Delete the legal form
-        execute_query('DELETE FROM formaGiuridica WHERE forma = %s', (legalform,))
+        execute_query('DELETE FROM formaGiuridica WHERE forma = %s', (forma,))
 
         # Log the deletion
         log(type='info',
-            message=f'User {get_jwt_identity().get("email")} deleted legal form {legalform}', 
+            message=f'User {get_jwt_identity().get("email")} deleted legal form {forma}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -73,22 +67,21 @@ class LegalForm(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def patch(self):
+    def patch(self, forma):
         # Gather parameters
-        legalform = request.args.get('forma')
         newValue = request.args.get('newValue')
 
         # Check if legal form exists
-        form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (legalform,))
+        form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (forma,))
         if form is None:
             return create_response(message={'outcome': 'error, specified legal form does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Update the legal form
-        execute_query('UPDATE formaGiuridica SET forma = %s WHERE forma = %s', (newValue, legalform))
+        execute_query('UPDATE formaGiuridica SET forma = %s WHERE forma = %s', (newValue, forma))
 
         # Log the update
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} updated legal form {legalform} to {newValue}', 
+            message=f'User {get_jwt_identity().get("email")} updated legal form {forma} to {newValue}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -127,4 +120,4 @@ class LegalForm(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(LegalForm, f'/{BP_NAME}')
+api.add_resource(LegalForm, f'/{BP_NAME}', f'{BP_NAME}/<string:forma>')

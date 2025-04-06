@@ -2,7 +2,7 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-import mysql.connector
+from mysql.connector import IntegrityError
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from .blueprints_utils import (check_authorization, validate_filters, 
                                build_select_query_from_filters, fetchone_query, 
@@ -41,53 +41,44 @@ class Company(Resource):
         }
 
         #TODO: add regex validation for each field
+        
+        lastrowid = execute_query(
+            '''INSERT INTO aziende 
+            (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, 
+             partitaIVA, telefonoAzienda, fax, emailAzienda, pec, 
+             formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''',
+            tuple(params.values())
+        )
 
-        try:
-            lastrowid = execute_query(
-                '''INSERT INTO aziende 
-                (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, 
-                 partitaIVA, telefonoAzienda, fax, emailAzienda, pec, 
-                 formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''',
-                tuple(params.values())
-            )
+        # Log the creation of the company
+        log(
+            type='info',
+            message=f'User {get_jwt_identity().get("email")} created company {lastrowid}',
+            origin_name=API_SERVER_NAME_IN_LOG,
+            origin_host=API_SERVER_HOST,
+            origin_port=API_SERVER_PORT
+        )
 
-            # Log the creation of the company
-            log(
-                type='info',
-                message=f'User {get_jwt_identity().get("email")} created company {lastrowid}',
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT
-            )
-
-            # Return a success message
-            return create_response(message={'outcome': 'company successfully created',
-                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
-        except mysql.connector.IntegrityError as ex:
-            return create_response(message={'outcome': f'error, company already exists: {ex}'}, status_code=STATUS_CODES["bad_request"])
-
+        # Return a success message
+        return create_response(message={'outcome': 'company successfully created',
+                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
+        
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def delete(self):
-        # Gather parameters
-        try:
-            idAzienda = int(request.args.get('idAzienda'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
-        
+    def delete(self, id):
         # Check if specified company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
         if not company:
             return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Delete the company
-        execute_query('DELETE FROM aziende WHERE idAzienda = %s', (idAzienda,))
+        execute_query('DELETE FROM aziende WHERE idAzienda = %s', (id,))
         
         # Log the deletion of the company
         log(
             type='info',
-            message=f'User {get_jwt_identity().get("email")} deleted company {idAzienda}',
+            message=f'User {get_jwt_identity().get("email")} deleted company {id}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             origin_port=API_SERVER_PORT
@@ -98,14 +89,10 @@ class Company(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def patch(self):
+    def patch(self, id):
         # Gather parameters
         toModify: list[str] = request.args.get('toModify').split(',')  # list of fields to modify
         newValues: list[str] = request.args.get('newValue').split(',')  # list of values to set
-        try:
-            idAzienda = int(request.args.get('idAzienda'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
 
         # Validate parameters
         if len(toModify) != len(newValues):
@@ -126,14 +113,14 @@ class Company(Resource):
             return outcome, STATUS_CODES["bad_request"]
 
         # Check if the company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
         if not company:
             return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Log the update of the company        
         log(
             type='info',
-            message=f'User {get_jwt_identity().get("email")} updated company {idAzienda}',
+            message=f'User {get_jwt_identity().get("email")} updated company {id}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             origin_port=API_SERVER_PORT
@@ -141,7 +128,7 @@ class Company(Resource):
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=updates, table_name='aziende', id=idAzienda
+            data=updates, table_name='aziende', id=id
         )
 
         # Execute the update query
@@ -152,7 +139,7 @@ class Company(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id=None):
+    def get(self, id):
         # Gather parameters
         ragioneSociale = request.args.get('ragioneSociale')
         codiceAteco = request.args.get('codiceAteco')

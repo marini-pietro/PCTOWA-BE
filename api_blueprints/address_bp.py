@@ -54,19 +54,13 @@ class Address(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def delete(self):
-        # Gather parameters
-        try:
-            idIndirizzo = int(request.args.get('idIndirizzo'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idIndirizzo parameter'}, status_code=STATUS_CODES["bad_request"])
-
+    def delete(self, id):
         # Delete the address
-        execute_query('DELETE FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
+        execute_query('DELETE FROM indirizzi WHERE idIndirizzo = %s', (id,))
 
         # Log the deletion
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} deleted address {idIndirizzo}', 
+            message=f'User {get_jwt_identity().get("email")} deleted address {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -75,7 +69,7 @@ class Address(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def patch(self):
+    def patch(self, id):
         """
         Updates an address in the database.
         This endpoint requires authentication and authorization, only users with the 'admin' role can access it.
@@ -88,10 +82,6 @@ class Address(Resource):
         # Gather parameters
         toModify: list[str]  = request.args.get('toModify').split(',')
         newValues: list[str] = request.args.get('newValue').split(',')
-        try:
-            idIndirizzo = int(request.args.get('idIndirizzo'))
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idIndirizzo parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Validate parameters
         if len(toModify) != len(newValues):
@@ -112,41 +102,39 @@ class Address(Resource):
             return create_response(message=outcome, status_code=STATUS_CODES["bad_request"])
 
         # Check if address exists
-        address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (idIndirizzo,))
+        address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (id,))
         if address is None:
             return create_response(message={'outcome': 'error, specified address does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Build the update query
-        query, params = build_update_query_from_filters(data=updates, table_name='indirizzi', id=idIndirizzo)
+        query, params = build_update_query_from_filters(data=updates, table_name='indirizzi', id=id)
 
         # Update the address
         execute_query(query=query, params=params)
 
         # Log the update
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} updated address {idIndirizzo} with fields {toModify} and values {newValues}', 
+            message=f'User {get_jwt_identity().get("email")} updated address {id} with fields {toModify} and values {newValues}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
 
         # Return a success message
-        return create_response(message={'outcome': f'address {idIndirizzo} successfully updated'}, status_code=STATUS_CODES["ok"])
+        return create_response(message={'outcome': f'address {id} successfully updated'}, status_code=STATUS_CODES["ok"])
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id=None):
-        # Gather parameters with validation
+    def get(self, id):
+        # Gather parameters
         try:
             limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
             offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
         except ValueError:
             return create_response(message={'error': 'limit and offset must be integers'}, status_code=STATUS_CODES["bad_request"])
-
-        idAzienda = request.args.get('idAzienda')
         try:
-            idAzienda = int(idAzienda)
+            idAzienda = int(request.args.get('idAzienda'))
         except ValueError:
-            return create_response(message={'error': 'idAzienda must be an integer'}, status_code=STATUS_CODES["bad_request"])
+            return create_response(message={'error': 'invalid idAzienda parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Build filter data dictionary
         data = {key: request.args.get(key) for key in ['idIndirizzo', 'stato', 'provincia', 'comune', 'cap', 'indirizzo']}

@@ -3,85 +3,14 @@ from flask import jsonify, make_response, request
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
 from datetime import datetime
+from functools import wraps
+from requests import post as requests_post
+from cachetools import TTLCache
+from typing import Dict, List, Any
 from config import (DB_HOST, REDACTED_USER, REDACTED_PASSWORD, 
                     DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, 
                     LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS, 
                     STATUS_CODES, ROLES)
-from functools import wraps
-from requests import post as requests_post # From requests import the post function
-from cachetools import TTLCache
-from typing import Dict, Any, List
-
-# Casting related
-input_validation_cache = None
-
-def perform_casting_operations(data: Dict[str, str]) -> Dict[str, Any]:
-    """
-    Given a dictionary of data it compares the data type of the value of a key in data to the data type written in the input_validation json and if they are different it performs the necessary casting and returns the dictionary with the correct types.
-    If a value that cannot be null is passed as null in the data dictionary it returns False
-    """
-    global input_validation_cache
-
-    # Load input validation metadata into cache if not already loaded
-    if input_validation_cache is None:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        metadata_path = os.path.join(base_dir, '..', 'input_validation.json')
-        if not os.path.exists(metadata_path): # Check if the file exists
-            # If the file doesn't exist, generate it using the input_validation_generator.py script
-            os.system("python3 input_validation_generator.py")
-        try:
-            with open(metadata_path) as metadata_file:
-                input_validation_cache = json.load(metadata_file)
-        except (json.JSONDecodeError, FileNotFoundError) as e:
-            return {'error': f'Failed to load metadata: {str(e)}'}
-        
-    # Validate input data against metadata
-    for key, value in data.items():
-        # Check if the key exists in the metadata
-        if key in input_validation_cache:
-            expected_type = input_validation_cache[key].get('type')
-            is_nullable = input_validation_cache[key].get('nullable', False)
-
-            # Perform casting based on expected type
-            if expected_type == 'int':
-                try:
-                    data[key] = int(value)
-                except (ValueError, TypeError):
-                    if not is_nullable:
-                        return False
-                    data[key] = None
-            elif expected_type == 'str' or expected_type == 'varchar' or expected_type == 'char':
-                data[key] = str(value)
-            elif expected_type == 'bool':
-                if value.lower() in ['true', '1', 'yes']:
-                    data[key] = True
-                elif value.lower() in ['false', '0', 'no']:
-                    data[key] = False
-                else:
-                    if not is_nullable:
-                        return False
-                    data[key] = None
-            elif expected_type == 'datetime':
-                try:
-                    data[key] = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
-                except (ValueError, TypeError):
-                    if not is_nullable:
-                        return False
-                    data[key] = None
-            elif expected_type == 'date':
-                try:
-                    data[key] = datetime.strptime(value, '%Y-%m-%d').date()
-                except (ValueError, TypeError):
-                    if not is_nullable:
-                        return False
-                    data[key] = None
-            elif expected_type == 'time':
-                try:
-                    data[key] = datetime.strptime(value, '%H:%M').time()
-                except (ValueError, TypeError):
-                    if not is_nullable:
-                        return False
-                    data[key] = None
 
 # Authorization related
 def check_authorization(allowed_roles: List[str]):
@@ -89,7 +18,7 @@ def check_authorization(allowed_roles: List[str]):
     Decorator to check if the user's type is in the allowed list.
     
     params:
-        allowed_roles: list[str] - List of user types that are permitted to execute the function.
+        allowed_roles: List[str] - List of user types that are permitted to execute the function.
     """
     def decorator(func):
         @wraps(func)
@@ -108,7 +37,7 @@ def check_authorization(allowed_roles: List[str]):
     return decorator
 
 # Validation related
-def validate_filters(fields: list[str], table_name: str):
+def validate_filters(fields: List[str], table_name: str):
     """
     Checks if the provided filters are actually column names in the database..
 
@@ -155,7 +84,7 @@ def validate_filters(fields: list[str], table_name: str):
     return True
 
 # Response related
-def create_response(message: dict, status_code: int) -> tuple:
+def create_response(message: Dict, status_code: int) -> tuple:
     """
     Create a response with a message and status code.
 
@@ -170,7 +99,7 @@ def create_response(message: dict, status_code: int) -> tuple:
         TypeError - If the message is not a dictionary or the status code is not an integer
     """
 
-    if not isinstance(message, dict):
+    if not isinstance(message, Dict):
         raise TypeError("Message must be a dictionary")
 
     message = f"{message}\n{STATUS_CODES_EXPLANATIONS.get(status_code, 'Unknown status code')}"
@@ -178,7 +107,7 @@ def create_response(message: dict, status_code: int) -> tuple:
     return make_response(jsonify(message), status_code)
 
 # Data handling related
-def parse_time_string(time_string) -> datetime:
+def parse_time_string(time_string: str) -> datetime:
     """
     Parse a time string in the format HH:MM and return a datetime object.
     
@@ -193,7 +122,7 @@ def parse_time_string(time_string) -> datetime:
     try: return datetime.strptime(time_string, '%H:%M').time()
     except ValueError: return None
 
-def parse_date_string(date_string) -> datetime:
+def parse_date_string(date_string: str) -> datetime:
     """
     Parse a date string in the format YYYY-MM-DD and return a datetime object.
     
@@ -288,7 +217,7 @@ def shutdown_handler(signal, frame):
     print("Database connection pool cleared. Exiting...")
     exit(0)
 
-def fetchone_query(query, params):
+def fetchone_query(query: str, params: tuple[Any]) -> dict[str, Any]:
     """
     Execute a query on the database and return the result.
     
@@ -305,7 +234,7 @@ def fetchone_query(query, params):
             cursor.execute(query, params)
             return cursor.fetchone()
 
-def fetchall_query(query, params):
+def fetchall_query(query: str, params: tuple[Any]) -> dict[str, Any]:
     """
     Execute a query on the database and return the result.
     """
@@ -315,7 +244,7 @@ def fetchall_query(query, params):
             cursor.execute(query, params)
             return cursor.fetchall()
 
-def execute_query(query, params):
+def execute_query(query: str, params: tuple[Any]) -> dict[str, Any]:
     """
     Execute a query on the database and commit the changes.
     
@@ -333,24 +262,8 @@ def execute_query(query, params):
             connection.commit()
             return cursor.lastrowid
 
-def execute_batch_queries(queries_with_params):
-    """
-    Execute multiple queries in a single transaction.
-    
-    params:
-        queries_with_params - A list of tuples (query, params)
-        
-    returns:
-        None
-    """
-    with get_db_connection() as connection:
-        with connection.cursor(dictionary=True) as cursor:
-            for query, params in queries_with_params:
-                cursor.execute(query, params)
-            connection.commit()
-
 # Log server related
-def log(type, message, origin_name, origin_host, origin_port) -> None:
+def log(type: str, message: str, origin_name: str, origin_host: str, origin_port: int) -> None:
     """
     Asynchronously logs a message to the log server via its API.
         
@@ -380,7 +293,7 @@ def log(type, message, origin_name, origin_host, origin_port) -> None:
 # | Create a cache for token validation results with a time-to-live (TTL) of 300 seconds (5 minutes)
 token_cache = TTLCache(maxsize=1000, ttl=300)
 
-def jwt_required_endpoint(func):
+def jwt_required_endpoint(func: callable) -> callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         token = request.headers.get('Authorization', '').replace('Bearer ', '')

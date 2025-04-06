@@ -34,7 +34,6 @@ class Contact(Resource):
         if not company:
             return create_response(message={'outcome': 'specified company does not exist'}, status_code=STATUS_CODES["not_found"])
 
-        
         # Execute query to insert the contact
         lastrowid: int = execute_query(
             '''INSERT INTO contatti 
@@ -56,19 +55,13 @@ class Contact(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def delete(self):
-        # Gather parameters
-        try:
-            contact_id = int(request.args.get('idContatto'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid contact ID'}, status_code=STATUS_CODES["bad_request"])
-        
+    def delete(self, id):
         # Execute query to delete the contact    
-        execute_query('DELETE FROM contatti WHERE idContatto = %s', (contact_id,))
+        execute_query('DELETE FROM contatti WHERE idContatto = %s', (id,))
         
         # Log the deletion of the contact
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} deleted contact {contact_id}',
+            message=f'User {get_jwt_identity().get("email")} deleted contact {id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST,
             origin_port=API_SERVER_PORT)
@@ -78,14 +71,10 @@ class Contact(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def patch(self):
+    def patch(self, id):
         # Gather parameters
         toModify = request.args.get('toModify')
         newValues = request.args.get('newValue')
-        try:
-            contact_id = int(request.args.get('idContatto'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid contact ID'}, status_code=STATUS_CODES["bad_request"])
 
         # Validate parameters
         if len(toModify) != len(newValues):
@@ -106,14 +95,14 @@ class Contact(Resource):
             return create_response(message=outcome, status_code=STATUS_CODES["bad_request"])
 
         # Check that the specified contact exists
-        contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (contact_id,))
+        contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (id,))
         if not contact:
             return create_response(message={'outcome': 'specified contact not found'}, status_code=STATUS_CODES["not_found"])
 
         # Build the update query
         query, params = build_update_query_from_filters(
             data=updates, table_name='contatti', 
-            id=contact_id
+            id=id
         )
 
         # Execute the update query
@@ -121,7 +110,7 @@ class Contact(Resource):
         
         # Log the update of the contact
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} updated contact {contact_id}',
+            message=f'User {get_jwt_identity().get("email")} updated contact {id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -131,7 +120,7 @@ class Contact(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id=None):
+    def get(self, id):
         # Gather parameters
         nome = request.args.get('nome')
         cognome = request.args.get('cognome')
