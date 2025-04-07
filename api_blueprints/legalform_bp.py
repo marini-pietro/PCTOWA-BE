@@ -89,8 +89,14 @@ class LegalForm(Resource):
         Update a legal form.
         The legal form is passed as a path variable.
         """
-        # Gather parameters
-        newValue = request.args.get('newValue')
+
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None: 
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, 
+                                   status_code=STATUS_CODES["bad_request"])
+
+        # Gather JSON data
+        newValue = request.json.get('newValue')
 
         # Check if legal form exists
         form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (forma,))
