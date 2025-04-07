@@ -25,24 +25,24 @@ class LegalForm(Resource):
         The request must contain a JSON body with application/json.
         """
         # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        if not request.is_json or request.json is None: return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, 
+                                                                               status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
         forma = request.json.get('forma')
-        if forma is None or not isinstance(forma, str) or len(forma) == 0:
-            return create_response(message={'error': 'Invalid legal form'}, status_code=STATUS_CODES["bad_request"])
+        if forma is None or not isinstance(forma, str) or len(forma) == 0: return create_response(message={'error': 'Invalid legal form'}, 
+                                                                                                  status_code=STATUS_CODES["bad_request"])
 
         try:
             # Insert the legal form
             execute_query('INSERT INTO formaGiuridica (forma) VALUES (%s)', (forma,))
-        except IntegrityError: 
+        except IntegrityError as ex: 
             log(type='error',
-                message=f'User {get_jwt_identity().get("email")} tried to create legal form {forma} but it already existed',
+                message=f'User {get_jwt_identity().get("email")} tried to create legal form {forma} but it generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT)
-            return create_response(message={'outcome': 'error, specified legal form already exists'}, status_code=STATUS_CODES["conflict"])
+            return create_response(message={'error': 'conflict error'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create legal form {forma} with error: {str(ex)}',

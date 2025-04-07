@@ -42,14 +42,13 @@ class Student(Resource):
         try:
             # Insert the student
             lastrowid = execute_query('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
-            
-        except IntegrityError:
+        except IntegrityError as ex:
             log(type='error',
-                message=f'User {get_jwt_identity().get("email")} tried to create student {matricola} but it already existed',
+                message=f'User {get_jwt_identity().get("email")} tried to create student {matricola} but it already generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
                 origin_port=API_SERVER_PORT)
-            return create_response(message={'outcome': 'error, student with provided matricola already exists'}, status_code=STATUS_CODES["conflict"])
+            return create_response(message={'error': 'conflict error'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create student {matricola} with error: {str(ex)}',
