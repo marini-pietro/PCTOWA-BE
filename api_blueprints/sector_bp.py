@@ -95,8 +95,13 @@ class Sector(Resource):
         Update a sector.
         The request must include the sector name as a path variable.
         """
-        # Gather parameters
-        newValue = request.args.get('newValue')
+
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None: 
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Gather JSON data
+        newValue = request.json.get('newValue')
 
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))

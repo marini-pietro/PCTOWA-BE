@@ -2,13 +2,15 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from .blueprints_utils import (check_authorization, validate_filters, 
-                               fetchone_query, fetchall_query, 
-                               execute_query, log, 
-                               jwt_required_endpoint, create_response, 
-                               parse_date_string, parse_time_string, 
-                               build_select_query_from_filters, build_update_query_from_filters)
+from typing import List
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
+from .blueprints_utils import (check_authorization, fetchone_query, 
+                               fetchall_query, execute_query, 
+                               log, jwt_required_endpoint, 
+                               create_response, parse_date_string, 
+                               parse_time_string, build_select_query_from_filters, 
+                               build_update_query_from_filters)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -117,35 +119,31 @@ class Turn(Resource):
         Update a turn.
         The request must include the turn ID as a path variable.
         """
-        # Gather parameters
-        toModify = request.args.get('toModify').split(',')
-        newValues = request.args.get('newValue').split(',')
-        
-        # Validate parameters
-        if len(toModify) != len(newValues):
-            return create_response(message={'outcome': 'Mismatched fields and values lists lengths'}, status_code=STATUS_CODES["bad_request"])
 
-        # Build a dictionary with fields as keys and values as values
-        updates = dict(zip(toModify, newValues))  # {field1: value1, field2: value2, ...}
-
-        # Check that the specified fields can be modified
-        not_allowed_fields = ['idTurno']
-        for field in toModify:
-            if field in not_allowed_fields:
-                return create_response(message={'outcome': f'error, field {field} cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
             
-        # Check that the specified fields actually exist in the database
-        outcome = validate_filters(data=updates, table_name='turni')
-        if outcome != True:  # if the validation fails, outcome will be a dict with the error message
-            return create_response(outcome, STATUS_CODES["bad_request"])
-        
         # Check that the specified class exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (id,))
         if not turn:
             return create_response(message={'outcome': 'specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
 
+        # Check that the specified fields actually exist in the database
+        modifiable_columns: List[str] = ['dataInizio', 'dataFine', 
+                              'posti', 'postiOccupati', 
+                              'ore', 'idAzienda', 
+                              'idTutor', 'idIndirizzo', 
+                              'oraInizio', 'oraFine',
+                              'giornoInizio', 'giornoFine']
+        toModify: list[str]  = list(request.json.keys())
+        error_columns = [field for field in toModify if field not in modifiable_columns]
+        if error_columns:
+            return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+
         # Build the update query
-        query, params = build_update_query_from_filters(data=updates, table_name='turni', id=id)
+        query, params = build_update_query_from_filters(data=request.json, table_name='turni', 
+                                                        id_column='idTurno', id_value=id)
 
         # Execute the update query
         execute_query(query, params)
