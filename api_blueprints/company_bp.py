@@ -2,12 +2,13 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from .blueprints_utils import (check_authorization, validate_filters, 
-                               build_select_query_from_filters, fetchone_query, 
-                               fetchall_query, execute_query, 
-                               log, jwt_required_endpoint, 
-                               create_response, validate_filters, 
+from typing import List
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
+from .blueprints_utils import (check_authorization, build_select_query_from_filters, 
+                               fetchone_query, fetchall_query, 
+                               execute_query, log, 
+                               jwt_required_endpoint, create_response, 
                                build_update_query_from_filters, parse_date_string)
 
 # Define constants
@@ -105,16 +106,15 @@ class Company(Resource):
         Update a company in the database.
         The company ID is passed as a path variable.
         """
-        # Gather parameters
-        toModify: list[str] = request.args.get('toModify').split(',')  # list of fields to modify
-        newValues: list[str] = request.args.get('newValue').split(',')  # list of values to set
 
-        # Validate parameters
-        if len(toModify) != len(newValues):
-            return create_response(message={'outcome': 'Mismatched fields and values lists lengths'}, status_code=STATUS_CODES["bad_request"])
+        # Check that the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
 
-        # Build a dictionary with fields as keys and values as values
-        updates = dict(zip(toModify, newValues))  # {field1: value1, field2: value2, ...}
+        # Check if the company exists
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
+        if not company:
+            return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields can be modified
         not_allowed_fields = ['idAzienda']
@@ -123,14 +123,26 @@ class Company(Resource):
                 return create_response(message={'outcome': f'error, field "{field}" cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that the specified fields actually exist in the database
-        outcome = validate_filters(data=updates, table_name='aziende')
-        if outcome is not True:
-            return outcome, STATUS_CODES["bad_request"]
+        modifiable_columns: List[str] = ['ragioneSociale', 'codiceAteco', 
+                              'partitaIVA', 'fax', 
+                              'pec', 'telefonoAzienda',
+                              'emailAzienda', 'dataConvenzione', 
+                              'scadenzaConvenzione', 'categoria', 
+                              'indirizzoLogo', 'sitoWeb', 
+                              'formaGiuridica']
+        toModify: list[str]  = list(request.json.keys())
+        error_columns = [field for field in toModify if field not in modifiable_columns]
+        if error_columns:
+            return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
-        # Check if the company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
-        if not company:
-            return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
+        # Build the update query
+        query, params = build_update_query_from_filters(
+            data=request.json, table_name='aziende', 
+            id_column='idAzienda', id_value=id
+        )
+
+        # Execute the update query
+        execute_query(query, params)
 
         # Log the update of the company        
         log(
@@ -140,14 +152,6 @@ class Company(Resource):
             origin_host=API_SERVER_HOST,
             origin_port=API_SERVER_PORT
         )
-
-        # Build the update query
-        query, params = build_update_query_from_filters(
-            data=updates, table_name='aziende', id=id
-        )
-
-        # Execute the update query
-        execute_query(query, params)
 
         # Return a success message
         return create_response(message={'outcome': 'company successfully updated'}, status_code=STATUS_CODES["ok"])

@@ -6,7 +6,7 @@ from datetime import datetime
 from functools import wraps
 from requests import post as requests_post
 from cachetools import TTLCache
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 from config import (DB_HOST, REDACTED_USER, REDACTED_PASSWORD, 
                     DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, 
                     LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS, 
@@ -35,53 +35,6 @@ def check_authorization(allowed_roles: List[str]):
             return func(*args, **kwargs)
         return wrapper
     return decorator
-
-# Validation related
-def validate_filters(fields: List[str], table_name: str):
-    """
-    Checks if the provided filters are actually column names in the database..
-
-    params:
-        fields - The filters to validate
-        table_name - The name of the table to validate against
-
-    returns:
-        A dictionary with an error message if validation fails, or True if validation succeeds.
-
-    raises:
-        JSONDecodeError - If the metadata file cannot be parsed
-        KeyError - If the table name is not found in the metadata file
-        TypeError - If the filters are not in the expected format
-        ValueError - If the filters contain invalid values
-    """
-    global metadata_cache
-
-    # Load metadata into cache if not already loaded
-    if metadata_cache is None:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        metadata_path = os.path.join(base_dir, '..', 'table_metadata.json')
-        if not os.path.exists(metadata_path):
-            os.system("python3 valid_filters_generator.py")
-        try:
-            with open(metadata_path) as metadata_file:
-                metadata = json.load(metadata_file)
-                # Convert list to dictionary if necessary
-                if isinstance(metadata, list):
-                    metadata = {key: value for item in metadata for key, value in item.items()}
-                metadata_cache = metadata
-        except (json.JSONDecodeError, FileNotFoundError) as e:
-            return {'error': f'Failed to load metadata: {str(e)}'}
-
-    # Validate filters
-    available_filters = metadata_cache.get(f'{table_name}', [])
-    if not isinstance(available_filters, list) or not all(isinstance(item, str) for item in available_filters):
-        return {'error': f'invalid {table_name} column values in metadata'}
-
-    invalid_filters = [key for key in fields if key not in available_filters]
-    if invalid_filters:
-        return {'error': f'Invalid filter(s): {", ".join(invalid_filters)}'}
-
-    return True
 
 # Response related
 def create_response(message: Dict, status_code: int) -> Response:
@@ -175,7 +128,7 @@ def build_select_query_from_filters(data, table_name, limit=1, offset=0):
     query = f"SELECT * FROM {table_name} WHERE {filters} LIMIT %s OFFSET %s"
     return query, params
 
-def build_update_query_from_filters(data, table_name, id_column):
+def build_update_query_from_filters(data, table_name, id_column, id_value):
     """
     Build a SQL update query from filters.
     
@@ -192,7 +145,7 @@ def build_update_query_from_filters(data, table_name, id_column):
     """
 
     filters = ", ".join([f"{key} = %s" for key in data.keys()])
-    params = list(data.values())
+    params = list(data.values()) + [id_value]
     query = f"UPDATE {table_name} SET {filters} WHERE {id_column} = %s"
     return query, params
 
@@ -217,7 +170,7 @@ def shutdown_handler(signal, frame):
     print("Database connection pool cleared. Exiting...")
     exit(0)
 
-def fetchone_query(query: str, params: tuple[Any]) -> dict[str, Any]:
+def fetchone_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:
     """
     Execute a query on the database and return the result.
     
@@ -234,7 +187,7 @@ def fetchone_query(query: str, params: tuple[Any]) -> dict[str, Any]:
             cursor.execute(query, params)
             return cursor.fetchone()
 
-def fetchall_query(query: str, params: tuple[Any]) -> dict[str, Any]:
+def fetchall_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:
     """
     Execute a query on the database and return the result.
     """
@@ -244,7 +197,7 @@ def fetchall_query(query: str, params: tuple[Any]) -> dict[str, Any]:
             cursor.execute(query, params)
             return cursor.fetchall()
 
-def execute_query(query: str, params: tuple[Any]) -> dict[str, Any]:
+def execute_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:
     """
     Execute a query on the database and commit the changes.
     
