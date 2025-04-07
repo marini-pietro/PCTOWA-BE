@@ -34,13 +34,13 @@ class Sector(Resource):
         try:
             # Insert the sector
             lastrowid = execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
-        except IntegrityError:  # Adjust based on your database driver
+        except IntegrityError as ex: 
             log(type='error',
-                message=f'User {get_jwt_identity().get("email")} tried to create sector {settore} but it already existed',
+                message=f'User {get_jwt_identity().get("email")} tried to create sector {settore} but it already generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT)
-            return create_response(message={'outcome': 'error, specified sector already exists'}, status_code=STATUS_CODES["conflict"])
+            return create_response(message={'error': 'conflict error'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create sector {settore} with error: {str(ex)}',

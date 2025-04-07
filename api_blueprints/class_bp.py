@@ -3,7 +3,6 @@ from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
-from mysql.connector import IntegrityError
 from re import match as re_match
 from .blueprints_utils import (check_authorization, build_select_query_from_filters, 
                                fetchone_query, fetchall_query, 
