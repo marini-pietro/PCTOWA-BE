@@ -1,8 +1,9 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 from api_blueprints.blueprints_utils import log
 from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_DEBUG_MODE, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from api_blueprints import *  # Import all the blueprints
-import os, importlib
+from importlib import import_module
+import os
 
 # Create a Flask app
 app = Flask(__name__)
@@ -12,7 +13,7 @@ blueprints_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'api_b
 for filename in os.listdir(blueprints_dir):
     if filename.endswith('_bp.py'):  # Look for files ending with '_bp.py'
         module_name = filename[:-3]  # Remove the .py extension
-        module = importlib.import_module(f'api_blueprints.{module_name}')
+        module = import_module(f'api_blueprints.{module_name}')
         blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
         app.register_blueprint(blueprint, url_prefix=f'/api/')  # Remove '_bp' for the URL prefix
         print(f"Registered blueprint: {module_name} with prefix /api/")
@@ -22,7 +23,11 @@ def close_api(signal, frame):  # Parameters are necessary to match the signal ha
     """
     Gracefully close the API server.
     """
-    log(type='info', message='API server shutting down', origin_name=API_SERVER_NAME_IN_LOG, origin_host=API_SERVER_HOST, origin_port=API_SERVER_PORT)
+    log(type='info', 
+        message='API server shutting down', 
+        origin_name=API_SERVER_NAME_IN_LOG, 
+        origin_host=API_SERVER_HOST, 
+        origin_port=API_SERVER_PORT)
     
     # Use the Flask shutdown function directly
     shutdown_func = app.config.get('werkzeug.server.shutdown')
