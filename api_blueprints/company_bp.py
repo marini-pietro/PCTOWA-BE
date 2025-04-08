@@ -2,6 +2,7 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
+from re import match as re_match
 from typing import List
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
@@ -30,6 +31,7 @@ class Company(Resource):
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
 
+        # Gather parameters from the request body (new dictionary is necessary so that user can provide JSON with fields in any order)
         params = {
             'ragioneSociale': request.json.get('ragioneSociale'),
             'nome': request.json.get('nome'),
@@ -48,7 +50,10 @@ class Company(Resource):
             'categoria': request.json.get('categoria')
         }
 
-        #TODO: add regex validation for each field
+        # Validate parameters
+        if not re_match(r'^\+\d{1,3}\s?\d{4,14}$', params['telefonoAzienda']):
+            return create_response(message={'error': 'invalid phone number format'}, status_code=STATUS_CODES["bad_request"])
+        # TODO: add regex check to all the other fields
         
         lastrowid = execute_query(
             '''INSERT INTO aziende 

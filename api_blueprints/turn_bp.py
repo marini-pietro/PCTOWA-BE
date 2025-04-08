@@ -33,53 +33,73 @@ class Turn(Resource):
         
         # Gather parameters
         settore = request.json.get('settore')
-        posti = request.json.get('posti')
-        ore = request.json.get('ore')
-        try:
-            idIndirizzo = int(request.json.get('idIndirizzo'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid idIndirizzo value'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            idTutor = int(request.json.get('idTutor'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid idTutor value'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            idAzienda = int(request.json.get('idAzienda'))
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid idAzienda value'}, status_code=STATUS_CODES["bad_request"])
+        materia = request.json.get('materia')
         dataInizio = parse_date_string(date_string=request.json.get('dataInizio'))
         dataFine = parse_date_string(date_string=request.json.get('dataFine'))
         oraInizio = parse_time_string(time_string=request.json.get('oraInizio'))
         oraFine = parse_time_string(time_string=request.json.get('oraFine'))
+        giornoInizio = request.json.get('giornoInizio')
+        giornoFine = request.json.get('giornoFine')
+        ore = request.json.get('ore')
+        posti = request.json.get('posti')
+        idIndirizzo = request.json.get('idIndirizzo')
+        idTutor = request.json.get('idTutor')
+        idAzienda = request.json.get('idAzienda')
         
-        # Check that specified company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
-        if company is None:
-            return create_response(message={'outcome': 'error, specified company does not exist'}, status_code=STATUS_CODES["not_found"])
+        # Validate data
+        valid_days = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì']
+        if giornoInizio not in valid_days:
+            return create_response(message={'error': 'invalid giornoInizio value'}, status_code=STATUS_CODES["bad_request"])
+        if giornoFine not in valid_days:
+            return create_response(message={'error': 'invalid giornoFine value'}, status_code=STATUS_CODES["bad_request"])
+        if valid_days.index(giornoInizio) >= valid_days.index(giornoFine):
+            return create_response(message={'error': 'giornoInizio must be before giornoFine'}, status_code=STATUS_CODES["bad_request"])
+        if giornoInizio == giornoFine:
+            return create_response(message={'error': 'giornoInizio and giornoFine cannot be the same'}, status_code=STATUS_CODES["bad_request"])
+        
+        values_to_check = {"ore": ore, "posti": posti, "idIndirizzo": idIndirizzo, "idTutor": idTutor, "idAzienda": idAzienda}
+        for key, value in values_to_check.items():
+            if value is not None:
+                try:
+                    values_to_check[key] = int(value)
+                except (ValueError, TypeError):
+                    return create_response(message={'error': f'invalid {key} value'}, status_code=STATUS_CODES["bad_request"])
 
-        # Check that idIndirizzo exists if provided
-        if idIndirizzo is not None:
-            address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (int(idIndirizzo),))
-            if address is None:
-                return create_response(message={'outcome': 'error, specified address does not exist'}, status_code=STATUS_CODES["not_found"])
+        # CHECK THAT VALUES PROVIDED ACTUALLY EXIST IN THE DATABASE
+        pk_to_check = {
+            "aziende": ["idAzienda", idAzienda], 
+            "indirizzi": ["idIndirizzo", idIndirizzo], 
+            "tutor": ["idTutor", idTutor],
+            "materie": ["materia", materia],
+            "settori": ["settore", settore]
+        }
+        for table, (column, value) in pk_to_check.items():
+            if value is not None:
+                # Check if the value exists in the database
+                result = fetchone_query(f'SELECT * FROM {table} WHERE {column} = %s', (value,))
+                if result is None:
+                    return create_response(message={'outcome': f'error, specified row in table {table} does not exist'}, status_code=STATUS_CODES["not_found"])
 
-        # Check that settore exists if provided
-        if settore is not None:
-            sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
-            if sector is None:
-                return create_response(message={'outcome': 'error, specified sector does not exist'}, status_code=STATUS_CODES["not_found"])
-
-        # Check that idTutor exists if provided
-        if idTutor is not None:
-            tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (int(idTutor),))
-            if tutor is None:
-                return create_response(message={'outcome': 'error, specified tutor does not exist'}, status_code=STATUS_CODES["not_found"])
-
+        # INSERT THE DATA INTO THE DATABASE
         # Insert the turn
         lastrowid = execute_query(
             'INSERT INTO turni (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)',
             (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine)
         )
+
+        # Insert row into turnoSettore table
+        if settore is not None:
+            execute_query(
+                'INSERT INTO turnoSettore (idTurno, settore) VALUES (%s, %s)',
+                (lastrowid, settore)
+            )
+
+        # Insert row into turnoMateria table
+        if materia is not None:
+            execute_query(
+                'INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)',
+                (lastrowid, materia)
+            )
 
         # Log the turn creation
         log(type='info', 

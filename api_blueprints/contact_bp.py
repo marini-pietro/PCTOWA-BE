@@ -26,25 +26,27 @@ class Contact(Resource):
         Create a new contact.
         The request must contain a JSON body with application/json.
         """
+        
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
         
         # Gather parameters
-        try:
-            idAzienda = request.json.get('idAzienda')
-            idAzienda = int(idAzienda) if idAzienda is not None and str(idAzienda).isdigit() else None
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
-
         params = {
             'nome': request.json.get('nome'),
             'cognome': request.json.get('cognome'),
             'telefono': request.json.get('telefono'),
             'email': request.json.get('email'),
             'ruolo': request.json.get('ruolo'),
-            'idAzienda': idAzienda
+            'idAzienda': request.json.get('idAzienda')
         }
+
+        # Validate parameters
+        if params['idAzienda'] is not None:
+            try:
+                params['idAzienda'] = int(params['idAzienda'])
+            except (ValueError, TypeError):
+                return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if azienda exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (params['idAzienda'],))

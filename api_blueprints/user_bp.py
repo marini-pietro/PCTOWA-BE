@@ -4,6 +4,7 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from requests import post as requests_post
 from requests.exceptions import RequestException
+from mysql.connector import IntegrityError
 from typing import List
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST, 
@@ -233,5 +234,61 @@ class UserLogin(Resource):
             origin_port=API_SERVER_PORT)
             return create_response(message={'error': 'Unexpected error during login'}, status_code=STATUS_CODES["internal_error"])
 
+class UserBindToCompany(Resource):
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
+    def post(self, email) -> Response:
+        """
+        Bind a user to a company.
+        The id is passed as a path variable.
+        """
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Gather parameters
+        company_id = request.json.get('idAzienda')
+        if company_id is None:
+            return create_response(message={'error': 'missing company id'}, status_code=STATUS_CODES["bad_request"])
+
+        # Check if user exists
+        user = fetchone_query('SELECT * FROM utenti WHERE emailUtente = %s', (email,))
+        if user is None:
+            return create_response(message={'outcome': 'error, user with provided email does not exist'}, status_code=STATUS_CODES["not_found"])
+        
+        # Check if company exists
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
+        if company is None:
+            return create_response(message={'outcome': 'error, company with provided id does not exist'}, status_code=STATUS_CODES["not_found"])
+
+        # Bind the user to the company
+        try:
+            execute_query('UPDATE utenti SET company_id = %s WHERE emailUtente = %s', (company_id, email))
+        except IntegrityError as ex:
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} tried to bind user {email} to company {company_id} but it already generated {ex}',
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'conflict error'}, status_code=STATUS_CODES["conflict"])
+        except Exception as ex:
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} failed to bind user {email} to company {company_id} with error: {str(ex)}',
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
+            return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
+
+        # Log the binding
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} bound user {email} to company {company_id}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+
+        # Return success message
+        return create_response(message={'outcome': 'user successfully bound to company'}, status_code=STATUS_CODES["ok"])
+
 api.add_resource(User, f'/{BP_NAME}', f'/{BP_NAME}/<string:email>')
 api.add_resource(UserLogin, '/login')
+api.add_resource(UserBindToCompany, f'/{BP_NAME}/bind/<string:email>')

@@ -31,6 +31,15 @@ class Sector(Resource):
         # Gather parameters
         settore = request.json.get('settore')
 
+        # Validate parameters
+        if settore is None or len(settore) == 0:
+            return create_response(message={'error': 'settore parameter is required'}, status_code=STATUS_CODES["bad_request"])
+        elif len(settore) >= 256:
+            return create_response(message={'error': 'settore parameter is too long'}, status_code=STATUS_CODES["bad_request"])
+        elif not isinstance(settore, str):
+            return create_response(message={'error': 'settore parameter must be a string'}, status_code=STATUS_CODES["bad_request"])
+
+        # Insert the sector into the database
         try:
             # Insert the sector
             lastrowid = execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
@@ -48,9 +57,6 @@ class Sector(Resource):
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT)
             return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
-
-        # Insert the sector
-        lastrowid = execute_query('INSERT INTO settori (settore) VALUES (%s)', (settore,))
 
         # Log the sector creation
         log(type='info',
