@@ -1,4 +1,4 @@
-import threading, json, os
+import threading
 from flask import jsonify, make_response, request, Response
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
@@ -6,7 +6,7 @@ from datetime import datetime
 from functools import wraps
 from requests import post as requests_post
 from cachetools import TTLCache
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Tuple, Any 
 from config import (DB_HOST, DB_USER, DB_PASSWORD, 
                     DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, 
                     LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS, 

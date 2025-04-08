@@ -27,6 +27,7 @@ class Company(Resource):
         Create a new company in the database.
         The request body must be a JSON object with application/json content type.
         """
+        
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None:
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
