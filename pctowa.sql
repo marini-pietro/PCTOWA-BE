@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Apr 04, 2025 alle 19:25
+-- Creato il: Apr 08, 2025 alle 18:11
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -34,7 +34,7 @@ CREATE TABLE `aziende` (
   `partitaIVA` char(11) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `fax` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `pec` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `telefonoAzienda` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `telefonoAzienda` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'con prefisso',
   `emailAzienda` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `dataConvenzione` date DEFAULT NULL,
   `scadenzaConvenzione` date DEFAULT NULL,
@@ -52,9 +52,9 @@ CREATE TABLE `aziende` (
 
 CREATE TABLE `classi` (
   `idClasse` int NOT NULL,
-  `classe` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `classe` char(3) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'sigla della classe (e.g. 5BI)',
   `emailResponsabile` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `anno` char(5) COLLATE utf8_unicode_ci NOT NULL
+  `anno` char(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'anno scolastico (e.g. 24-25)'
 ) ;
 
 -- --------------------------------------------------------
@@ -120,7 +120,7 @@ CREATE TABLE `indirizzi` (
 CREATE TABLE `materie` (
   `materia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `descrizione` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
-  `hexColor` char(7) COLLATE utf8_unicode_ci NOT NULL
+  `hexColor` char(7) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'colore della tag nel frontend, obbligatorio esprimerlo con 7 caratteri'
 ) ;
 
 -- --------------------------------------------------------
@@ -214,7 +214,7 @@ CREATE TABLE `tutor` (
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `emailTutor` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `telefonoTutor` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+) ;
 
 -- --------------------------------------------------------
 
@@ -228,7 +228,7 @@ CREATE TABLE `utenti` (
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `tipo` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+) ;
 
 --
 -- Indici per le tabelle scaricate
