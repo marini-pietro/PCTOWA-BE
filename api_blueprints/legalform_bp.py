@@ -24,14 +24,17 @@ class LegalForm(Resource):
         Create a new legal form.
         The request must contain a JSON body with application/json.
         """
+
         # Ensure the request has a JSON body
         if not request.is_json or request.json is None: return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, 
                                                                                status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
         forma = request.json.get('forma')
-        if forma is None or not isinstance(forma, str) or len(forma) == 0: return create_response(message={'error': 'Invalid legal form'}, 
-                                                                                                  status_code=STATUS_CODES["bad_request"])
+
+        # Validate parameters
+        if forma is None or not isinstance(forma, str) or len(forma) == 0: 
+            return create_response(message={'error': 'Invalid legal form'}, status_code=STATUS_CODES["bad_request"])
 
         try:
             # Insert the legal form

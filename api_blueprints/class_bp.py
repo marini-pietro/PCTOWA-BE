@@ -37,11 +37,16 @@ class Class(Resource):
         emailResponsabile = request.json.get('emailResponsabile')
 
         # Validate parameters
-        if not re_match(r'^\d{4}-\d{4}$', anno):
+        missing_fields = [key for key, value in {"classe": classe, "anno": anno, "emailResponsabile": emailResponsabile}.items() if value is None]
+        if missing_fields:
+            return create_response(message={'error': f'missing required fields: {", ".join(missing_fields)}, check documentation'}, status_code=STATUS_CODES["bad_request"])
+        if len(anno) != 5: 
+            return create_response(message={'error': 'anno must be long 5 characters (e.g. 24-25)'}, status_code=STATUS_CODES["bad_request"])
+        if not re_match(r'^\d{4}-\d{4}$', anno): # Check if the year string is in the format 'xx-xx'
             return create_response(message={'outcome': 'invalid anno format'}, status_code=STATUS_CODES["bad_request"])
-        if not re_match(r'^[a-zA-Z0-9]+$', classe):
+        if not re_match(r'^([4-5]\d{0,1}[a-zA-Z]{2})$', classe): # Check if the class variable is a number between 4 and 5 followed by two characters
             return create_response(message={'outcome': 'invalid classe format'}, status_code=STATUS_CODES["bad_request"])
-        if not re_match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', emailResponsabile):
+        if not re_match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', emailResponsabile): # Check if the email string is a valid email format
             return create_response(message={'outcome': 'invalid email format'}, status_code=STATUS_CODES["bad_request"])
             
         # Execute query to insert the class

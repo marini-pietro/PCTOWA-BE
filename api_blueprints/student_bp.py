@@ -35,9 +35,9 @@ class Student(Resource):
         matricola = request.json.get('matricola')
         nome = request.json.get('nome')
         cognome = request.json.get('cognome')
+        idClasse = request.json.get('idClasse')
         try:
-            idClasse = request.json.get('idClasse')
-            idClasse = int(idClasse) if idClasse is not None and str(idClasse).isdigit() else None
+            idClasse = int(idClasse)
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid idClasse parameter'}, status_code=STATUS_CODES["bad_request"])
 
@@ -185,4 +185,56 @@ class Student(Resource):
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
+class StudentBindToTurn(Resource):
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor'])
+    def post(self, matricola) -> Response:
+        """
+        Bind a student to a turn.
+        """
+
+        # Ensure the request has a JSON body
+        if not request.is_json or request.json is None:
+            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        
+        # Gather parameters
+        idTurno = request.json.get('idTurno')
+        if idTurno is None:
+            return create_response(message={'error': 'idTurno parameter is required'}, status_code=STATUS_CODES["bad_request"])
+
+        # Check that the data is valid
+        try:
+            idTurno = int(idTurno)
+        except (ValueError, TypeError):
+            return create_response(message={'error': 'invalid idTurno parameter'}, status_code=STATUS_CODES["bad_request"])
+        
+        # Check that the student exists
+        student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
+        if student is None:
+            return create_response(message={'error': 'student not found'}, status_code=STATUS_CODES["not_found"])
+        
+        # Check that the turn exists
+        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
+        if turn is None:
+            return create_response(message={'error': 'turn not found'}, status_code=STATUS_CODES["not_found"])
+        
+        # Bind the student to the turn
+        try:
+            execute_query('INSERT INTO studenteTurno (matricola, idTurno) VALUES (%s, %s)', (matricola, idTurno))
+        except IntegrityError as ex:
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} tried to bind student {matricola} to turn {idTurno} but it already generated {ex}',
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
+            return create_response(message={'error': 'conflict error'}, status_code=STATUS_CODES["conflict"])
+        except Exception as ex:
+            log(type='error',
+                message=f'User {get_jwt_identity().get("email")} failed to bind student {matricola} to turn {idTurno} with error: {str(ex)}',
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT)
+            return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
+
 api.add_resource(Student, f'/{BP_NAME}/<int:matricola>')
+api.add_resource(StudentBindToTurn, f'/{BP_NAME}/bind/<int:matricola>')
