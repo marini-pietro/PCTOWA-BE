@@ -39,10 +39,13 @@ class Address(Resource):
         cap = request.json.get('cap')
         indirizzo = request.json.get('indirizzo')
         idAzienda = request.json.get('idAzienda')
-        if isinstance(idAzienda, str) and idAzienda.isdigit():
-            idAzienda = int(idAzienda)
-        elif not isinstance(idAzienda, int):
-            return create_response(message={'error': 'invalid idAzienda JSON value'}, status_code=STATUS_CODES["bad_request"])
+        
+        # Validate parameters
+        if idAzienda is not None:
+            try:
+                idAzienda = int(idAzienda)
+            except ValueError:
+                return create_response(message={'error': 'invalid idAzienda parameter'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if idAzienda exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (idAzienda,))
