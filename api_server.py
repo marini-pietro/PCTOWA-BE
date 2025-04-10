@@ -46,18 +46,25 @@ def health_check():
 # Functions used for testing purposes, should be removed in production
 @app.route('/api/endpoints', methods=['GET']) # Only used for testing purposes should be removed in production
 def list_endpoints():
-    endpoints = []
-    for rule in app.url_map.iter_rules():
-        endpoints.append({
-            "endpoint": rule.endpoint,
-            "methods": list(rule.methods),
-            "url": rule.rule
-        })
-    return {"endpoints": endpoints}
+    if API_SERVER_DEBUG_MODE == True:
+        endpoints = []
+        for rule in app.url_map.iter_rules():
+            endpoints.append({
+                "endpoint": rule.endpoint,
+                "methods": list(rule.methods),
+                "url": rule.rule
+            })
+        return jsonify({"endpoints": endpoints}), 200
+    else:
+        return jsonify({"error": "Feature not available while server is in production mode"}), 403
 
 @app.route('/api/shutdown', methods=['GET']) # Only used for testing purposes should be removed in production
 def shutdown_endpoint():
-    close_api(None, None) # Call the close_api function
+    if API_SERVER_DEBUG_MODE == True:
+        close_api(None, None) # Call the close_api function
+        return jsonify({"message": "Shutting down server..."}), 200
+    else:
+        return jsonify({"error": "Feature not available while server is in production mode"}), 403
 
 if __name__ == '__main__':
     app.run(host=API_SERVER_HOST, 

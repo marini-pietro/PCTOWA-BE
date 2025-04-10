@@ -1,13 +1,18 @@
-from flask import Flask, request, jsonify
-from config import LOG_SERVER_HOST, LOG_SERVER_PORT, LOG_SERVER_DEBUG_MODE, STATUS_CODES
 import logging
+from flask import Flask, request, jsonify
+from os.path import abspath as os_path_abspath
+from os.path import dirname as os_path_dirname
+from os.path import join as os_path_join
+from config import (LOG_SERVER_HOST, LOG_SERVER_PORT, 
+                    LOG_SERVER_DEBUG_MODE, LOG_FILE_NAME, 
+                    STATUS_CODES)
 
 app = Flask(__name__)
 
 class Logger:
-    def __init__(self, log_file="pctowa_main.log", console_level=logging.INFO, file_level=logging.DEBUG):
+    def __init__(self, log_file, console_level, file_level):
         # Create a logger object
-        self.logger = logging.getLogger("api_logger")
+        self.logger = logging.getLogger(name="pctowa_logger")
         self.logger.setLevel(logging.DEBUG)
 
         # Create a console handler
@@ -42,7 +47,8 @@ class Logger:
             self.logger.removeHandler(handler)
 
 # Initialize the logger
-logger = Logger()
+log_file_path = os_path_join(os_path_dirname(os_path_abspath(__file__)), LOG_FILE_NAME)
+logger = Logger(log_file=log_file_path, console_level=logging.INFO, file_level=logging.DEBUG)
 
 @app.route('/log', methods=['POST'])
 def log_message():
