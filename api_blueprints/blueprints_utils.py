@@ -1,5 +1,6 @@
 import threading
 from flask import jsonify, make_response, request, Response
+from flask_jwt_extended import get_jwt_identity
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
 from datetime import datetime
@@ -15,22 +16,30 @@ from config import (DB_HOST, DB_USER, DB_PASSWORD,
 # Authorization related
 def check_authorization(allowed_roles: List[str]):
     """
-    Decorator to check if the user's type is in the allowed list.
+    Decorator to check if the user's role is in the allowed list.
     
     params:
-        allowed_roles: List[str] - List of user types that are permitted to execute the function.
+        allowed_roles: List[str] - List of user roles that are permitted to execute the function.
     """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # Check if user_type exists in the request and is allowed
-            user_type: int = getattr(request, 'user_type', None)
-            user_string = ROLES.get(user_type, None)
+            # Extract the user's role from the JWT
+            identity = get_jwt_identity()
+            if not identity or 'role' not in identity:
+                return create_response(
+                    message={'outcome': 'not permitted: missing role or missing identity from jwt'}, 
+                    status_code=STATUS_CODES["forbidden"]
+                )
+            
+            user_role: int = identity['role']
+            user_string: str = ROLES.get(user_role) # Get corresponding natural language name of roles (to allow for allowed_roles list to be the names of the roles and not their corresponding number)
             if user_string not in allowed_roles:
                 return create_response(
                     message={'outcome': 'not permitted'}, 
                     status_code=STATUS_CODES["forbidden"]
                 )
+            
             # Proceed with the original function
             return func(*args, **kwargs)
         return wrapper
@@ -55,7 +64,7 @@ def create_response(message: Dict, status_code: int) -> Response:
     if not isinstance(message, Dict):
         raise TypeError("Message must be a dictionary")
 
-    message = f"{message}\n{STATUS_CODES_EXPLANATIONS.get(status_code, 'Unknown status code')}"
+    #message = f"{message}\n{STATUS_CODES_EXPLANATIONS.get(status_code, 'Unknown status code')}"
 
     return make_response(jsonify(message), status_code)
 
@@ -251,7 +260,7 @@ def jwt_required_endpoint(func: callable) -> callable:
     def wrapper(*args, **kwargs):
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
         if not token:
-            return create_response(message={'error': 'Missing token'}, status_code=STATUS_CODES["unauthorized"])
+            return create_response(message={'error': 'missing token'}, status_code=STATUS_CODES["unauthorized"])
 
         # Check token cache
         cached_result = token_cache.get(token)
@@ -259,11 +268,14 @@ def jwt_required_endpoint(func: callable) -> callable:
             is_valid, identity = cached_result
         else:
             # Validate token with auth server
-            response = requests_post(AUTH_SERVER_VALIDATE_URL, json={'token': token})
+            headers = {'Authorization': f'Bearer {token}'}
+            response = requests_post(AUTH_SERVER_VALIDATE_URL, headers=headers)
+
             if response.status_code != STATUS_CODES["ok"] or not response.json().get('valid'):
                 return create_response(message={'error': 'Invalid or expired token'}, status_code=STATUS_CODES["unauthorized"])
 
             is_valid = response.json().get('valid')
+            identity = response.json().get('identity')  # Extract the identity from the response
             token_cache[token] = (is_valid, identity)
 
         return func(*args, **kwargs)
