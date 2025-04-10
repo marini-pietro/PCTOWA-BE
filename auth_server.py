@@ -1,15 +1,21 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import timedelta
-from config import AUTH_SERVER_HOST, AUTH_SERVER_PORT, AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, JWT_TOKEN_DURATION, STATUS_CODES
-from api_blueprints.blueprints_utils import log
-from api_blueprints.blueprints_utils import fetchone_query
-import secrets
+from api_blueprints.blueprints_utils import log, fetchone_query
+from config import (AUTH_SERVER_HOST, AUTH_SERVER_PORT, 
+                    AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, 
+                    JWT_TOKEN_DURATION, JWT_SECRET_KEY,
+                    STATUS_CODES)
 
 app = Flask(__name__)
 
+# Check JWT secret key length
+password_bits_length = len(JWT_SECRET_KEY.encode('utf-8')) * 8
+if password_bits_length < 256:
+    raise RuntimeWarning("jwt secret key too short")
+
 # Configure JWT
-app.config['JWT_SECRET_KEY'] = secrets.token_hex(32) # Use a secure key (dinamic key, so if jwt are validated, cached and then the server is restarted those same jwt will not be valid with the new key)
+app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY # Use a secure key (ideally at least 256 bits)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=JWT_TOKEN_DURATION)
 jwt = JWTManager(app)
 
@@ -24,11 +30,12 @@ def login():
 
     try:
         # Query the database to validate the user's credentials
-        query = "SELECT emailUtente, password FROM utenti WHERE emailUtente = %s AND password = %s"
+        query = "SELECT emailUtente, password, ruolo FROM utenti WHERE emailUtente = %s AND password = %s"
         user = fetchone_query(query, (email, password))
 
         if user:
-            access_token = create_access_token(identity={'email': email})
+            access_token = create_access_token(identity={'email': email,
+                                                         'role': user['ruolo']})
 
             # Log the login operation
             log(type="info",    
