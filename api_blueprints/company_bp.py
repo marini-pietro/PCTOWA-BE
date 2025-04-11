@@ -3,7 +3,7 @@ from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from re import match as re_match
-from typing import List
+from typing import List, Dict, Any
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
 from .blueprints_utils import (check_authorization, build_select_query_from_filters, 
@@ -169,71 +169,53 @@ class Company(Resource):
         Retrieve a company from the database.
         The company ID is passed as a path variable.
         """
-        # Gather parameters
-        ragioneSociale = request.args.get('ragioneSociale')
-        codiceAteco = request.args.get('codiceAteco')
-        partitaIVA = request.args.get('partitaIVA')
-        fax = request.args.get('fax')
-        pec = request.args.get('pec')
-        telefonoAzienda = request.args.get('telefonoAzienda')
-        emailAzienda = request.args.get('emailAzienda')
-        dataConvenzione = request.args.get('dataConvenzione')
-        scadenzaConvenzione = request.args.get('scadenzaConvenzione')
-        categoria = request.args.get('categoria')
-        indirizzoLogo = request.args.get('indirizzoLogo')
-        sitoWeb = request.args.get('sitoWeb')
-        formaGiuridica = request.args.get('formaGiuridica')
-        try:
-            limit = int(request.args.get('limit', 10))
-            offset = int(request.args.get('offset', 0))
-        except ValueError:
-            return create_response(message={'error': 'invalid limit or offset values'}, status_code=STATUS_CODES["bad_request"])
-        
-        # Build the filters dictionary (only include non-null values)
-        data = {key: value for key, value in {
-            'idAzienda': id,  # Use the path variable 'id'
-            'ragioneSociale': ragioneSociale,
-            'codiceAteco': codiceAteco,
-            'partitaIVA': partitaIVA,
-            'fax': fax,
-            'pec': pec,
-            'telefonoAzienda': telefonoAzienda,
-            'emailAzienda': emailAzienda,
-            'dataConvenzione': dataConvenzione,
-            'scadenzaConvenzione': scadenzaConvenzione,
-            'categoria': categoria,
-            'indirizzoLogo': indirizzoLogo,
-            'sitoWeb': sitoWeb,
-            'formaGiuridica': formaGiuridica
-        }.items() if value}
 
         try:
-            # Build the select query
-            query, params = build_select_query_from_filters(
-                data=data,
-                table_name='aziende',
-                limit=limit,
-                offset=offset
-            )
             
             # Execute the query
-            companies = fetchall_query(query, params)
+            company = fetchone_query("SELECT * FROM aziende WHERE = %s", (id, ))
 
-            # Get the ids to log
-            ids = [company['idAzienda'] for company in companies]
+            # Build turn ids endpoints list
+            if company:
+                turn_ids: List[Dict[str, Any]] = fetchall_query("SELECT idTurno FROM turni WHERE idAzienda = %s", (id, ))
+                turn_endpoints: List[str] = [f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/turn/{id}" for id in turn_ids]
+
+            # Add the turn endpoints to company dictionary
+            company["turnEndpoints"] = turn_endpoints
 
             # Log the read operation            
             log(
                 type='info',
-                message=f'User {get_jwt_identity().get("email")} read companies {ids}',
+                message=f'User {get_jwt_identity().get("email")} read company {id}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 origin_port=API_SERVER_PORT
             )
 
             # Return the companies
-            return create_response(message=companies, status_code=STATUS_CODES["ok"])
+            return create_response(message=company, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
 
+class CompanyList(Resource):
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def get(self) -> Response:
+
+        # Gather parameters
+        anno = request.args.get('anno')
+        comune = request.args.get('comune')
+        settore = request.args.get('settore')
+        mese = request.args.get('mese')
+        materie = request.args.get('materie')
+
+        # Gather data
+        if comune: 
+            company_ids_from_comune = fetchall_query("SELECT idAzienda FROM indirizzi WHERE comune = %s", (comune, ))
+
+        if anno:
+            company_ids_from_anno = fetchall_query(f"SELECT idAzienda FROM turni WHERE dataInizio Like '%/{anno} AND '")
+
+
 api.add_resource(Company, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
+api.add_resource(CompanyList, f'/{BP_NAME}/list')

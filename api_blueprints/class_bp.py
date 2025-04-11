@@ -141,12 +141,16 @@ class Class(Resource):
         except (ValueError, TypeError):
             return create_response(message={'error': 'Invalid limit or offset values'}, status_code=STATUS_CODES["bad_request"])
 
+        # Gather students
+        students = fetchall_query("SELECT * FROM studenti WHERE idClasse = %s", (id,))
+
         # Build the filters dictionary (only include non-null values)
         data = {key: value for key, value in {
             'idClasse': id,  # Use the path variable 'id'
             'classe': classe,
             'anno': anno,
-            'emailResponsabile': emailResponsabile
+            'emailResponsabile': emailResponsabile,
+            'studenti': students
         }.items() if value}
 
         try:
