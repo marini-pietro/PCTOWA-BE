@@ -116,56 +116,43 @@ class Tutor(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id) -> Response:
+    def get(self, turn_id) -> Response:
         """
-        Get a tutor by ID.
+        Get a tutor by ID of its relative turn.
         The id must be provided as a path variable.
         """
-        # Gather parameters
-        nome = request.args.get('nome')
-        cognome = request.args.get('cognome')
-        emailTutor = request.args.get('emailTutor')
-        telefonoTutor = request.args.get('telefonoTutor')
-        try:
-            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
-            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
+        
+        # Log the read
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} requested tutor list with turn id {turn_id}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+        
+        # Check that the specified company exists
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (turn_id,))
+        if not company:
+            return create_response(message={'outcome': 'specified company not_found'}, status_code=STATUS_CODES["not_found"])
+        
+        # Get the data
+        tutors = fetchall_query(
+            "SELECT TU.nome, TU.cognome, TU.emailTutor, TU.telefonoTutor " \
+            "FROM turni AS T JOIN turnoTutor AS TT ON T.idTurno = TT.idTurno" \
+            "JOIN tutor AS TU ON TU.idTutor = TT.idTutor" \
+            "WHERE T.idTurno = %s",  (turn_id, )
+        )
 
-        # Build the filters dictionary (only include non-null values)
-        data = {key: value for key, value in {
-            'idTutor': id,  # Use the path variable 'id'
-            'nome': nome,
-            'cognome': cognome,
-            'emailTutor': emailTutor,
-            'telefonoTutor': telefonoTutor
-        }.items() if value is not None}
-
-        try:
-            # Build the query
-            query, params = build_select_query_from_filters(
-                data=data, 
-                table_name='tutor',
-                limit=limit, 
-                offset=offset
+        # Check if query returned any results
+        if not tutors:
+            return create_response(
+                message={'outcome': 'no tutors found for specified turn'}, 
+                status_code=STATUS_CODES["not_found"]
             )
-
-            # Execute query
-            tutors = fetchall_query(query, params)
-
-            # Get the ids to log
-            ids = [tutor['idTutor'] for tutor in tutors]
-
-            # Log the read
-            log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} read tutor {ids}', 
-                origin_name=API_SERVER_NAME_IN_LOG, 
-                origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
-
-            # Return the results
-            return create_response(message=tutors, status_code=STATUS_CODES["ok"])
-        except Exception as err:
-            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
+        
+        # Return the data
+        return create_response(
+            message=tutors,
+            status_code=STATUS_CODES["ok"]
+        )
 
 api.add_resource(Tutor, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')

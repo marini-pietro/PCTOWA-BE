@@ -132,60 +132,72 @@ class Student(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, matricola) -> Response:
+    def get(self, class_id) -> Response:
         """
-        Get a student by matricola.
-        The request must include the student matricola as a path variable.
+        Get students list of a given class, including turn and company data if they are bound to a turn.
         """
-        # Gather parameters
-        nome = request.args.get('nome')
-        cognome = request.args.get('cognome')
-        try:
-            idClasse = int(request.args.get('idClasse')) if request.args.get('idClasse') else None
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idClasse parameter'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
-            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
+        # Log the request
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} requested student list for class {class_id}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
-        # Build the filters dictionary (only include non-null values)
-        data = {key: value for key, value in {
-            'nome': nome,
-            'cognome': cognome,
-            'idClasse': idClasse,
-            'matricola': matricola  # Use the path variable 'matricola'
-        }.items() if value}
-
-        try:
-            # Build the query
-            query, params = build_select_query_from_filters(
-                data=data, 
-                table_name='studenti',
-                limit=limit, 
-                offset=offset
+        # Check if the class exists
+        class_ = fetchone_query("SELECT * FROM classi WHERE idClasse = %s", (class_id,))
+        if not class_:
+            return create_response(
+                message={"outcome": "no class found with the provided id"},
+                status_code=STATUS_CODES["not_found"]
             )
 
-            # Execute query
-            students = fetchall_query(query, params)
+        # Get student data
+        student_data = fetchall_query(
+            """
+            SELECT S.matricola, S.nome, S.cognome, S.comune, T.idTurno, T.dataInizio, T.dataFine,
+                   T.giornoInizio, T.giornoFine, T.oraInizio, T.oraFine, T.ore,
+                   A.ragioneSociale, A.indirizzo, A.cap, A.comune AS comuneAzienda, A.provincia, A.stato
+            FROM studenti AS S
+            LEFT JOIN studenteTurno AS ST ON S.matricola = ST.matricola
+            LEFT JOIN turni AS T ON ST.idTurno = T.idTurno
+            LEFT JOIN aziende AS A ON T.idAzienda = A.idAzienda
+            WHERE S.idClasse = %s
+            """,
+            (class_id,)
+        )
 
-            # Get the ids to log
-            ids = [student['matricola'] for student in students]
+        # Build the output JSON TODO check if the minimum necessary data is insterted in the JSON
+        out_json = {}
+        for row in student_data:
+            matricola = row.get('matricola')
+            out_json[matricola] = {
+                'nome': row.get('nome'),
+                'cognome': row.get('cognome'),
+                'comune': row.get('comune'),
+                'turno': {
+                    'ragioneSociale': row.get('ragioneSociale'),
+                    'dataInizio': row.get('dataInizio'),
+                    'dataFine': row.get('dataFine'),
+                    'giornoInizio': row.get('giornoInizio'),
+                    'giornoFine': row.get('giornoFine'),
+                    'oraInizio': row.get('oraInizio'),
+                    'oraFine': row.get('oraFine'),
+                    'ore': row.get('ore'),
+                    'turnoPK': row.get('idTurno'),
+                    'indirizzo': {
+                        'stato': row.get('stato'),
+                        'provincia': row.get('provincia'),
+                        'comune': row.get('comuneAzienda'),
+                        'cap': row.get('cap'),
+                        'indirizzo': row.get('indirizzo')
+                    },
+                } if row.get('idTurno') else None
+            }
 
-            # Log the read
-            log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} read students {ids}', 
-                origin_name=API_SERVER_NAME_IN_LOG, 
-                origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
-
-            # Return the results
-            return create_response(message=students, status_code=STATUS_CODES["ok"])        
-        except Exception as err:
-            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
-
-class StudentBindToTurn(Resource):
+        # Return the response
+        return create_response(message=out_json, status_code=STATUS_CODES["ok"])
+        
+class BindStudentToTurn(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self, matricola) -> Response:
@@ -211,12 +223,12 @@ class StudentBindToTurn(Resource):
         # Check that the student exists
         student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
         if student is None:
-            return create_response(message={'error': 'student not found'}, status_code=STATUS_CODES["not_found"])
+            return create_response(message={'error': 'student not_found'}, status_code=STATUS_CODES["not_found"])
         
         # Check that the turn exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
         if turn is None:
-            return create_response(message={'error': 'turn not found'}, status_code=STATUS_CODES["not_found"])
+            return create_response(message={'error': 'turn not_found'}, status_code=STATUS_CODES["not_found"])
         
         # Bind the student to the turn
         try:
@@ -236,5 +248,38 @@ class StudentBindToTurn(Resource):
                 origin_port=API_SERVER_PORT)
             return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
 
-api.add_resource(Student, f'/{BP_NAME}/<int:matricola>')
-api.add_resource(StudentBindToTurn, f'/{BP_NAME}/bind/<int:matricola>')
+class StudentList(Resource):
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def get(self, turn_id) -> Response:
+        """
+        Get a list of all students that are associated to a turn passed by its id as a path variable.
+        """
+        # Log the request
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} requested student list that are associated to turn {turn_id}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+        
+        # Check if the turn exists
+        turn = fetchone_query("SELECT * FROM turni WHERE idTurno = %s", (turn_id,))
+        if not turn:
+            return create_response(
+                message={"outcome": "no turn found with the provided id"},
+                status_code=STATUS_CODES["not_found"]
+            )
+
+        # Get all students
+        students = fetchall_query('SELECT S.matricola, S.nome, S.cognome, S.comune"' \
+                                  "FROM studenti AS S" \
+                                  "JOIN studenteTurno AS ST ON S.matricola = ST.matricola JOIN turni AS T ON ST.idTurno = T.idTurno" \
+                                  "WHERE T.idTurno = %s", 
+                                  (turn_id,)
+                                  )
+
+        # Return the response
+        return create_response(message=students, status_code=STATUS_CODES["ok"])
+
+api.add_resource(Student, f'/{BP_NAME}/<int:matricola>', f'/{BP_NAME}/<str:sigla>')
+api.add_resource(BindStudentToTurn, f'/{BP_NAME}/bind/<int:matricola>')

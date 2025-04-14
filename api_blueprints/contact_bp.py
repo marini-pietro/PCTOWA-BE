@@ -5,11 +5,10 @@ from flask_jwt_extended import get_jwt_identity
 from typing import List
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
-from .blueprints_utils import (check_authorization, build_select_query_from_filters, 
-                               fetchone_query, fetchall_query, 
+from .blueprints_utils import (check_authorization, fetchone_query,
                                execute_query, log, 
                                jwt_required_endpoint, create_response, 
-                               build_update_query_from_filters)
+                               build_update_query_from_filters, fetchall_query)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -107,7 +106,7 @@ class Contact(Resource):
         # Check that the specified contact exists
         contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (id,))
         if not contact:
-            return create_response(message={'outcome': 'specified contact not found'}, status_code=STATUS_CODES["not_found"])
+            return create_response(message={'outcome': 'specified contact not_found'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['nome', 'cognome', 'telefono', 'email', 'ruolo', 'idAzienda']
@@ -137,62 +136,40 @@ class Contact(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id) -> Response:
+    def get(self, company_id) -> Response:
         """
-        Get a contact by ID.
+        Get a contact by the ID of its company.
         The id is passed as a path variable.
         """
-        # Gather parameters
-        nome = request.args.get('nome')
-        cognome = request.args.get('cognome')
-        telefono = request.args.get('telefono')
-        email = request.args.get('email')
-        ruolo = request.args.get('ruolo')
-        try:
-            idAzienda = int(request.args.get('idAzienda')) if request.args.get('idAzienda') else None
-        except (ValueError, TypeError):
-            return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
-            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'Invalid limit or offset values'}, status_code=STATUS_CODES["bad_request"])
 
-        # Build the filters dictionary (only include non-null values)
-        filters = {key: value for key, value in {
-            "idContatto": id,  # Use the path variable 'id'
-            "nome": nome,
-            "cognome": cognome,
-            "telefono": telefono,
-            "email": email,
-            "ruolo": ruolo,
-            "idAzienda": idAzienda
-        }.items() if value}
+        # Log the request
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} requested contact list for company {company_id}',
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
 
-        try:
-            # Build the select query
-            query, params = build_select_query_from_filters(
-                data=filters, table_name='contatti',
-                limit=limit, offset=offset
+        # Check that the specified company exists
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
+        if not company:
+            return create_response(message={'outcome': 'specified company not_found'}, status_code=STATUS_CODES["not_found"])
+
+        # Get the data
+        contact = fetchall_query(
+            'SELECT * FROM contatti WHERE idAzienda = %s', (company_id,)
+        )
+
+        # Check if query returned any results
+        if not contact:
+            return create_response(
+            message={'outcome': 'no contacts found for the specified company'},
+            status_code=STATUS_CODES["not_found"]
             )
 
-            # Execute the query
-            contacts = fetchall_query(query, params)
-
-            # Get the ids to log
-            ids = [contact['idContatto'] for contact in contacts]
-
-            # Log the read operation
-            log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} read contacts {ids}',
-                origin_name=API_SERVER_NAME_IN_LOG, 
-                origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT
-            )
-
-            # Return the contacts
-            return create_response(message=contacts, status_code=STATUS_CODES["ok"])
-        except Exception as err:
-            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"]) 
+        # Return the contact data
+        return create_response(
+            message=contact, 
+            status_code=STATUS_CODES["ok"]
+        )
 
 api.add_resource(Contact, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')

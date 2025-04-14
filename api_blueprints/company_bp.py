@@ -207,15 +207,59 @@ class CompanyList(Resource):
         comune = request.args.get('comune')
         settore = request.args.get('settore')
         mese = request.args.get('mese')
-        materie = request.args.get('materie')
+        materia = request.args.get('materie')
 
         # Gather data
-        if comune: 
-            company_ids_from_comune = fetchall_query("SELECT idAzienda FROM indirizzi WHERE comune = %s", (comune, ))
+        ids_batch = [] # List of ids to be used in the query
 
         if anno:
-            company_ids_from_anno = fetchall_query(f"SELECT idAzienda FROM turni WHERE dataInizio Like '%/{anno} AND '")
+            ids = fetchall_query(f"SELECT idAzienda FROM turni WHERE dataInizio Like '%/{anno}'")
+            ids_batch.extend(ids)
 
+        if comune: 
+            ids = fetchall_query("SELECT idAzienda FROM indirizzi WHERE comune = %s", (comune, ))
+            ids_batch.extend(ids)
 
+        if settore:
+            ids = fetchall_query("SELECT A.idAzienda " \
+                                 "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda" \
+                                 "JOIN turnoSettore AS TS ON TS.idTurno = T.idTurno" \
+                                 "WHERE TS.settore = %s", (settore, ))
+            ids_batch.extend(ids)
+
+        if mese:
+            ids = fetchall_query("SELECT A.idAzienda " \
+                                 "FROM aziende AS A JOIN turni AS T" \
+                                 "WHERE MONTHNAME(T.dataInizio) = %s", (mese, ))
+            ids_batch.extend(ids)
+
+        if materia:
+            ids = fetchall_query("SELECT A.idAzienda " \
+                                 "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda" \
+                                 "JOIN turnoMateria AS TM ON TM.idTurno = T.idTurno" \
+                                 "WHERE TM.materia = %s", (materia, ))
+            ids_batch.extend(ids)
+
+        # Remove duplicates from ids_batch
+        ids_batch = list(set(ids_batch))
+
+        # Get company data
+        if ids_batch:
+            placeholders = ', '.join(['%s'] * len(ids_batch))
+            query = (
+                "SELECT A.ragioneSociale, A.codiceAteco, A.partitaIva, A.fax, A.pec, "
+                "A.telefonoAzienda, A.emailAzienda, A.dataConvenzione, A.scadenzaConvenzione, "
+                "A.categoria, A.indirizzoLogo, A.sitoWeb, A.formaGiuridica, I.stato, "
+                "I.provincia, I.comune, I.cap, I.indirizzo "
+                "FROM aziende AS A JOIN indirizzi AS I ON A.idAzienda = I.idAzienda "
+                f"WHERE A.idAzienda IN ({placeholders})"
+            )
+            companies = fetchall_query(query, tuple(ids_batch))
+        else:
+            return create_response(message={'error': 'no company matches filters'}, status_code=STATUS_CODES["not_found"])
+
+        # Return data
+        return create_response(message=companies, status_code=STATUS_CODES["ok"])
+        
 api.add_resource(Company, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
 api.add_resource(CompanyList, f'/{BP_NAME}/list')
