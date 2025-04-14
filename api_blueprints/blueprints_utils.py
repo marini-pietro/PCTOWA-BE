@@ -196,7 +196,7 @@ def fetchone_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:
             cursor.execute(query, params)
             return cursor.fetchone()
 
-def fetchall_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:
+def fetchall_query(query: str, params: Tuple[Any]) -> List[Dict[str, Any]]:
     """
     Execute a query on the database and return the result.
     """

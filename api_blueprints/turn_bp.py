@@ -6,10 +6,10 @@ from typing import List
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
 from .blueprints_utils import (check_authorization, fetchone_query, 
-                               fetchall_query, execute_query, 
+                               execute_query, 
                                log, jwt_required_endpoint, 
                                create_response, parse_date_string, 
-                               parse_time_string, build_select_query_from_filters, 
+                               parse_time_string, fetchall_query,
                                build_update_query_from_filters)
 
 # Define constants
@@ -181,86 +181,41 @@ class Turn(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id) -> Response:
+    def get(self, company_id) -> Response:
         """
-        Get a turn by ID.
+        Get a turn by ID of its relative company.
         The request must include the turn ID as a path variable.
         """
-        # Gather parameters
-        dataInizio = parse_date_string(date_string=request.args.get('dataInizio'))
-        dataFine = parse_date_string(date_string=request.args.get('dataFine'))
-        oraInizio = parse_time_string(time_string=request.args.get('oraInizio'))
-        oraFine = parse_time_string(time_string=request.args.get('oraFine'))
-        try:
-            posti = int(request.args.get('posti')) if request.args.get('posti') else None
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid posti value'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            postiOccupati = int(request.args.get('postiOccupati')) if request.args.get('postiOccupati') else None
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid postiOccupati value'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            ore = request.args.get('ore')
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid ore value'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            idAzienda = int(request.args.get('idAzienda')) if request.args.get('idAzienda') else None
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idAzienda value'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            idTutor = int(request.args.get('idTutor')) if request.args.get('idTutor') else None
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idTutor value'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            idIndirizzo = request.args.get('idIndirizzo')
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idIndirizzo value'}, status_code=STATUS_CODES["bad_request"])
-        try:
-            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
-            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid limit or offset parameter'}, status_code=STATUS_CODES["bad_request"])
+        
+        # Log the read
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} requested turn list with company id {company_id}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+        
+        # Check that the specified company exists
+        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
+        if not company:
+            return create_response(message={'outcome': 'specified company not_found'}, status_code=STATUS_CODES["not_found"])
+        
+        # Get the data
+        turns = fetchall_query(
+            'SELECT dataInizio, dataFine, posti, postiOccupati, ore, idAzienda, idTutor, indirizzo, oraInizio, oraFine, giornoInizio, giornoFine FROM turni WHERE idAzienda = %s', 
+            (company_id,)
+        )
 
-        # Build the filters dictionary (only include non-null values)
-        data = {key: value for key, value in {
-            'idTurno': id,  # Use the path variable 'id'
-            'dataInizio': dataInizio,
-            'dataFine': dataFine,
-            'oraInizio': oraInizio,
-            'oraFine': oraFine,
-            'posti': posti,
-            'postiOccupati': postiOccupati,
-            'ore': ore,
-            'idAzienda': idAzienda,
-            'idTutor': idTutor,
-            'idIndirizzo': idIndirizzo
-        }.items() if value}
-
-        try:
-            # Build the query
-            query, params = build_select_query_from_filters(
-                data=data, 
-                table_name='turni',
-                limit=limit, 
-                offset=offset
+        # Check if query returned any results
+        if not turns:
+            return create_response(
+                message={'outcome': 'no turns found for specified company'}, 
+                status_code=STATUS_CODES["not_found"]
             )
-
-            # Execute query
-            turns = fetchall_query(query, tuple(params))
-
-            # Get the ids to log
-            ids = [turn['idTurno'] for turn in turns]
-
-            # Log the read
-            log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} read turns {ids}', 
-                origin_name=API_SERVER_NAME_IN_LOG, 
-                origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
-
-            # Return the results
-            return create_response(message=turns, status_code=STATUS_CODES["ok"])
-        except Exception as err:
-            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
+        
+        # Return the turn data
+        return create_response(
+            message=turns, 
+            status_code=STATUS_CODES["ok"]
+        )
 
 api.add_resource(Turn, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')

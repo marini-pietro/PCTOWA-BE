@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Apr 10, 2025 alle 12:49
+-- Creato il: Apr 16, 2025 alle 19:51
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -61,7 +61,7 @@ INSERT INTO `aziende` (`idAzienda`, `ragioneSociale`, `codiceAteco`, `partitaIVA
 
 CREATE TABLE `classi` (
   `idClasse` int NOT NULL,
-  `classe` char(3) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'sigla della classe (e.g. 5BI)',
+  `sigla` char(3) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'sigla della classe (e.g. 5BI)',
   `emailResponsabile` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `anno` char(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'anno scolastico (e.g. 24-25)'
 ) ;
@@ -70,7 +70,7 @@ CREATE TABLE `classi` (
 -- Dump dei dati per la tabella `classi`
 --
 
-INSERT INTO `classi` (`idClasse`, `classe`, `emailResponsabile`, `anno`) VALUES
+INSERT INTO `classi` (`idClasse`, `sigla`, `emailResponsabile`, `anno`) VALUES
 (1, '4AI', 'lorenzo.decarli@marconiverona.edu.it', '24-25'),
 (2, '4BI', 'lorenzo.decarli@marconiverona.edu.it', '24-25'),
 (3, '4CI', 'lorenzo.decarli@marconiverona.edu.it', '24-25');
@@ -265,7 +265,6 @@ CREATE TABLE `turni` (
   `postiOccupati` int DEFAULT '0',
   `ore` int DEFAULT NULL,
   `idAzienda` int NOT NULL,
-  `idTutor` int DEFAULT NULL,
   `idIndirizzo` int DEFAULT NULL,
   `oraInizio` varchar(5) COLLATE utf8_unicode_ci NOT NULL,
   `oraFine` varchar(5) COLLATE utf8_unicode_ci NOT NULL,
@@ -277,10 +276,10 @@ CREATE TABLE `turni` (
 -- Dump dei dati per la tabella `turni`
 --
 
-INSERT INTO `turni` (`idTurno`, `dataInizio`, `dataFine`, `posti`, `postiOccupati`, `ore`, `idAzienda`, `idTutor`, `idIndirizzo`, `oraInizio`, `oraFine`, `giornoInizio`, `giornoFine`) VALUES
-(1, '2024-03-01', '2024-05-31', 2, 2, 120, 1, 1, 1, '09:00', '13:00', 'lunedì', 'venerdì'),
-(2, '2024-04-01', '2024-06-30', 3, 1, 100, 2, 2, 2, '10:00', '14:00', 'martedì', 'giovedì'),
-(3, '2024-05-15', '2024-07-31', 1, 1, 80, 3, 3, 3, '08:30', '12:00', 'mercoledì', 'venerdì');
+INSERT INTO `turni` (`idTurno`, `dataInizio`, `dataFine`, `posti`, `postiOccupati`, `ore`, `idAzienda`, `idIndirizzo`, `oraInizio`, `oraFine`, `giornoInizio`, `giornoFine`) VALUES
+(1, '2024-03-01', '2024-05-31', 2, 2, 120, 1, 1, '09:00', '13:00', 'lunedì', 'venerdì'),
+(2, '2024-04-01', '2024-06-30', 3, 1, 100, 2, 2, '10:00', '14:00', 'martedì', 'giovedì'),
+(3, '2024-05-15', '2024-07-31', 1, 1, 80, 3, 3, '08:30', '12:00', 'mercoledì', 'venerdì');
 
 -- --------------------------------------------------------
 
@@ -320,6 +319,17 @@ CREATE TABLE `turnoSettore` (
 INSERT INTO `turnoSettore` (`settore`, `idTurno`) VALUES
 ('Informatica', 1),
 ('Elettronica', 3);
+
+-- --------------------------------------------------------
+
+--
+-- Struttura della tabella `turnoTutor`
+--
+
+CREATE TABLE `turnoTutor` (
+  `idTutor` int NOT NULL,
+  `idTurno` int NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -445,7 +455,6 @@ ALTER TABLE `studenti`
 ALTER TABLE `turni`
   ADD PRIMARY KEY (`idTurno`),
   ADD KEY `turni_ibfk_1` (`idAzienda`),
-  ADD KEY `turni_ibfk_2` (`idTutor`),
   ADD KEY `turni_ibfk_3` (`idIndirizzo`);
 
 --
@@ -461,6 +470,13 @@ ALTER TABLE `turnoMateria`
 ALTER TABLE `turnoSettore`
   ADD PRIMARY KEY (`settore`,`idTurno`),
   ADD KEY `turnoSettore_ibfk_2` (`idTurno`);
+
+--
+-- Indici per le tabelle `turnoTutor`
+--
+ALTER TABLE `turnoTutor`
+  ADD PRIMARY KEY (`idTutor`,`idTurno`),
+  ADD KEY `idTurno` (`idTurno`);
 
 --
 -- Indici per le tabelle `tutor`
@@ -568,9 +584,7 @@ ALTER TABLE `studenti`
 --
 ALTER TABLE `turni`
   ADD CONSTRAINT `fk_azienda` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_tutor` FOREIGN KEY (`idTutor`) REFERENCES `tutor` (`idTutor`) ON UPDATE CASCADE,
   ADD CONSTRAINT `turni_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `turni_ibfk_2` FOREIGN KEY (`idTutor`) REFERENCES `tutor` (`idTutor`) ON UPDATE CASCADE,
   ADD CONSTRAINT `turni_ibfk_3` FOREIGN KEY (`idIndirizzo`) REFERENCES `indirizzi` (`idIndirizzo`) ON UPDATE CASCADE;
 
 --
@@ -590,6 +604,13 @@ ALTER TABLE `turnoSettore`
   ADD CONSTRAINT `fk_turno` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE,
   ADD CONSTRAINT `turnoSettore_ibfk_1` FOREIGN KEY (`settore`) REFERENCES `settori` (`settore`) ON UPDATE CASCADE,
   ADD CONSTRAINT `turnoSettore_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE;
+
+--
+-- Limiti per la tabella `turnoTutor`
+--
+ALTER TABLE `turnoTutor`
+  ADD CONSTRAINT `turnoTutor_ibfk_1` FOREIGN KEY (`idTutor`) REFERENCES `tutor` (`idTutor`),
+  ADD CONSTRAINT `turnoTutor_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

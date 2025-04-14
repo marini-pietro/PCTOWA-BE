@@ -32,25 +32,25 @@ class Class(Resource):
             return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        classe = request.json.get('classe'),
+        sigla = request.json.get('sigla'),
         anno = request.json.get('anno')
         emailResponsabile = request.json.get('emailResponsabile')
 
         # Validate parameters
-        missing_fields = [key for key, value in {"classe": classe, "anno": anno, "emailResponsabile": emailResponsabile}.items() if value is None]
+        missing_fields = [key for key, value in {"sigla": sigla, "anno": anno, "emailResponsabile": emailResponsabile}.items() if value is None]
         if missing_fields:
             return create_response(message={'error': f'missing required fields: {", ".join(missing_fields)}, check documentation'}, status_code=STATUS_CODES["bad_request"])
         if len(anno) != 5: 
             return create_response(message={'error': 'anno must be long 5 characters (e.g. 24-25)'}, status_code=STATUS_CODES["bad_request"])
         if not re_match(r'^\d{4}-\d{4}$', anno): # Check if the year string is in the format 'xx-xx'
             return create_response(message={'outcome': 'invalid anno format'}, status_code=STATUS_CODES["bad_request"])
-        if not re_match(r'^([4-5]\d{0,1}[a-zA-Z]{2})$', classe): # Check if the class variable is a number between 4 and 5 followed by two characters
-            return create_response(message={'outcome': 'invalid classe format'}, status_code=STATUS_CODES["bad_request"])
+        if not re_match(r'^([4-5]\d{0,1}[a-zA-Z]{2})$', sigla): # Check if the class variable is a number between 4 and 5 followed by two characters
+            return create_response(message={'outcome': 'invalid sigla format'}, status_code=STATUS_CODES["bad_request"])
         if not re_match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', emailResponsabile): # Check if the email string is a valid email format
             return create_response(message={'outcome': 'invalid email format'}, status_code=STATUS_CODES["bad_request"])
             
         # Execute query to insert the class
-        lastrowid: int = execute_query('INSERT INTO classi (classe, anno, emailResponsabile) VALUES (%s, %s, %s)', (classe, anno, emailResponsabile))
+        lastrowid: int = execute_query('INSERT INTO classi (sigla, anno, emailResponsabile) VALUES (%s, %s, %s)', (sigla, anno, emailResponsabile))
 
         # Log the creation of the class
         log(type='info', 
@@ -101,7 +101,7 @@ class Class(Resource):
             return create_response(message={'outcome': 'error, specified class does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = ['classe', 'emailResponsabile', 'anno']
+        modifiable_columns: List[str] = ['sigla', 'emailResponsabile', 'anno']
         toModify: list[str]  = list(request.json.keys())
         error_columns = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
@@ -126,59 +126,100 @@ class Class(Resource):
     
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id) -> Response:
+    def get(self, emailResponsabile) -> Response:
         """
-        Get a class from the database.
-        The class ID is passed as a path parameter.
+        Execute fuzzy search for class names in database.
         """
+
+        # Log the read
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} requested to read class with email {emailResponsabile}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT
+            )
+        
+        # Check if user exists
+        user = fetchone_query(
+            "SELECT * FROM utenti WHERE emailUtente = %s", (emailResponsabile)
+        )
+        if not user:
+            return create_response(
+                message={"outcome": "no user found with provided email"},
+                status_code=STATUS_CODES["not_found"]
+            )
+        
+        # Get class data
+        classes_data = fetchall_query(
+            "SELECT sigla, emailResponsabile, anno FROM classi WHERE emailResponsabile = %s", (emailResponsabile)
+        )
+        
+        # Return the data
+        return create_response(
+            message=classes_data,
+            status_code=STATUS_CODES["ok"]
+        )
+
+class ClassFuzzySearch(Resource):
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def get(self) -> Response:
+        """
+        Execute fuzzy search for class names in database.
+        """
+
         # Gather parameters
-        classe = request.args.get('classe')
-        anno = request.args.get('anno')
-        emailResponsabile = request.args.get('emailResponsabile')
-        try:
-            limit = int(request.args.get('limit', 10))  # Default limit to 10 if not provided
-            offset = int(request.args.get('offset', 0))  # Default offset to 0 if not provided
-        except (ValueError, TypeError):
-            return create_response(message={'error': 'Invalid limit or offset values'}, status_code=STATUS_CODES["bad_request"])
+        input_str = request.args.get('fnome')
 
-        # Gather students
-        students = fetchall_query("SELECT * FROM studenti WHERE idClasse = %s", (id,))
-
-        # Build the filters dictionary (only include non-null values)
-        data = {key: value for key, value in {
-            'idClasse': id,  # Use the path variable 'id'
-            'classe': classe,
-            'anno': anno,
-            'emailResponsabile': emailResponsabile,
-            'studenti': students
-        }.items() if value}
-
-        try:
-            # Build the select query
-            query, params = build_select_query_from_filters(
-                data=data, 
-                table_name='classi',
-                limit=limit, 
-                offset=offset
+        # Log the operation
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} requested fuzzy search in classes with string {input_str}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT
             )
 
-            # Execute the query
-            classes = fetchall_query(query, params)
+        # Get the data
+        data = fetchall_query(
+            "SELECT sigla "
+            "FROM classi "
+            "WHERE sigla LIKE %s",
+            (f"%{input_str}%",)
+        )
 
-            # Get the ids to log
-            ids = [class_['idClasse'] for class_ in classes]
+        # Return the data
+        return create_response(
+            message=data,
+            status_code=STATUS_CODES["ok"]
+        )
 
-            # Log the read operation
-            log(type='info', 
-                message=f'User {get_jwt_identity().get("email")} read classes {ids}',
-                origin_name=API_SERVER_NAME_IN_LOG, 
-                origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT
+class ClassList(Resource):
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def get() -> Response:
+        """
+        Get the names of all classes.
+        """
+
+        # Log the read operation
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} read class list',
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT
             )
 
-            # Return the results
-            return create_response(message=classes, status_code=STATUS_CODES["ok"])
-        except Exception as err:
-            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
+        # Get data
+        class_names = fetchall_query(
+            "SELECT sigla FROM classi",
+            ()
+        )
 
-api.add_resource(Class, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
+        return create_response(
+            message=class_names,
+            status_code=STATUS_CODES["ok"]
+        )
+
+api.add_resource(Class, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>', f'/{BP_NAME}/<str:email>')
+api.add_resource(ClassList, f'/{BP_NAME}/list')
+api.add_resource(ClassFuzzySearch, f'/{BP_NAME}/fsearch')
