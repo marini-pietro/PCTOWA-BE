@@ -11,7 +11,7 @@ from .blueprints_utils import (check_authorization, fetchone_query,
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
                                create_response, build_update_query_from_filters, 
-                               build_select_query_from_filters)
+                               build_select_query_from_filters, has_valid_json)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -28,13 +28,15 @@ class Subject(Resource):
         Create a new subject.
         The request body must be a JSON object with application/json content type.
         """
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
         # Gather parameters
-        descrizione = request.json.get('descrizione')
-        hexColor = request.json.get('hexColor')
+        descrizione = data.get('descrizione')
+        hexColor = data.get('hexColor')
 
         # Validate parameters
         if hexColor is not None and not re_match(r'^#[0-9A-Fa-f]{6}$', hexColor):
@@ -102,9 +104,10 @@ class Subject(Resource):
         The request must include the subject name as a path variable.
         """
 
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Check that specified subject exists
         subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
@@ -113,13 +116,13 @@ class Subject(Resource):
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['materia', 'descrizione', 'hexColor']
-        toModify: list[str]  = list(request.json.keys())
+        toModify: list[str]  = list(data.keys())
         error_columns = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the query
-        query, params = build_update_query_from_filters(data=request.json, table_name='materie', 
+        query, params = build_update_query_from_filters(data=data, table_name='materie', 
                                                         id_column='materia', id_value=materia)
 
         # Update the subject
@@ -142,6 +145,7 @@ class Subject(Resource):
         Get all subjects with pagination.
         The request can include limit and offset as query parameters.
         """
+        
         # Gather parameters
         descrizione = request.args.get('descrizione')
         hexColor = request.args.get('hexColor')

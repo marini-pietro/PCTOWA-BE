@@ -12,8 +12,8 @@ from config import (API_SERVER_HOST, API_SERVER_PORT,
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
-                               create_response, build_update_query_from_filters, 
-                               build_select_query_from_filters)
+                               create_response, build_update_query_from_filters,
+                               has_valid_json)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -31,16 +31,17 @@ class User(Resource):
         The request body must be a JSON object with application/json content type.
         """
         
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
         # Gather parameters
-        email = request.json.get('email')
-        password = request.json.get('password')
-        name = request.json.get('nome')
-        surname = request.json.get('cognome')
-        user_type = request.json.get('tipo')
+        email = data.get('email')
+        password = data.get('password')
+        name = data.get('nome')
+        surname = data.get('cognome')
+        user_type = data.get('tipo')
 
         try:
             lastrowid = execute_query(
@@ -68,9 +69,11 @@ class User(Resource):
         Update an existing user.
         The id is passed as a path variable.
         """
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Check if user exists
         user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
@@ -79,13 +82,13 @@ class User(Resource):
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['emailUtente', 'password', 'nome', 'cognome', 'tipo']
-        toModify: list[str]  = list(request.json.keys())
+        toModify: list[str]  = list(data.keys())
         error_columns = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the update query
-        query, params = build_update_query_from_filters(data=request.json, table_name='utenti', 
+        query, params = build_update_query_from_filters(data=data, table_name='utenti', 
                                                         id_column='emailUtente', id_value=email)
 
         # Update the user
@@ -129,13 +132,15 @@ class UserLogin(Resource):
         User login endpoint.
         The request body must be a JSON object with application/json content type.
         """
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
         # Gather parameters
-        email = request.json.get('email')
-        password = request.json.get('password')
+        email = data.get('email')
+        password = data.get('password')
         
         # Validate parameters
         if email is None or password is None:
@@ -187,12 +192,14 @@ class BindUserToCompany(Resource):
         Bind a user to a company.
         The id is passed as a path variable.
         """
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        company_id = request.json.get('idAzienda')
+        company_id = data.get('idAzienda')
         if company_id is None:
             return create_response(message={'error': 'missing company id'}, status_code=STATUS_CODES["bad_request"])
 

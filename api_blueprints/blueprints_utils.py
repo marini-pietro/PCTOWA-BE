@@ -1,6 +1,6 @@
 import threading
 import re
-from flask import jsonify, make_response, request, Response
+from flask import jsonify, make_response, request, Response, Request
 from flask_jwt_extended import get_jwt_identity
 from contextlib import contextmanager
 from mysql.connector import pooling as mysql_pooling
@@ -51,6 +51,21 @@ def is_input_safe(data: str | List[str] | Dict[Any, str]) -> bool:
 
     # If the input is not a string, list, or dictionary, return False
     return False
+
+def has_valid_json(request: Request) -> str | Dict:
+    """
+    Check if the request has a valid JSON body.
+    
+    :param request: The Flask request object.
+    :return: str or dict - The JSON data if valid, or an error string if invalid.
+    """
+    if not request.is_json or request.json is None:
+        return 'Request body must be valid JSON with Content-Type: application/json'
+    try:
+        data = request.get_json(silent=False)
+        return data if data != {} else 'Request body must not be empty'
+    except ValueError as ex:
+        return 'Invalid JSON format'
 
 # Authorization related
 def check_authorization(allowed_roles: List[str]):
@@ -153,7 +168,7 @@ except Exception as ex:
     print(f"Couldn't access database, see next line for full exception.\n{ex}\n\nhost: {DB_HOST}, dbname: {DB_NAME}, user: {REDACTED_USER}, password: {REDACTED_PASSWORD}")
     exit(1)
 
-def build_select_query_from_filters(data, table_name, limit=1, offset=0):
+def build_select_query_from_filters(data, table_name, limit=1, offset=0): # TODO check if this function is necessary
     """
     Build a SQL query from filters.
     Does not support complex queries with joins or subqueries.

@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import timedelta
-from api_blueprints.blueprints_utils import log, fetchone_query
+from api_blueprints.blueprints_utils import log, fetchone_query, has_valid_json
 from config import (AUTH_SERVER_HOST, AUTH_SERVER_PORT, 
                     AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, 
                     JWT_TOKEN_DURATION, JWT_SECRET_KEY,
@@ -21,21 +21,49 @@ jwt = JWTManager(app)
 
 @app.route('/auth/login', methods=['POST'])
 def login():
-    data = request.json
+    """
+    Login endpoint to authenticate users and generate JWT tokens.
+    Expects JSON payload with 'email' and 'password' fields.
+    """
+
+    # Validate request
+    data = has_valid_json(request)
+    if isinstance(data, str): 
+        return jsonify({'error': data}), STATUS_CODES["bad_request"]
+
+    # Gather the request data
     email = data.get('email')
     password = data.get('password')
 
+    # Log the attempted login operation
+    log(type="info",    
+        message=f"Login attempt for {email}",
+        origin_name=AUTH_SERVER_NAME_IN_LOG, 
+        origin_host=AUTH_SERVER_HOST, 
+        origin_port=AUTH_SERVER_PORT
+        )
+
+    # Validate the request data
+    if not isinstance(email, str) or not isinstance(password, str):
+        return jsonify({'error': 'email and password must be strings'}), STATUS_CODES["bad_request"]
     if not email or not password:
         return jsonify({'error': 'missing email or password'}), STATUS_CODES["bad_request"]
+    if len(email) > 255 or len(password) > 255:
+        return jsonify({'error': 'email or password too long'}), STATUS_CODES["bad_request"]
 
     try:
         # Query the database to validate the user's credentials
-        query = "SELECT emailUtente, password, ruolo FROM utenti WHERE emailUtente = %s AND password = %s"
-        user = fetchone_query(query, (email, password))
+        user = fetchone_query(
+                "SELECT emailUtente, password, ruolo" \
+                "FROM utenti" \
+                "WHERE emailUtente = %s AND password = %s", 
+                (email, password)
+                )
 
         if user:
             access_token = create_access_token(identity={'email': email,
-                                                         'role': user['ruolo']})
+                                                         'role': user['ruolo']}
+                                               )
 
             # Log the login operation
             log(type="info",    
@@ -55,9 +83,10 @@ def login():
             
             # Return unauthorized status
             return jsonify({'error': 'Invalid credentials'}), STATUS_CODES["unauthorized"]
-    except Exception as e:
+    
+    except Exception as ex:
         log(type="error",    
-            message=f"Error during login: {str(e)}",
+            message=f"Error during login: {ex}",
             origin_name=AUTH_SERVER_NAME_IN_LOG, 
             origin_host=AUTH_SERVER_HOST, 
             origin_port=AUTH_SERVER_PORT)
@@ -66,6 +95,15 @@ def login():
 @app.route('/auth/validate', methods=['POST'])
 @jwt_required()
 def validate():
+    """
+    Validate the JWT token and return the user's identity.
+    """
+
+    # Validate request
+    data = has_valid_json(request)
+    if isinstance(data, str): 
+        return jsonify({'error': data}), STATUS_CODES["bad_request"]
+
     identity = get_jwt_identity()
     return jsonify({'valid': True, 'identity': identity}), STATUS_CODES["ok"]
 

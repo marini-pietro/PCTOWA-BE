@@ -4,12 +4,12 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from typing import List
 from re import match as re_match
-from config import (API_SERVER_HOST, API_SERVER_PORT, 
-                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
-from .blueprints_utils import (check_authorization, build_select_query_from_filters, 
+from .blueprints_utils import (check_authorization, has_valid_json,
                                fetchone_query, fetchall_query, 
                                execute_query, log, jwt_required_endpoint, 
                                create_response, build_update_query_from_filters)
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -27,14 +27,15 @@ class Class(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
-
-        # Gather parameters
-        sigla = request.json.get('sigla'),
-        anno = request.json.get('anno')
-        emailResponsabile = request.json.get('emailResponsabile')
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str):
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+        
+         # Gather parameters
+        sigla = data.get('sigla'),
+        anno = data.get('anno')
+        emailResponsabile = data.get('emailResponsabile')
 
         # Validate parameters
         missing_fields = [key for key, value in {"sigla": sigla, "anno": anno, "emailResponsabile": emailResponsabile}.items() if value is None]
@@ -90,10 +91,11 @@ class Class(Resource):
         Update a class in the database.
         The class ID is passed as a path parameter.
         """
-        
-        # Check that the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str):
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Check that class exists
         class_ = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (id,))
@@ -102,13 +104,13 @@ class Class(Resource):
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['sigla', 'emailResponsabile', 'anno']
-        toModify: list[str]  = list(request.json.keys())
+        toModify: list[str]  = list(data.keys())
         error_columns = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the update query
-        query, params = build_update_query_from_filters(data=request.json, table_name='classi', 
+        query, params = build_update_query_from_filters(data=data, table_name='classi', 
                                                         id_column='idClasse', id_value=id)
 
         # Execute the update query
@@ -128,7 +130,7 @@ class Class(Resource):
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self, emailResponsabile) -> Response:
         """
-        Execute fuzzy search for class names in database.
+        Get class data based on the email of the responsible teacher.
         """
 
         # Log the read
@@ -221,5 +223,5 @@ class ClassList(Resource):
         )
 
 api.add_resource(Class, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>', f'/{BP_NAME}/<str:email>')
-api.add_resource(ClassList, f'/{BP_NAME}/list')
 api.add_resource(ClassFuzzySearch, f'/{BP_NAME}/fsearch')
+api.add_resource(ClassList, f'/{BP_NAME}/list')
