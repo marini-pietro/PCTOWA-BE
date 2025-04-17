@@ -7,7 +7,7 @@ from mysql.connector import IntegrityError
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
-                               create_response)
+                               create_response, has_valid_json)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -25,12 +25,13 @@ class LegalForm(Resource):
         The request must contain a JSON body with application/json.
         """
 
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None: return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, 
-                                                                               status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        forma = request.json.get('forma')
+        forma = data.get('forma')
 
         # Validate parameters
         if forma is None or not isinstance(forma, str) or len(forma) == 0: 
@@ -93,13 +94,13 @@ class LegalForm(Resource):
         The legal form is passed as a path variable.
         """
 
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None: 
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, 
-                                   status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Gather JSON data
-        newValue = request.json.get('newValue')
+        newValue = data.get('newValue')
 
         # Check if legal form exists
         form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (forma,))

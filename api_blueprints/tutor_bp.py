@@ -8,7 +8,7 @@ from config import (API_SERVER_HOST, API_SERVER_PORT,
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
-                               create_response, build_select_query_from_filters, 
+                               create_response, has_valid_json, 
                                build_update_query_from_filters)
 
 # Define constants
@@ -26,15 +26,17 @@ class Tutor(Resource):
         Create a new tutor.
         The request body must be a JSON object with application/json content type.
         """
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
         # Gather parameters
-        nome = request.json.get('nome')
-        cognome = request.json.get('cognome')
-        telefono = request.json.get('telefono')
-        email = request.json.get('email')
+        nome = data.get('nome')
+        cognome = data.get('cognome')
+        telefono = data.get('telefono')
+        email = data.get('email')
 
         # Insert the tutor
         lastrowid = execute_query(
@@ -81,9 +83,10 @@ class Tutor(Resource):
         The id must be provided as a path variable.
         """
 
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Check if tutor exists
         tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (id,))
@@ -92,13 +95,13 @@ class Tutor(Resource):
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['nome', 'cognome', 'emailTutor', 'telefonoTutor']
-        toModify: list[str]  = list(request.json.keys())
+        toModify: list[str]  = list(data.keys())
         error_columns = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the update query
-        query, params = build_update_query_from_filters(data=request.json, table_name='tutor', 
+        query, params = build_update_query_from_filters(data=data, table_name='tutor', 
                                                         id_column='idTutor', id_value=id)
 
         # Update the tutor

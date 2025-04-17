@@ -13,12 +13,15 @@ JWT_SECRET_KEY = 'Lorem ipsum dolor sit amet eget.'
 LOG_SERVER_HOST: str = 'localhost' # The host of the log server
 LOG_SERVER_PORT: int = 5001 # The port of the log server
 LOG_FILE_NAME: str = 'pctowa_log.txt'
+LOGGER_NAME: str = 'pctowa_logger' # The name of the logger
+LOG_SERVER_NAME_IN_LOG: str = 'log-server' # The name of the server in the log messages
 LOG_SERVER_DEBUG_MODE = True
 
 # Define host and port of the API server
 API_SERVER_HOST = '172.16.1.98' # The host of the API server (should be only server open to the rest of the network)
 API_SERVER_PORT = 5000 # The port of the API server
 API_SERVER_NAME_IN_LOG = 'api-server' # The name of the server in the log messages
+API_VERSION = 'v1' # The version of the API
 API_SERVER_DEBUG_MODE = True
 
 # Database configuration

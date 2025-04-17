@@ -6,7 +6,7 @@ from re import match as re_match
 from typing import List, Dict, Any
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
-from .blueprints_utils import (check_authorization, build_select_query_from_filters, 
+from .blueprints_utils import (check_authorization, has_valid_json, 
                                fetchone_query, fetchall_query, 
                                execute_query, log, 
                                jwt_required_endpoint, create_response, 
@@ -27,28 +27,29 @@ class Company(Resource):
         Create a new company in the database.
         The request body must be a JSON object with application/json content type.
         """
-        
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str):
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters from the request body (new dictionary is necessary so that user can provide JSON with fields in any order)
         params = {
-            'ragioneSociale': request.json.get('ragioneSociale'),
-            'nome': request.json.get('nome'),
-            'sitoWeb': request.json.get('sitoWeb'),
-            'indirizzoLogo': request.json.get('indirizzoLogo'),
-            'codiceAteco': request.json.get('codiceAteco'),
-            'partitaIVA': request.json.get('partitaIVA'),
-            'telefonoAzienda': request.json.get('telefonoAzienda'),
-            'fax': request.json.get('fax'),
-            'emailAzienda': request.json.get('emailAzienda'),
-            'pec': request.json.get('pec'),
-            'formaGiuridica': request.json.get('formaGiuridica'),
-            'dataConvenzione': parse_date_string(request.json.get('dataConvenzione')),
-            'scadenzaConvenzione': parse_date_string(request.json.get('scadenzaConvenzione')),
-            'settore': request.json.get('settore'),
-            'categoria': request.json.get('categoria')
+            'ragioneSociale': data.get('ragioneSociale'),
+            'nome': data.get('nome'),
+            'sitoWeb': data.get('sitoWeb'),
+            'indirizzoLogo': data.get('indirizzoLogo'),
+            'codiceAteco': data.get('codiceAteco'),
+            'partitaIVA': data.get('partitaIVA'),
+            'telefonoAzienda': data.get('telefonoAzienda'),
+            'fax': data.get('fax'),
+            'emailAzienda': data.get('emailAzienda'),
+            'pec': data.get('pec'),
+            'formaGiuridica': data.get('formaGiuridica'),
+            'dataConvenzione': parse_date_string(data.get('dataConvenzione')),
+            'scadenzaConvenzione': parse_date_string(data.get('scadenzaConvenzione')),
+            'settore': data.get('settore'),
+            'categoria': data.get('categoria')
         }
 
         # Validate parameters
@@ -113,9 +114,10 @@ class Company(Resource):
         The company ID is passed as a path variable.
         """
 
-        # Check that the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str):
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Check if the company exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
@@ -136,14 +138,14 @@ class Company(Resource):
                               'scadenzaConvenzione', 'categoria', 
                               'indirizzoLogo', 'sitoWeb', 
                               'formaGiuridica']
-        toModify: list[str]  = list(request.json.keys())
+        toModify: list[str]  = list(data.keys())
         error_columns = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=request.json, table_name='aziende', 
+            data=data, table_name='aziende', 
             id_column='idAzienda', id_value=id
         )
 

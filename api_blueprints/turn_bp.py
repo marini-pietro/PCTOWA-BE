@@ -10,7 +10,7 @@ from .blueprints_utils import (check_authorization, fetchone_query,
                                log, jwt_required_endpoint, 
                                create_response, parse_date_string, 
                                parse_time_string, fetchall_query,
-                               build_update_query_from_filters)
+                               build_update_query_from_filters, has_valid_json)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -28,24 +28,25 @@ class Turn(Resource):
         The request body must be a JSON object with application/json content type.
         """
         
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
         # Gather parameters
-        settore = request.json.get('settore')
-        materia = request.json.get('materia')
-        dataInizio = parse_date_string(date_string=request.json.get('dataInizio'))
-        dataFine = parse_date_string(date_string=request.json.get('dataFine'))
-        oraInizio = parse_time_string(time_string=request.json.get('oraInizio'))
-        oraFine = parse_time_string(time_string=request.json.get('oraFine'))
-        giornoInizio = request.json.get('giornoInizio')
-        giornoFine = request.json.get('giornoFine')
-        ore = request.json.get('ore')
-        posti = request.json.get('posti')
-        idIndirizzo = request.json.get('idIndirizzo')
-        idTutor = request.json.get('idTutor')
-        idAzienda = request.json.get('idAzienda')
+        settore = data.get('settore')
+        materia = data.get('materia')
+        dataInizio = parse_date_string(date_string=data.get('dataInizio'))
+        dataFine = parse_date_string(date_string=data.get('dataFine'))
+        oraInizio = parse_time_string(time_string=data.get('oraInizio'))
+        oraFine = parse_time_string(time_string=data.get('oraFine'))
+        giornoInizio = data.get('giornoInizio')
+        giornoFine = data.get('giornoFine')
+        ore = data.get('ore')
+        posti = data.get('posti')
+        idIndirizzo = data.get('idIndirizzo')
+        idTutor = data.get('idTutor')
+        idAzienda = data.get('idAzienda')
         
         # Validate data
         valid_days = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì']
@@ -141,9 +142,10 @@ class Turn(Resource):
         The request must include the turn ID as a path variable.
         """
 
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
             
         # Check that the specified class exists
         turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (id,))
@@ -157,13 +159,13 @@ class Turn(Resource):
                               'idTutor', 'idIndirizzo', 
                               'oraInizio', 'oraFine',
                               'giornoInizio', 'giornoFine']
-        toModify: list[str]  = list(request.json.keys())
+        toModify: list[str]  = list(data.keys())
         error_columns = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the update query
-        query, params = build_update_query_from_filters(data=request.json, table_name='turni', 
+        query, params = build_update_query_from_filters(data=data, table_name='turni', 
                                                         id_column='idTurno', id_value=id)
 
         # Execute the update query

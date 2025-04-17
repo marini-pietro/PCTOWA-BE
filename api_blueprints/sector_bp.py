@@ -7,7 +7,7 @@ from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STA
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
-                               create_response)
+                               create_response, has_valid_json)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -24,12 +24,14 @@ class Sector(Resource):
         Create a new sector.
         The request body must be a JSON object with application/json content type.
         """
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        settore = request.json.get('settore')
+        settore = data.get('settore')
 
         # Validate parameters
         if settore is None or len(settore) == 0:
@@ -102,12 +104,13 @@ class Sector(Resource):
         The request must include the sector name as a path variable.
         """
 
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None: 
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Gather JSON data
-        newValue = request.json.get('newValue')
+        newValue = data.get('newValue')
 
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))

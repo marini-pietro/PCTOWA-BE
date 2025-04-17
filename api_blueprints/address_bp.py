@@ -2,13 +2,13 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-from config import (API_SERVER_HOST, API_SERVER_PORT, 
-                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 from .blueprints_utils import (check_authorization, build_select_query_from_filters,
                                fetchone_query, fetchall_query, 
                                execute_query, log, 
                                jwt_required_endpoint, create_response, 
-                               build_update_query_from_filters)
+                               build_update_query_from_filters, has_valid_json)
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -27,17 +27,18 @@ class Address(Resource):
         The request must contain a JSON in the body and application/json as Content-Type.
         """
 
-        # Ensure the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        stato = request.json.get('stato')
-        provincia = request.json.get('provincia')
-        comune = request.json.get('comune')
-        cap = request.json.get('cap')
-        indirizzo = request.json.get('indirizzo')
-        idAzienda = request.json.get('idAzienda')
+        stato = data.get('stato')
+        provincia = data.get('provincia')
+        comune = data.get('comune')
+        cap = data.get('cap')
+        indirizzo = data.get('indirizzo')
+        idAzienda = data.get('idAzienda')
         
         # Validate parameters
         if idAzienda is not None:
@@ -96,9 +97,10 @@ class Address(Resource):
         The request must contain the id parameter in the URI as a path variable.
         """
 
-        # Check that the request has a JSON body
-        if not request.is_json or request.json is None:
-            return create_response(message={'error': 'Request body must be valid JSON with Content-Type: application/json'}, status_code=STATUS_CODES["bad_request"])
+        # Validate request
+        data = has_valid_json(request)
+        if isinstance(data, str): 
+            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
         # Check if address exists
         address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (id,))
@@ -107,13 +109,13 @@ class Address(Resource):
         
         # Check that the specified fields actually exist in the database
         modifiable_columns: set = {'stato', 'provincia', 'comune', 'cap', 'indirizzo', 'idAzienda'}
-        toModify: list[str]  = list(request.json.keys())
+        toModify: list[str]  = list(data.keys())
         error_columns = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Build the update query
-        query, params = build_update_query_from_filters(data=request.json, table_name='indirizzi', 
+        query, params = build_update_query_from_filters(data=data, table_name='indirizzi', 
                                                         id_column='idIndirizzo', id_value=id)
 
         # Update the address

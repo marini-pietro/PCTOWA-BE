@@ -3,16 +3,20 @@ from flask import Flask, request, jsonify
 from os.path import abspath as os_path_abspath
 from os.path import dirname as os_path_dirname
 from os.path import join as os_path_join
+from api_blueprints.blueprints_utils import has_valid_json
 from config import (LOG_SERVER_HOST, LOG_SERVER_PORT, 
                     LOG_SERVER_DEBUG_MODE, LOG_FILE_NAME, 
-                    STATUS_CODES)
+                    LOGGER_NAME, STATUS_CODES,
+                    LOG_SERVER_NAME_IN_LOG)
 
+# Create a Flask application
 app = Flask(__name__)
 
+# Define the logger class
 class Logger:
     def __init__(self, log_file, console_level, file_level):
         # Create a logger object
-        self.logger = logging.getLogger(name="pctowa_logger")
+        self.logger = logging.getLogger(name=LOGGER_NAME)
         self.logger.setLevel(logging.DEBUG)
 
         # Create a console handler
@@ -32,22 +36,26 @@ class Logger:
         self.logger.addHandler(console_handler)
         self.logger.addHandler(file_handler)
 
-    def log(self, log_type, message, origin="unknown"):
+    # Function to log messages with different levels (automatically retrieves the right function based on the log type parameter)
+    # The log_type parameter should be one of the logging levels: debug, info, warning, error, critical
+    def log(self, log_type, message, origin):
         """
         Log a message with the specified type, message and origin
         """
-        log_message = f"[{origin}] {message}"
 
         log_method = getattr(self.logger, log_type)
-        log_method(log_message)
+        log_method(f"[{origin}] {message}")
 
+    # Function to close all handlers
     def close(self):
         for handler in self.logger.handlers[:]:
             handler.close()
             self.logger.removeHandler(handler)
 
-# Initialize the logger
+# Generate the log file path so that it is in the same directory as this script
 log_file_path = os_path_join(os_path_dirname(os_path_abspath(__file__)), LOG_FILE_NAME)
+
+# Initialize the logger
 logger = Logger(log_file=log_file_path, console_level=logging.INFO, file_level=logging.DEBUG)
 
 @app.route('/log', methods=['POST'])
@@ -56,22 +64,35 @@ def log_message():
     Endpoint to log messages.
     Expects a JSON payload with 'type', 'message', and 'origin'.
     """
-    data = request.get_json()
+
+    # Validate the request data
+    data = has_valid_json(request)
+    if isinstance(data, str):
+        return jsonify({"error": data}), STATUS_CODES["bad_request"]
+    
+    # Gather data from the request
     log_type = data.get("type", "info")
     message = data.get("message")
     origin = data.get("origin", "unknown")
 
+    # Validate the data
     if not message:
-        return jsonify({"error": "Message is required"}), STATUS_CODES["bad_request"]
-
+        return jsonify({"error": "Message value required"}), STATUS_CODES["bad_request"]
     if log_type not in ["debug", "info", "warning", "error", "critical"]:
         return jsonify({"error": "invalid log type"}), STATUS_CODES["bad_request"]
 
     try: 
         logger.log(log_type, message, origin)
     except Exception as ex: 
-        return jsonify({"error": f"unable to log due to error {ex}"}), STATUS_CODES["internal_error"]
+        # Log the error if logging fails
+        logger.log(log_type="error", 
+                   message=f"Unable to log message: {ex}", 
+                   origin=LOG_SERVER_NAME_IN_LOG)
 
+        # Return an error response if logging fails
+        return jsonify({"error": f"unable to log"}), STATUS_CODES["internal_error"]
+
+    # Return a success response
     return jsonify({"status": "success"}), STATUS_CODES["ok"]
 
 @app.route('/health', methods=['GET'])
