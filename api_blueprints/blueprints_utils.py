@@ -1,4 +1,5 @@
 import threading
+import re
 from flask import jsonify, make_response, request, Response
 from flask_jwt_extended import get_jwt_identity
 from contextlib import contextmanager
@@ -12,6 +13,44 @@ from config import (DB_HOST, DB_USER, DB_PASSWORD,
                     DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, 
                     LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS, 
                     STATUS_CODES, ROLES)
+
+# Data validation related
+def is_input_safe(data: str | List[str] | Dict[Any, str]) -> bool:
+    """
+    Check if the input data (string, list, or dictionary) contains SQL instructions.
+    Returns True if safe, False if potentially unsafe.
+    
+    :param data: str, list, or dict - The input data to validate.
+    :return: bool - True if the input is safe, False otherwise.
+    """
+    # List of common SQL keywords to check for
+    sql_keywords = [
+        r"SELECT", r"INSERT", r"UPDATE", r"DELETE", r"DROP", r"CREATE", r"ALTER",
+        r"EXEC", r"UNION", r"ALL", r"WHERE", r"FROM", r"TABLE", r"JOIN", r"TRUNCATE",
+        r"REPLACE", r"GRANT", r"REVOKE", r"DECLARE", r"CAST", r"SET"
+    ]
+    
+    # Compile a regex pattern to match any of the SQL keywords (case-insensitive)
+    sql_pattern = re.compile(r"\b(" + "|".join(sql_keywords) + r")\b", re.IGNORECASE)
+
+    # Helper function to check a single string
+    def check_string(value):
+        return not bool(sql_pattern.search(value))
+
+    # Check if the input is a string
+    if isinstance(data, str):
+        return check_string(data)
+
+    # Check if the input is a list
+    elif isinstance(data, list):
+        return all(check_string(item) for item in data if isinstance(item, str))
+
+    # Check if the input is a dictionary
+    elif isinstance(data, dict):
+        return all(check_string(value) for value in data.values() if isinstance(value, str))
+
+    # If the input is not a string, list, or dictionary, return False
+    return False
 
 # Authorization related
 def check_authorization(allowed_roles: List[str]):
