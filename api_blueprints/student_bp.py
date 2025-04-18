@@ -286,5 +286,5 @@ class StudentList(Resource):
         # Return the response
         return create_response(message=students, status_code=STATUS_CODES["ok"])
 
-api.add_resource(Student, f'/{BP_NAME}/<int:matricola>', f'/{BP_NAME}/<str:sigla>')
+api.add_resource(Student, f'/{BP_NAME}/<int:matricola>', f'/{BP_NAME}/<string:sigla>')
 api.add_resource(BindStudentToTurn, f'/{BP_NAME}/bind/<int:matricola>')

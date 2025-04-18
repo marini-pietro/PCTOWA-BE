@@ -222,6 +222,6 @@ class ClassList(Resource):
             status_code=STATUS_CODES["ok"]
         )
 
-api.add_resource(Class, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>', f'/{BP_NAME}/<str:email>')
+api.add_resource(Class, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>', f'/{BP_NAME}/<string:email>')
 api.add_resource(ClassFuzzySearch, f'/{BP_NAME}/fsearch')
 api.add_resource(ClassList, f'/{BP_NAME}/list')

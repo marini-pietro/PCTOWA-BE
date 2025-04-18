@@ -8,14 +8,14 @@ from datetime import datetime
 from functools import wraps
 from requests import post as requests_post
 from cachetools import TTLCache
-from typing import Dict, List, Tuple, Any 
+from typing import Dict, List, Tuple, Any, Union 
 from config import (DB_HOST, DB_USER, DB_PASSWORD, 
                     DB_NAME, CONNECTION_POOL_SIZE, LOG_SERVER_HOST, 
                     LOG_SERVER_PORT, AUTH_SERVER_VALIDATE_URL, STATUS_CODES_EXPLANATIONS, 
                     STATUS_CODES, ROLES)
 
 # Data validation related
-def is_input_safe(data: str | List[str] | Dict[Any, str]) -> bool:
+def is_input_safe(data: Union[str, List[str], Dict[Any, str]]) -> bool:
     """
     Check if the input data (string, list, or dictionary) contains SQL instructions.
     Returns True if safe, False if potentially unsafe.
@@ -52,7 +52,7 @@ def is_input_safe(data: str | List[str] | Dict[Any, str]) -> bool:
     # If the input is not a string, list, or dictionary, return False
     return False
 
-def has_valid_json(request: Request) -> str | Dict:
+def has_valid_json(request: Request) -> Union[str,  Dict]:
     """
     Check if the request has a valid JSON body.
     
