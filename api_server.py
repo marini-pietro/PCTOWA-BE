@@ -1,4 +1,4 @@
-from os import os_listdir
+from os import listdir as os_listdir
 from os.path import join as os_path_join
 from os.path import dirname as os_path_dirname
 from os.path import abspath as os_path_abspath
@@ -20,8 +20,8 @@ for filename in os_listdir(blueprints_dir):
         module_name = filename[:-3]  # Remove the .py extension
         module = import_module(f'api_blueprints.{module_name}')
         blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
-        app.register_blueprint(blueprint, url_prefix=f'/api/{API_VERSION}')  # Remove '_bp' for the URL prefix
-        print(f"Registered blueprint: {module_name} with prefix /api/{API_VERSION}")
+        app.register_blueprint(blueprint, url_prefix=f'/api/{API_VERSION}/')  # Remove '_bp' for the URL prefix
+        print(f"Registered blueprint: {module_name} with prefix /api/{API_VERSION}/")
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
