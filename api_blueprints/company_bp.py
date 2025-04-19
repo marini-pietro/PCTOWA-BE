@@ -3,7 +3,7 @@ from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from re import match as re_match
-from typing import List, Dict, Any
+from typing import List, Dict, Union, Any
 from .blueprints_utils import (check_authorization, has_valid_json, 
                                fetchone_query, fetchall_query, 
                                execute_query, log, 
@@ -30,7 +30,7 @@ class Company(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -39,7 +39,7 @@ class Company(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters from the request body (new dictionary is necessary so that user can provide JSON with fields in any order)
-        params = {
+        params: Dict[str, str] = {
             'ragioneSociale': data.get('ragioneSociale'),
             'nome': data.get('nome'),
             'sitoWeb': data.get('sitoWeb'),
@@ -62,13 +62,13 @@ class Company(Resource):
             return create_response(message={'error': 'invalid phone number format'}, status_code=STATUS_CODES["bad_request"])
         # TODO: add regex check to all the other fields
         
-        lastrowid = execute_query(
+        lastrowid: int = execute_query(
             '''INSERT INTO aziende 
             (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, 
              partitaIVA, telefonoAzienda, fax, emailAzienda, pec, 
              formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) 
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''',
-            tuple(params.values())
+            params.values()
         )
 
         # Log the creation of the company
@@ -92,7 +92,7 @@ class Company(Resource):
         The company ID is passed as a path variable.
         """
         # Check if specified company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
+        company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
         if not company:
             return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
 
@@ -120,7 +120,7 @@ class Company(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -129,26 +129,28 @@ class Company(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if the company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
+        company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
         if not company:
             return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields can be modified
-        not_allowed_fields = ['idAzienda']
+        not_allowed_fields: List[str] = ['idAzienda']
         for field in toModify:
             if field in not_allowed_fields:
                 return create_response(message={'outcome': f'error, field "{field}" cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = ['ragioneSociale', 'codiceAteco', 
+        modifiable_columns: List[str] = [
+                              'ragioneSociale', 'codiceAteco', 
                               'partitaIVA', 'fax', 
                               'pec', 'telefonoAzienda',
                               'emailAzienda', 'dataConvenzione', 
                               'scadenzaConvenzione', 'categoria', 
                               'indirizzoLogo', 'sitoWeb', 
-                              'formaGiuridica']
-        toModify: list[str]  = list(data.keys())
-        error_columns = [field for field in toModify if field not in modifiable_columns]
+                              'formaGiuridica'
+                              ]
+        toModify: List[str]  = list(data.keys())
+        error_columns: List[str] = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
@@ -182,17 +184,27 @@ class Company(Resource):
         """
 
         try:
-            
             # Execute the query
-            company = fetchone_query("SELECT * FROM aziende WHERE = %s", (id, ))
+            company: Dict[str, Any] = fetchone_query("SELECT * FROM aziende WHERE = %s", (id, ))
 
-            # Build turn ids endpoints list
-            if company:
-                turn_ids: List[Dict[str, Any]] = fetchall_query("SELECT idTurno FROM turni WHERE idAzienda = %s", (id, ))
-                turn_endpoints: List[str] = [f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/turn/{id}" for id in turn_ids]
+            # Check if the company exists
+            if not company:
+                return create_response(message={'error': 'company not found with specified id'}, status_code=STATUS_CODES["not_found"])
+
+            # Gather turn data
+            turns: List[Dict[str, Any]] = fetchall_query("SELECT dataInizio, dataFine, posti, postiOccupati," \
+                                                         "ore, idIndirizzo, oraInizio, oraFine, giornoInizio, giornoFine" \
+                                                         "FROM turni " \
+                                                         "WHERE idAzienda = %s", (id, ))
 
             # Add the turn endpoints to company dictionary
-            company["turnEndpoints"] = turn_endpoints
+            company["turns"] = turns
+
+            # Gather address data
+            addresses: List[Dict[str, Any]] = fetchall_query("SELECT stato, provincia, comune, cap, indirizzo FROM indirizzi WHERE idAzienda = %s", (id, ))
+            
+            # Add the address data to company dictionary
+            company["addresses"] = addresses
 
             # Log the read operation            
             log(
@@ -214,15 +226,14 @@ class CompanyList(Resource):
     def get(self) -> Response:
 
         # Gather parameters
-        anno = request.args.get('anno')
-        comune = request.args.get('comune')
-        settore = request.args.get('settore')
-        mese = request.args.get('mese')
-        materia = request.args.get('materie')
+        anno: str = request.args.get('anno')
+        comune: str = request.args.get('comune')
+        settore: str = request.args.get('settore')
+        mese: str = request.args.get('mese')
+        materia: str = request.args.get('materie')
 
         # Gather data
-        ids_batch = [] # List of ids to be used in the query
-
+        ids_batch: List[int] = [] # List of ids to be used in the query
         if anno:
             ids = fetchall_query(f"SELECT idAzienda FROM turni WHERE dataInizio Like '%/{anno}'")
             ids_batch.extend(ids)
@@ -252,11 +263,11 @@ class CompanyList(Resource):
             ids_batch.extend(ids)
 
         # Remove duplicates from ids_batch
-        ids_batch = list(set(ids_batch))
+        ids_batch: List[int] = list(set(ids_batch))
 
         # Get company data
         if ids_batch:
-            placeholders = ', '.join(['%s'] * len(ids_batch))
+            placeholders: str = ', '.join(['%s'] * len(ids_batch))
             query = (
                 "SELECT A.ragioneSociale, A.codiceAteco, A.partitaIva, A.fax, A.pec, "
                 "A.telefonoAzienda, A.emailAzienda, A.dataConvenzione, A.scadenzaConvenzione, "
@@ -265,7 +276,7 @@ class CompanyList(Resource):
                 "FROM aziende AS A JOIN indirizzi AS I ON A.idAzienda = I.idAzienda "
                 f"WHERE A.idAzienda IN ({placeholders})"
             )
-            companies = fetchall_query(query, tuple(ids_batch))
+            companies: List[Dict[str, Any]] = fetchall_query(query, tuple(ids_batch))
         else:
             return create_response(message={'error': 'no company matches filters'}, status_code=STATUS_CODES["not_found"])
 

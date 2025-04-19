@@ -14,10 +14,10 @@ from config import (API_SERVER_HOST, API_SERVER_PORT,
 app = Flask(__name__)
 
 # Register the blueprints
-blueprints_dir = os_path_join(os_path_dirname(os_path_abspath(__file__)), 'api_blueprints')
+blueprints_dir: str = os_path_join(os_path_dirname(os_path_abspath(__file__)), 'api_blueprints')
 for filename in os_listdir(blueprints_dir):
     if filename.endswith('_bp.py'):  # Look for files ending with '_bp.py'
-        module_name = filename[:-3]  # Remove the .py extension
+        module_name: str = filename[:-3]  # Remove the .py extension
         module = import_module(f'api_blueprints.{module_name}')
         blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
         app.register_blueprint(blueprint, url_prefix=f'/api/{API_VERSION}/')  # Remove '_bp' for the URL prefix

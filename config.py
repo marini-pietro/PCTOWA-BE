@@ -1,13 +1,13 @@
 from typing import Dict
 
 # Define authentication server data
-AUTH_SERVER_HOST = 'localhost' # The host of the authentication server
-AUTH_SERVER_PORT = 5002 # The port of the authentication server
-AUTH_SERVER_VALIDATE_URL = f'http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate' # The URL to validate a token
-AUTH_SERVER_NAME_IN_LOG = 'auth-server'
-AUTH_SERVER_DEBUG_MODE = True
-JWT_TOKEN_DURATION = 3 # In hours
-JWT_SECRET_KEY = 'Lorem ipsum dolor sit amet eget.'  
+AUTH_SERVER_HOST: str = 'localhost' # The host of the authentication server
+AUTH_SERVER_PORT: int = 5002 # The port of the authentication server
+AUTH_SERVER_VALIDATE_URL: str = f'http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate' # The URL to validate a token
+AUTH_SERVER_NAME_IN_LOG: str = 'auth-server'
+AUTH_SERVER_DEBUG_MODE: bool = True
+JWT_TOKEN_DURATION: int = 3 # In hours
+JWT_SECRET_KEY: str = 'Lorem ipsum dolor sit amet eget.'  
 
 # Define log server host, port and server name in log files
 LOG_SERVER_HOST: str = 'localhost' # The host of the log server
@@ -15,14 +15,14 @@ LOG_SERVER_PORT: int = 5001 # The port of the log server
 LOG_FILE_NAME: str = 'pctowa_log.txt'
 LOGGER_NAME: str = 'pctowa_logger' # The name of the logger
 LOG_SERVER_NAME_IN_LOG: str = 'log-server' # The name of the server in the log messages
-LOG_SERVER_DEBUG_MODE = True
+LOG_SERVER_DEBUG_MODE: bool = True
 
 # Define host and port of the API server
-API_SERVER_HOST = '172.16.1.98' # The host of the API server (should be only server open to the rest of the network)
-API_SERVER_PORT = 5000 # The port of the API server
-API_SERVER_NAME_IN_LOG = 'api-server' # The name of the server in the log messages
-API_VERSION = 'v1' # The version of the API
-API_SERVER_DEBUG_MODE = True
+API_SERVER_HOST : str = '172.16.1.98' # The host of the API server (should be only server open to the rest of the network)
+API_SERVER_PORT: int = 5000 # The port of the API server
+API_SERVER_NAME_IN_LOG : str = 'api-server' # The name of the server in the log messages
+API_VERSION: str = 'v1' # The version of the API
+API_SERVER_DEBUG_MODE: bool = True
 
 # Database configuration
 DB_HOST: str = "localhost"
@@ -32,7 +32,7 @@ DB_PASSWORD: str = "pctowa2025"
 CONNECTION_POOL_SIZE: int = 20 # The maximum number of connections in the pool
 
 # HTTP status codes and their explanations
-STATUS_CODES_EXPLANATIONS = {
+STATUS_CODES_EXPLANATIONS: Dict[int, str] = {
     200: "OK - The request has succeeded.",
     201: "Created - The request has been fulfilled and resulted in a new resource being created.",
     202: "Accepted - The request has been accepted for processing, but the processing has not been completed.",
@@ -48,7 +48,7 @@ STATUS_CODES_EXPLANATIONS = {
     503: "Service Unavailable - The server is not ready to handle the request."
 }
 
-STATUS_CODES = {
+STATUS_CODES: Dict[str, int] = {
     "not_found": 404,
     "unauthorized": 401,
     "forbidden": 403,

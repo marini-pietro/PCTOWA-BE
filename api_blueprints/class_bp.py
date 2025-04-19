@@ -2,7 +2,7 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-from typing import List
+from typing import List, Union, Dict, Any
 from re import match as re_match
 from .blueprints_utils import (check_authorization, has_valid_json,
                                fetchone_query, fetchall_query, 
@@ -29,7 +29,7 @@ class Class(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
@@ -38,9 +38,9 @@ class Class(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        sigla = data.get('sigla'),
-        anno = data.get('anno')
-        emailResponsabile = data.get('emailResponsabile')
+        sigla: str = data.get('sigla')
+        anno: str = data.get('anno')
+        emailResponsabile: str = data.get('emailResponsabile')
 
         # Validate parameters
         missing_fields = [key for key, value in {"sigla": sigla, "anno": anno, "emailResponsabile": emailResponsabile}.items() if value is None]
@@ -98,7 +98,7 @@ class Class(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -107,14 +107,14 @@ class Class(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that class exists
-        class_ = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (id,))
+        class_: Dict[str, Any] = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (id,))
         if class_ is None:
             return create_response(message={'outcome': 'error, specified class does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['sigla', 'emailResponsabile', 'anno']
-        toModify: list[str]  = list(data.keys())
-        error_columns = [field for field in toModify if field not in modifiable_columns]
+        toModify: List[str]  = list(data.keys())
+        error_columns: List[str] = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
@@ -151,7 +151,7 @@ class Class(Resource):
             )
         
         # Check if user exists
-        user = fetchone_query(
+        user: Dict[str, Any] = fetchone_query(
             "SELECT * FROM utenti WHERE emailUtente = %s", (emailResponsabile)
         )
         if not user:
@@ -161,7 +161,7 @@ class Class(Resource):
             )
         
         # Get class data
-        classes_data = fetchall_query(
+        classes_data: List[Dict[str, Any]] = fetchall_query(
             "SELECT sigla, emailResponsabile, anno FROM classi WHERE emailResponsabile = %s", (emailResponsabile)
         )
         
@@ -180,7 +180,17 @@ class ClassFuzzySearch(Resource):
         """
 
         # Gather parameters
-        input_str = request.args.get('fnome')
+        input_str: str = request.args.get('fnome')
+        if not input_str:
+            return create_response(message={'error': 'missing required field fnome'}, status_code=STATUS_CODES["bad_request"])
+        if not isinstance(input_str, str):
+            return create_response(message={'error': 'fnome must be a string'}, status_code=STATUS_CODES["bad_request"])
+        if "%" in input_str or "_" in input_str:
+            return create_response(message={'error': 'fnome cannot contain % or _ characters'}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(input_str):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Log the operation
         log(type='info', 
@@ -191,7 +201,7 @@ class ClassFuzzySearch(Resource):
             )
 
         # Get the data
-        data = fetchall_query(
+        data: List[Dict[str, Any]] = fetchall_query(
             "SELECT sigla "
             "FROM classi "
             "WHERE sigla LIKE %s",
@@ -221,8 +231,8 @@ class ClassList(Resource):
             )
 
         # Get data
-        class_names = fetchall_query(
-            "SELECT sigla FROM classi",
+        class_names: List[Dict[str, Any]] = fetchall_query(
+            "SELECT sigla FROM classi ORDER BY sigla DESC",
             ()
         )
 

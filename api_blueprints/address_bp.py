@@ -2,6 +2,7 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
+from typing import Dict, Any, Union
 from .blueprints_utils import (check_authorization, build_select_query_from_filters,
                                fetchone_query, fetchall_query, 
                                execute_query, log, 
@@ -29,7 +30,7 @@ class Address(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -42,8 +43,8 @@ class Address(Resource):
         provincia = data.get('provincia')
         comune = data.get('comune')
         cap = data.get('cap')
-        indirizzo = data.get('indirizzo')
-        idAzienda = data.get('idAzienda')
+        indirizzo: str = data.get('indirizzo')
+        idAzienda: int = data.get('idAzienda')
         
         # Validate parameters
         if idAzienda is not None:

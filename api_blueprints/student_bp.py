@@ -2,7 +2,7 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-from typing import List
+from typing import List, Dict, Union, Any
 from mysql.connector import IntegrityError
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
@@ -29,7 +29,7 @@ class Student(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -38,18 +38,24 @@ class Student(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        matricola = data.get('matricola')
-        nome = data.get('nome')
-        cognome = data.get('cognome')
-        idClasse = data.get('idClasse')
+        matricola: str = data.get('matricola')
+        nome: str = data.get('nome')
+        cognome: str = data.get('cognome')
+        idClasse: int = data.get('idClasse')
+
+        # Validate parameters
+        if matricola is None or nome is None or cognome is None or idClasse is None:
+            return create_response(message={'error': 'matricola, nome, cognome and idClasse parameters are required'}, status_code=STATUS_CODES["bad_request"])
+        if not isinstance(matricola, str) or not isinstance(nome, str) or not isinstance(cognome, str):
+            return create_response(message={'error': 'matricola, nome and cognome must be strings'}, status_code=STATUS_CODES["bad_request"])
         try:
             idClasse = int(idClasse)
         except (ValueError, TypeError):
-            return create_response(message={'error': 'invalid idClasse parameter'}, status_code=STATUS_CODES["bad_request"])
+            return create_response(message={'error': 'idClasse must be an integer'}, status_code=STATUS_CODES["bad_request"])
 
         try:
             # Insert the student
-            lastrowid = execute_query('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
+            lastrowid: int = execute_query('INSERT INTO studenti VALUES (%s, %s, %s, %s)', (matricola, nome, cognome, idClasse))
         except IntegrityError as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} tried to create student {matricola} but it already generated {ex}',
@@ -105,7 +111,7 @@ class Student(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -114,14 +120,14 @@ class Student(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that the specified student exists
-        student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
+        student: Dict[str, Any] = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
         if student is None:
             return create_response(message={'outcome': 'error, specified student does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['nome', 'cognome', 'idClasse', 'comune']
-        toModify: list[str]  = list(data.keys())
-        error_columns = [field for field in toModify if field not in modifiable_columns]
+        toModify: List[str]  = list(data.keys())
+        error_columns: List[str] = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
@@ -146,7 +152,7 @@ class Student(Resource):
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self, class_id) -> Response:
         """
-        Get students list of a given class, including turn and company data if they are bound to a turn.
+        Get students list of a given class, including turn and address data if they are bound to a turn.
         """
         # Log the request
         log(type='info', 
@@ -156,7 +162,7 @@ class Student(Resource):
             origin_port=API_SERVER_PORT)
 
         # Check if the class exists
-        class_ = fetchone_query("SELECT * FROM classi WHERE idClasse = %s", (class_id,))
+        class_: Dict[str, Any] = fetchone_query("SELECT * FROM classi WHERE idClasse = %s", (class_id,))
         if not class_:
             return create_response(
                 message={"outcome": "no class found with the provided id"},
@@ -164,7 +170,7 @@ class Student(Resource):
             )
 
         # Get student data
-        student_data = fetchall_query(
+        student_data: List[Dict[str, Any]] = fetchall_query(
             """
             SELECT S.matricola, S.nome, S.cognome, S.comune, T.idTurno, T.dataInizio, T.dataFine,
                    T.giornoInizio, T.giornoFine, T.oraInizio, T.oraFine, T.ore,
@@ -218,7 +224,7 @@ class BindStudentToTurn(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
@@ -227,23 +233,23 @@ class BindStudentToTurn(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        idTurno = data.get('idTurno')
+        idTurno: Union[str, int] = data.get('idTurno')
+
+        # Validate parameters
         if idTurno is None:
             return create_response(message={'error': 'idTurno parameter is required'}, status_code=STATUS_CODES["bad_request"])
-
-        # Check that the data is valid
         try:
             idTurno = int(idTurno)
         except (ValueError, TypeError):
             return create_response(message={'error': 'invalid idTurno parameter'}, status_code=STATUS_CODES["bad_request"])
         
         # Check that the student exists
-        student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
+        student: Dict[str, Any] = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
         if student is None:
             return create_response(message={'error': 'student not_found'}, status_code=STATUS_CODES["not_found"])
         
         # Check that the turn exists
-        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
+        turn: Dict[str, Any] = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (idTurno,))
         if turn is None:
             return create_response(message={'error': 'turn not_found'}, status_code=STATUS_CODES["not_found"])
         
@@ -280,7 +286,7 @@ class StudentList(Resource):
             origin_port=API_SERVER_PORT)
         
         # Check if the turn exists
-        turn = fetchone_query("SELECT * FROM turni WHERE idTurno = %s", (turn_id,))
+        turn: Dict[str, Any] = fetchone_query("SELECT * FROM turni WHERE idTurno = %s", (turn_id,))
         if not turn:
             return create_response(
                 message={"outcome": "no turn found with the provided id"},
@@ -288,7 +294,7 @@ class StudentList(Resource):
             )
 
         # Get all students
-        students = fetchall_query('SELECT S.matricola, S.nome, S.cognome, S.comune"' \
+        students: List[Dict[str, Any]] = fetchall_query('SELECT S.matricola, S.nome, S.cognome, S.comune"' \
                                   "FROM studenti AS S" \
                                   "JOIN studenteTurno AS ST ON S.matricola = ST.matricola JOIN turni AS T ON ST.idTurno = T.idTurno" \
                                   "WHERE T.idTurno = %s", 

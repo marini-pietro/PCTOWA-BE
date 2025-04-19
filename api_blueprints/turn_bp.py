@@ -2,7 +2,7 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-from typing import List
+from typing import List, Dict, Union, Any
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                execute_query, 
                                log, jwt_required_endpoint, 
@@ -30,7 +30,7 @@ class Turn(Resource):
         """
         
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
@@ -54,7 +54,7 @@ class Turn(Resource):
         idAzienda = data.get('idAzienda')
         
         # Validate data
-        valid_days = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì']
+        valid_days: List[str] = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì']
         if giornoInizio not in valid_days:
             return create_response(message={'error': 'invalid giornoInizio value'}, status_code=STATUS_CODES["bad_request"])
         if giornoFine not in valid_days:
@@ -64,7 +64,7 @@ class Turn(Resource):
         if giornoInizio == giornoFine:
             return create_response(message={'error': 'giornoInizio and giornoFine cannot be the same'}, status_code=STATUS_CODES["bad_request"])
         
-        values_to_check = {"ore": ore, "posti": posti, "idIndirizzo": idIndirizzo, "idTutor": idTutor, "idAzienda": idAzienda}
+        values_to_check: Dict[str, int] = {"ore": ore, "posti": posti, "idIndirizzo": idIndirizzo, "idTutor": idTutor, "idAzienda": idAzienda}
         for key, value in values_to_check.items():
             if value is not None:
                 try:
@@ -73,7 +73,7 @@ class Turn(Resource):
                     return create_response(message={'error': f'invalid {key} value'}, status_code=STATUS_CODES["bad_request"])
 
         # CHECK THAT VALUES PROVIDED ACTUALLY EXIST IN THE DATABASE
-        pk_to_check = {
+        pk_to_check: Dict[str, List[Union[str, Any]]] = {
             "aziende": ["idAzienda", idAzienda], 
             "indirizzi": ["idIndirizzo", idIndirizzo], 
             "tutor": ["idTutor", idTutor],
@@ -83,13 +83,12 @@ class Turn(Resource):
         for table, (column, value) in pk_to_check.items():
             if value is not None:
                 # Check if the value exists in the database
-                result = fetchone_query(f'SELECT * FROM {table} WHERE {column} = %s', (value,))
+                result: Dict[str, Any] = fetchone_query(f'SELECT * FROM {table} WHERE {column} = %s', (value,))
                 if result is None:
                     return create_response(message={'outcome': f'error, specified row in table {table} does not exist'}, status_code=STATUS_CODES["not_found"])
 
-        # INSERT THE DATA INTO THE DATABASE
         # Insert the turn
-        lastrowid = execute_query(
+        lastrowid: int = execute_query(
             'INSERT INTO turni (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)',
             (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine)
         )
@@ -148,7 +147,7 @@ class Turn(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -157,7 +156,7 @@ class Turn(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that the specified class exists
-        turn = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (id,))
+        turn: Dict[str, Any] = fetchone_query('SELECT * FROM turni WHERE idTurno = %s', (id,))
         if not turn:
             return create_response(message={'outcome': 'specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
 
@@ -168,8 +167,8 @@ class Turn(Resource):
                               'idTutor', 'idIndirizzo', 
                               'oraInizio', 'oraFine',
                               'giornoInizio', 'giornoFine']
-        toModify: list[str]  = list(data.keys())
-        error_columns = [field for field in toModify if field not in modifiable_columns]
+        toModify: List[str]  = list(data.keys())
+        error_columns: List[str] = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
@@ -206,12 +205,12 @@ class Turn(Resource):
             origin_port=API_SERVER_PORT)
         
         # Check that the specified company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
+        company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
         if not company:
             return create_response(message={'outcome': 'specified company not_found'}, status_code=STATUS_CODES["not_found"])
         
         # Get the data
-        turns = fetchall_query(
+        turns: List[Dict[str, Any]] = fetchall_query(
             'SELECT dataInizio, dataFine, posti, postiOccupati, ore, idAzienda, idTutor, indirizzo, oraInizio, oraFine, giornoInizio, giornoFine FROM turni WHERE idAzienda = %s', 
             (company_id,)
         )
