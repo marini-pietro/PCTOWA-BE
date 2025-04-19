@@ -4,6 +4,7 @@ from os.path import abspath as os_path_abspath
 from os.path import dirname as os_path_dirname
 from os.path import join as os_path_join
 from api_blueprints.blueprints_utils import has_valid_json
+from typing import Dict, Any, Union
 from config import (LOG_SERVER_HOST, LOG_SERVER_PORT, 
                     LOG_SERVER_DEBUG_MODE, LOG_FILE_NAME, 
                     LOGGER_NAME, STATUS_CODES,
@@ -16,7 +17,7 @@ app = Flask(__name__)
 class Logger:
     def __init__(self, log_file, console_level, file_level):
         # Create a logger object
-        self.logger = logging.getLogger(name=LOGGER_NAME)
+        self.logger: Logger = logging.getLogger(name=LOGGER_NAME)
         self.logger.setLevel(logging.DEBUG)
 
         # Create a console handler
@@ -53,7 +54,7 @@ class Logger:
             self.logger.removeHandler(handler)
 
 # Generate the log file path so that it is in the same directory as this script
-log_file_path = os_path_join(os_path_dirname(os_path_abspath(__file__)), LOG_FILE_NAME)
+log_file_path: str = os_path_join(os_path_dirname(os_path_abspath(__file__)), LOG_FILE_NAME)
 
 # Initialize the logger
 logger = Logger(log_file=log_file_path, console_level=logging.INFO, file_level=logging.DEBUG)
@@ -66,20 +67,22 @@ def log_message():
     """
 
     # Validate the request data
-    data = has_valid_json(request)
+    data: Union[str, Dict[str, Any]] = has_valid_json(request)
     if isinstance(data, str):
         return jsonify({"error": data}), STATUS_CODES["bad_request"]
     
     # Gather data from the request
-    log_type = data.get("type", "info")
-    message = data.get("message")
-    origin = data.get("origin", "unknown")
+    log_type: str = data.get("type", "info")
+    message: str = data.get("message")
+    origin: str = data.get("origin", "unknown")
 
     # Validate the data
     if not message:
         return jsonify({"error": "Message value required"}), STATUS_CODES["bad_request"]
     if log_type not in ["debug", "info", "warning", "error", "critical"]:
         return jsonify({"error": "invalid log type"}), STATUS_CODES["bad_request"]
+    if not isinstance(origin, str):
+        return jsonify({"error": "Origin value must be a string"}), STATUS_CODES["bad_request"]
 
     try: 
         logger.log(log_type, message, origin)

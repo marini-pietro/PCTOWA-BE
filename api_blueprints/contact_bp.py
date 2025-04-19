@@ -2,7 +2,7 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-from typing import List
+from typing import List, Dict, Union, Any
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
 from .blueprints_utils import (check_authorization, fetchone_query,
@@ -28,7 +28,7 @@ class Contact(Resource):
         """
         
         # Validate the request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -37,7 +37,7 @@ class Contact(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        params = {
+        params: Dict[str, str] = {
             'nome': data.get('nome'),
             'cognome': data.get('cognome'),
             'telefono': data.get('telefono'),
@@ -54,7 +54,7 @@ class Contact(Resource):
                 return create_response(message={'outcome': 'invalid company ID'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if azienda exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (params['idAzienda'],))
+        company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (params['idAzienda'],))
         if not company:
             return create_response(message={'outcome': 'specified company does not exist'}, status_code=STATUS_CODES["not_found"])
 
@@ -68,7 +68,7 @@ class Contact(Resource):
             
         # Log the creation of the contact
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} created contact {lastrowid}',
+            message=f'User {get_jwt_identity().get("email")} created contact with id {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
@@ -106,7 +106,7 @@ class Contact(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -115,14 +115,14 @@ class Contact(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that the specified contact exists
-        contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (id,))
+        contact: Dict[str, Any] = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (id,))
         if not contact:
             return create_response(message={'outcome': 'specified contact not_found'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['nome', 'cognome', 'telefono', 'email', 'ruolo', 'idAzienda']
-        toModify: list[str]  = list(data.keys())
-        error_columns = [field for field in toModify if field not in modifiable_columns]
+        toModify: List[str]  = list(data.keys())
+        error_columns: List[str] = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
@@ -161,21 +161,21 @@ class Contact(Resource):
             origin_port=API_SERVER_PORT)
 
         # Check that the specified company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
+        company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
         if not company:
             return create_response(message={'outcome': 'specified company not_found'}, status_code=STATUS_CODES["not_found"])
 
         # Get the data
-        contact = fetchall_query(
+        contact: List[Dict[str, Any]] = fetchall_query(
             'SELECT * FROM contatti WHERE idAzienda = %s', (company_id,)
         )
 
         # Check if query returned any results
         if not contact:
             return create_response(
-            message={'outcome': 'no contacts found for the specified company'},
-            status_code=STATUS_CODES["not_found"]
-            )
+                                   message={'outcome': 'no contacts found for the specified company'},
+                                   status_code=STATUS_CODES["not_found"]
+                                   )
 
         # Return the contact data
         return create_response(

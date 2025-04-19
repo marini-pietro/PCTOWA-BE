@@ -42,7 +42,7 @@ def is_input_safe(data: Union[str, List[str], Dict[Any, str]]) -> bool:
     else:
         raise TypeError("Input must be a string, list of strings, or dictionary with string values.")
 
-def has_valid_json(request: Request) -> Union[str,  Dict]:
+def has_valid_json(request: Request) -> Union[str,  Dict[str, Any]]:
     """
     Check if the request has a valid JSON body.
     
@@ -181,7 +181,7 @@ def build_select_query_from_filters(data, table_name, limit=1, offset=0): # TODO
     query = f"SELECT * FROM {table_name} WHERE {filters} LIMIT %s OFFSET %s"
     return query, params
 
-def build_update_query_from_filters(data, table_name, id_column, id_value):
+def build_update_query_from_filters(data, table_name, id_column, id_value) -> Tuple[str, List[Any]]:
     """
     Build a SQL update query from filters.
     
@@ -250,7 +250,7 @@ def fetchall_query(query: str, params: Tuple[Any]) -> List[Dict[str, Any]]:
             cursor.execute(query, params)
             return cursor.fetchall()
 
-def execute_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:
+def execute_query(query: str, params: Tuple[Any]) -> int:
     """
     Execute a query on the database and commit the changes.
     

@@ -1,12 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from datetime import timedelta
 from api_blueprints.blueprints_utils import log, fetchone_query, has_valid_json
+from datetime import timedelta
+from typing import Dict, Any, Union
 from config import (AUTH_SERVER_HOST, AUTH_SERVER_PORT, 
                     AUTH_SERVER_NAME_IN_LOG, AUTH_SERVER_DEBUG_MODE, 
                     JWT_TOKEN_DURATION, JWT_SECRET_KEY,
                     STATUS_CODES)
 
+# Initialize Flask app
 app = Flask(__name__)
 
 # Check JWT secret key length
@@ -27,13 +29,13 @@ def login():
     """
 
     # Validate request
-    data = has_valid_json(request)
+    data: Union[str, Dict[str, Any]] = has_valid_json(request)
     if isinstance(data, str): 
         return jsonify({'error': data}), STATUS_CODES["bad_request"]
 
     # Gather the request data
-    email = data.get('email')
-    password = data.get('password')
+    email: str = data.get('email')
+    password: str = data.get('password')
 
     # Log the attempted login operation
     log(type="info",    
@@ -53,7 +55,7 @@ def login():
 
     try:
         # Query the database to validate the user's credentials
-        user = fetchone_query(
+        user: Dict[str, Any] = fetchone_query(
                 "SELECT emailUtente, password, ruolo" \
                 "FROM utenti" \
                 "WHERE emailUtente = %s AND password = %s", 
@@ -61,9 +63,7 @@ def login():
                 )
 
         if user:
-            access_token = create_access_token(identity={'email': email,
-                                                         'role': user['ruolo']}
-                                               )
+            access_token: str = create_access_token(identity={'email': email,'role': user['ruolo']})
 
             # Log the login operation
             log(type="info",    
@@ -100,11 +100,18 @@ def validate():
     """
 
     # Validate request
-    data = has_valid_json(request)
+    data: Union[str, Dict[str, Any]] = has_valid_json(request)
     if isinstance(data, str): 
         return jsonify({'error': data}), STATUS_CODES["bad_request"]
 
+    # Get the JWT identity
     identity = get_jwt_identity()
+
+    # Validate the identity
+    if not identity:
+        return jsonify({'error': 'Invalid token'}), STATUS_CODES["unauthorized"]
+
+    # Return the identity of the user
     return jsonify({'valid': True, 'identity': identity}), STATUS_CODES["ok"]
 
 @app.route('/health', methods=['GET'])

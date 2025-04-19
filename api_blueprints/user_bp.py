@@ -5,7 +5,7 @@ from flask_jwt_extended import get_jwt_identity
 from requests import post as requests_post
 from requests.exceptions import RequestException
 from mysql.connector import IntegrityError
-from typing import List
+from typing import List, Dict, Any, Union
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
@@ -32,7 +32,7 @@ class User(Resource):
         """
         
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
@@ -41,18 +41,18 @@ class User(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        email = data.get('email')
-        password = data.get('password')
-        name = data.get('nome')
-        surname = data.get('cognome')
-        user_type = data.get('tipo')
+        email: str = data.get('email')
+        password: str = data.get('password')
+        name: str = data.get('nome')
+        surname: str = data.get('cognome')
+        user_type: int = data.get('tipo')
 
         try:
-            lastrowid = execute_query(
+            lastrowid: int = execute_query(
                 'INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)',
                 (email, password, name, surname, int(user_type))
             )
-
+        
             # Log the register
             log(type='info', 
                 message=f'User {get_jwt_identity().get("email")} registered user {email}', 
@@ -63,7 +63,7 @@ class User(Resource):
             # Return success message
             return create_response(message={"outcome": "user successfully created",
                                             'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
-        except Exception:
+        except IntegrityError as ex:
             return create_response(message={'outcome': 'error, user with provided credentials already exists'}, status_code=STATUS_CODES["bad_request"])
 
     @jwt_required_endpoint
@@ -75,7 +75,7 @@ class User(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -84,14 +84,14 @@ class User(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if user exists
-        user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
+        user: Dict[str, Any] = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
         if user is None:
             return create_response(message={'outcome': 'error, user with provided email does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['emailUtente', 'password', 'nome', 'cognome', 'tipo']
-        toModify: list[str]  = list(data.keys())
-        error_columns = [field for field in toModify if field not in modifiable_columns]
+        toModify: List[str]  = list(data.keys())
+        error_columns: List[str] = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
@@ -142,7 +142,7 @@ class UserLogin(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str,  Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
@@ -151,11 +151,11 @@ class UserLogin(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        email = data.get('email')
-        password = data.get('password')
+        email: str = data.get('email')
+        password: str = data.get('password')
         
         # Validate parameters
-        if email is None or password is None:
+        if email is None or password is None or email == '' or password == '':
             return create_response(message={'error': 'missing email or password'}, status_code=STATUS_CODES["bad_request"])
 
         try:
@@ -167,6 +167,7 @@ class UserLogin(Resource):
         # Handle response from the authentication service
         if response.status_code == STATUS_CODES["ok"]:  # If the login is successful, send the token back to the user
             return create_response(message=response.json(), status_code=STATUS_CODES["ok"])
+        
         elif response.status_code == STATUS_CODES["unauthorized"]:
             log(type='warning', 
             message=f'Failed login attempt for email: {email}', 
@@ -174,6 +175,7 @@ class UserLogin(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
             return create_response(message={'error': 'Invalid credentials'}, status_code=STATUS_CODES["unauthorized"])
+        
         elif response.status_code == STATUS_CODES["bad_request"]:
             log(type='error', 
             message=f'Bad request during login for email: {email}', 
@@ -181,6 +183,7 @@ class UserLogin(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
             return create_response(message={'error': 'Bad request'}, status_code=STATUS_CODES["bad_request"])
+        
         elif response.status_code == STATUS_CODES["internal_error"]:
             log(type='error', 
             message=f'Internal error during login for email: {email}', 
@@ -188,6 +191,7 @@ class UserLogin(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
             return create_response(message={'error': 'Internal error'}, status_code=STATUS_CODES["internal_error"])
+        
         else:
             log(type='error', 
             message=f'Unexpected error during login for email: {email} with status code: {response.status_code}', 
@@ -206,7 +210,7 @@ class BindUserToCompany(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str,  Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -215,17 +219,23 @@ class BindUserToCompany(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        company_id = data.get('idAzienda')
+        company_id: Union[str, int] = data.get('idAzienda')
+
+        # Validate parameters
         if company_id is None:
             return create_response(message={'error': 'missing company id'}, status_code=STATUS_CODES["bad_request"])
+        try:
+            company_id = int(company_id)
+        except ValueError:
+            return create_response(message={'error': 'company id must be an integer'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if user exists
-        user = fetchone_query('SELECT * FROM utenti WHERE emailUtente = %s', (email,))
+        user: Dict[str, Any] = fetchone_query('SELECT * FROM utenti WHERE emailUtente = %s', (email,))
         if user is None:
             return create_response(message={'outcome': 'error, user with provided email does not exist'}, status_code=STATUS_CODES["not_found"])
         
         # Check if company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
+        company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
         if company is None:
             return create_response(message={'outcome': 'error, company with provided id does not exist'}, status_code=STATUS_CODES["not_found"])
 
@@ -274,7 +284,9 @@ class ReadBindedUser(Resource):
             origin_port=API_SERVER_PORT)
 
         # Gather parameters
-        id_type = request.args.get('id_type')
+        id_type: str = request.args.get('id_type')
+
+        # Validate parameters
         if id_type is None:
             return create_response(message={'error': 'missing id_type'}, status_code=STATUS_CODES["bad_request"])
         if id_type not in ['company', 'class']:
@@ -282,19 +294,19 @@ class ReadBindedUser(Resource):
 
         # Check that the specified resource exist
         if id_type == 'company':
-            company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
+            company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
             if not company:
                 return create_response(message={'outcome': 'error, specified company does not exist'}, status_code=STATUS_CODES["not_found"])
         
             # Build query
-            query = "SELECT U.emailUtente, U.nome, U.cognome, RT.anno " \
+            query: str = "SELECT U.emailUtente, U.nome, U.cognome, RT.anno " \
                     "FROM docenteReferente AS RT JOIN utenti AS U ON U.emailUtente = RT.docenteReferente " \
                     "WHERE RT.idAzienda = %s"
             
         # Check that the specified resource exist
         elif id_type == 'class':
-            company = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (id,))
-            if not company:
+            class_: Dict[str, Any] = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (id,))
+            if not class_:
                 return create_response(message={'outcome': 'error, specified class does not exist'}, status_code=STATUS_CODES["not_found"])
       
             query = "SELECT U.emailUtente, U.nome, U.cognome, C.anno" \
@@ -302,11 +314,12 @@ class ReadBindedUser(Resource):
                     "WHERE C.idClasse = %s"
 
         # Get the list of associated users
-        resources = fetchall_query(query, (id,))
+        resources: List[Dict[str, Any]] = fetchall_query(query, (id,))
         
         # Return the list of users
         return create_response(message=resources, status_code=STATUS_CODES["ok"])
 
+# Add resources to the API
 api.add_resource(User, f'/{BP_NAME}', f'/{BP_NAME}/<string:email>')
-api.add_resource(UserLogin, '/login')
+api.add_resource(UserLogin, f'/{BP_NAME}/auth/login')
 api.add_resource(BindUserToCompany, f'/{BP_NAME}/bind/<string:email>')

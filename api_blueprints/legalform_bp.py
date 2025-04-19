@@ -3,6 +3,7 @@ from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from mysql.connector import IntegrityError
+from typing import Dict, Union, List, Any
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
@@ -28,7 +29,7 @@ class LegalForm(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -37,7 +38,7 @@ class LegalForm(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        forma = data.get('forma')
+        forma: str = data.get('forma')
 
         # Validate parameters
         if forma is None or not isinstance(forma, str) or len(forma) == 0: 
@@ -101,7 +102,7 @@ class LegalForm(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -110,13 +111,14 @@ class LegalForm(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather JSON data
-        newValue = data.get('newValue')
+        newValue: str = data.get('newValue')
 
+        # Validate parameters
         if newValue is None or not isinstance(newValue, str) or len(newValue) == 0:
             return create_response(message={'error': 'Invalid legal form value'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if legal form exists
-        form = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (forma,))
+        form: Dict[str, Any] = fetchone_query('SELECT * FROM formaGiuridica WHERE forma = %s', (forma,))
         if form is None:
             return create_response(message={'outcome': 'error, specified legal form does not exist'}, status_code=STATUS_CODES["not_found"])
 
@@ -142,19 +144,16 @@ class LegalForm(Resource):
         """
         # Gather URL parameters
         try:
-            limit = int(request.args.get('limit'))
-            offset = int(request.args.get('offset'))
+            limit: int = int(request.args.get('limit')) if request.args.get('limit') else 10 # Default limit is 10
+            offset: int = int(request.args.get('offset')) if request.args.get('offset') else 0 # Default offset is 0
         except (ValueError, TypeError) as ex:
             return create_response(message={'error': f'invalid limit or offset parameter: {ex}'}, status_code=STATUS_CODES["bad_request"])
 
         # This endpoint does not require filters as the table has only one column 
 
         try:
-            # Build the query
-            query, params = 'SELECT forma FROM formaGiuridica LIMIT %s OFFSET %s', (limit, offset)
-
             # Execute query
-            forms = fetchall_query(query, tuple(params))
+            forms: List[Dict[str, Any]] = fetchall_query('SELECT forma FROM formaGiuridica LIMIT %s OFFSET %s', params=(limit, offset))
 
             # Log the read
             log(type='info', 

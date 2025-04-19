@@ -2,7 +2,7 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-from typing import List
+from typing import List, Dict, Union, Any
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
@@ -29,7 +29,7 @@ class Tutor(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
@@ -38,13 +38,13 @@ class Tutor(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
         
         # Gather parameters
-        nome = data.get('nome')
-        cognome = data.get('cognome')
-        telefono = data.get('telefono')
-        email = data.get('email')
+        nome: str = data.get('nome')
+        cognome: str = data.get('cognome')
+        telefono: str = data.get('telefono')
+        email: str = data.get('email')
 
         # Insert the tutor
-        lastrowid = execute_query(
+        lastrowid: int = execute_query(
             'INSERT INTO tutor (nome, cognome, telefonoTutor, emailTutor) VALUES (%s, %s, %s, %s)',
             (nome, cognome, telefono, email)
         )
@@ -89,7 +89,7 @@ class Tutor(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -98,14 +98,14 @@ class Tutor(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if tutor exists
-        tutor = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (id,))
+        tutor: Dict[str, Any] = fetchone_query('SELECT * FROM tutor WHERE idTutor = %s', (id,))
         if tutor is None:
             return create_response(message={'outcome': 'error, specified tutor does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['nome', 'cognome', 'emailTutor', 'telefonoTutor']
-        toModify: list[str]  = list(data.keys())
-        error_columns = [field for field in toModify if field not in modifiable_columns]
+        toModify: List[str]  = list(data.keys())
+        error_columns: List[str] = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
@@ -142,12 +142,12 @@ class Tutor(Resource):
             origin_port=API_SERVER_PORT)
         
         # Check that the specified company exists
-        company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (turn_id,))
+        company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (turn_id,))
         if not company:
             return create_response(message={'outcome': 'specified company not_found'}, status_code=STATUS_CODES["not_found"])
         
         # Get the data
-        tutors = fetchall_query(
+        tutors: List[Dict[str, Any]] = fetchall_query(
             "SELECT TU.nome, TU.cognome, TU.emailTutor, TU.telefonoTutor " \
             "FROM turni AS T JOIN turnoTutor AS TT ON T.idTurno = TT.idTurno" \
             "JOIN tutor AS TU ON TU.idTutor = TT.idTutor" \

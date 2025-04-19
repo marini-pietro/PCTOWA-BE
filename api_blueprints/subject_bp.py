@@ -2,7 +2,7 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
-from typing import List
+from typing import List, Dict, Union, Any
 from re import match as re_match
 from mysql.connector import IntegrityError
 from .blueprints_utils import (check_authorization, fetchone_query, 
@@ -31,7 +31,7 @@ class Subject(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
@@ -40,16 +40,26 @@ class Subject(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
-        descrizione = data.get('descrizione')
-        hexColor = data.get('hexColor')
+        descrizione: str = data.get('descrizione')
+        hexColor: str = data.get('hexColor')
 
         # Validate parameters
-        if hexColor is not None and not re_match(r'^#[0-9A-Fa-f]{6}$', hexColor):
+        if not isinstance(materia, str):
+            return create_response(message={'error': 'materia must be a string'}, status_code=STATUS_CODES["bad_request"])
+        if len(materia) > 255:
+            return create_response(message={'error': 'materia too long'}, status_code=STATUS_CODES["bad_request"])
+        if not isinstance(descrizione, str):
+            return create_response(message={'error': 'descrizione must be a string'}, status_code=STATUS_CODES["bad_request"])
+        if len(descrizione) > 255:
+            return create_response(message={'error': 'descrizione too long'}, status_code=STATUS_CODES["bad_request"])
+        if not isinstance(hexColor, str):
+            return create_response(message={'error': 'hexColor must be a string'}, status_code=STATUS_CODES["bad_request"])
+        if not re_match(r'^#[0-9A-Fa-f]{6}$', hexColor):
             return create_response(message={'outcome': 'invalid hexColor format'}, status_code=STATUS_CODES["bad_request"])
 
+        # Insert the subject
         try:
-            # Insert the subject
-            lastrowid = execute_query('INSERT INTO materie (materia, descrizione, hexColor) VALUES (%s, %s, %s)', (materia, descrizione, hex))
+            lastrowid: int = execute_query('INSERT INTO materie (materia, descrizione, hexColor) VALUES (%s, %s, %s)', (materia, descrizione, hex))
         except IntegrityError as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} tried to create subject {materia} but it already generated {ex}',
@@ -84,7 +94,7 @@ class Subject(Resource):
         The request must include the subject name as a path variable.
         """
         # Check if subject exists
-        subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
+        subject: Dict[str, Any] = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
             return create_response(message={'outcome': 'error, specified subject does not exist'}, status_code=STATUS_CODES["not_found"])
 
@@ -110,7 +120,7 @@ class Subject(Resource):
         """
 
         # Validate request
-        data = has_valid_json(request)
+        data: Union[str, Dict[str, Any]] = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
@@ -119,14 +129,14 @@ class Subject(Resource):
             return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that specified subject exists
-        subject = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
+        subject: Dict[str, Any] = fetchone_query('SELECT * FROM materie WHERE materia = %s', (materia,))
         if subject is None:
             return create_response(message={'outcome': 'error, specified subject does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = ['materia', 'descrizione', 'hexColor']
-        toModify: list[str]  = list(data.keys())
-        error_columns = [field for field in toModify if field not in modifiable_columns]
+        toModify: List[str]  = list(data.keys())
+        error_columns: List[str] = [field for field in toModify if field not in modifiable_columns]
         if error_columns:
             return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
 
@@ -149,7 +159,7 @@ class Subject(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, materia) -> Response:
+    def get(self, materia) -> Response: # TODO rework this endpoint
         """
         Get all subjects with pagination.
         The request can include limit and offset as query parameters.
