@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Apr 16, 2025 alle 19:51
+-- Creato il: Apr 19, 2025 alle 17:52
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -50,7 +50,7 @@ CREATE TABLE `aziende` (
 
 INSERT INTO `aziende` (`idAzienda`, `ragioneSociale`, `codiceAteco`, `partitaIVA`, `fax`, `pec`, `telefonoAzienda`, `emailAzienda`, `dataConvenzione`, `scadenzaConvenzione`, `categoria`, `indirizzoLogo`, `sitoWeb`, `formaGiuridica`) VALUES
 (1, 'Tech Solutions', '6201', '12345678901', '0123456789', 'tech@pec.it', '1234567890', 'info@techsolutions.it', '2023-01-01', '2026-01-01', 'Tecnologia', 'logo1.png', 'https://techsolutions.it', 'S.r.l.'),
-(2, 'GreenFuture S.p.A.', '0112', '98765432109', '0234567890', 'green@pec.it', '0987654321', 'info@greenfuture.it', '2022-09-01', '2025-09-01', 'Energia', 'logo2.png', 'https://greenfuture.it', 'S.p.A.'),
+(2, 'GreenFuture', '0112', '98765432109', '0234567890', 'green@pec.it', '0987654321', 'info@greenfuture.it', '2022-09-01', '2025-09-01', 'Energia', 'logo2.png', 'https://greenfuture.it', 'S.p.A.'),
 (3, 'EduInnovazione', '8542', '19283746501', '0345678912', 'edu@pec.it', '1122334455', 'info@eduinnovazione.it', '2024-01-10', '2027-01-10', 'Formazione', 'logo3.png', 'https://eduinnovazione.it', 'Cooperativa');
 
 -- --------------------------------------------------------
@@ -151,10 +151,10 @@ CREATE TABLE `indirizzi` (
   `stato` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `provincia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `comune` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `cap` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `cap` char(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `indirizzo` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `idAzienda` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+) ;
 
 --
 -- Dump dei dati per la tabella `indirizzi`
@@ -236,8 +236,8 @@ INSERT INTO `studenteTurno` (`matricola`, `idTurno`) VALUES
 
 CREATE TABLE `studenti` (
   `matricola` int NOT NULL,
-  `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `nome` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `cognome` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `idClasse` int NOT NULL,
   `comune` varchar(255) COLLATE utf8_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
@@ -516,7 +516,7 @@ ALTER TABLE `contatti`
 -- AUTO_INCREMENT per la tabella `indirizzi`
 --
 ALTER TABLE `indirizzi`
-  MODIFY `idIndirizzo` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `idIndirizzo` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT per la tabella `turni`
