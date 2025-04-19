@@ -4,13 +4,14 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from re import match as re_match
 from typing import List, Dict, Any
-from config import (API_SERVER_HOST, API_SERVER_PORT, 
-                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 from .blueprints_utils import (check_authorization, has_valid_json, 
                                fetchone_query, fetchall_query, 
                                execute_query, log, 
                                jwt_required_endpoint, create_response, 
-                               build_update_query_from_filters, parse_date_string)
+                               build_update_query_from_filters, parse_date_string,
+                               is_input_safe)
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -32,6 +33,10 @@ class Company(Resource):
         data = has_valid_json(request)
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters from the request body (new dictionary is necessary so that user can provide JSON with fields in any order)
         params = {
@@ -118,6 +123,10 @@ class Company(Resource):
         data = has_valid_json(request)
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if the company exists
         company = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))

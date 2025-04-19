@@ -6,7 +6,8 @@ from .blueprints_utils import (check_authorization, build_select_query_from_filt
                                fetchone_query, fetchall_query, 
                                execute_query, log, 
                                jwt_required_endpoint, create_response, 
-                               build_update_query_from_filters, has_valid_json)
+                               build_update_query_from_filters, has_valid_json,
+                               is_input_safe)
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
@@ -31,6 +32,10 @@ class Address(Resource):
         data = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
         stato = data.get('stato')
@@ -101,6 +106,10 @@ class Address(Resource):
         data = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if address exists
         address = fetchone_query('SELECT * FROM indirizzi WHERE idIndirizzo = %s', (id,))

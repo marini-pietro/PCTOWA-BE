@@ -15,6 +15,16 @@ from config import (DB_HOST, DB_USER, DB_PASSWORD,
                     STATUS_CODES, ROLES)
 
 # Data validation related
+# Precompile the regex pattern once
+SQL_PATTERN = re.compile(
+    r"\b(" + "|".join([
+        r"SELECT", r"INSERT", r"UPDATE", r"DELETE", r"DROP", r"CREATE", r"ALTER",
+        r"EXEC", r"UNION", r"ALL", r"WHERE", r"FROM", r"TABLE", r"JOIN", r"TRUNCATE",
+        r"REPLACE", r"GRANT", r"REVOKE", r"DECLARE", r"CAST", r"SET"
+    ]) + r")\b",
+    re.IGNORECASE
+)
+
 def is_input_safe(data: Union[str, List[str], Dict[Any, str]]) -> bool:
     """
     Check if the input data (string, list, or dictionary) contains SQL instructions.
@@ -23,34 +33,14 @@ def is_input_safe(data: Union[str, List[str], Dict[Any, str]]) -> bool:
     :param data: str, list, or dict - The input data to validate.
     :return: bool - True if the input is safe, False otherwise.
     """
-    # List of common SQL keywords to check for
-    sql_keywords = [
-        r"SELECT", r"INSERT", r"UPDATE", r"DELETE", r"DROP", r"CREATE", r"ALTER",
-        r"EXEC", r"UNION", r"ALL", r"WHERE", r"FROM", r"TABLE", r"JOIN", r"TRUNCATE",
-        r"REPLACE", r"GRANT", r"REVOKE", r"DECLARE", r"CAST", r"SET"
-    ]
-    
-    # Compile a regex pattern to match any of the SQL keywords (case-insensitive)
-    sql_pattern = re.compile(r"\b(" + "|".join(sql_keywords) + r")\b", re.IGNORECASE)
-
-    # Helper function to check a single string
-    def check_string(value):
-        return not bool(sql_pattern.search(value))
-
-    # Check if the input is a string
     if isinstance(data, str):
-        return check_string(data)
-
-    # Check if the input is a list
+        return not bool(SQL_PATTERN.search(data))
     elif isinstance(data, list):
-        return all(check_string(item) for item in data if isinstance(item, str))
-
-    # Check if the input is a dictionary
+        return all(isinstance(item, str) and not bool(SQL_PATTERN.search(item)) for item in data)
     elif isinstance(data, dict):
-        return all(check_string(value) for value in data.values() if isinstance(value, str))
-
-    # If the input is not a string, list, or dictionary, return False
-    return False
+        return all(isinstance(value, str) and not bool(SQL_PATTERN.search(value)) for value in data.values())
+    else:
+        raise TypeError("Input must be a string, list of strings, or dictionary with string values.")
 
 def has_valid_json(request: Request) -> Union[str,  Dict]:
     """

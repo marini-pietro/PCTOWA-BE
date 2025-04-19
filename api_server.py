@@ -23,14 +23,14 @@ for filename in os_listdir(blueprints_dir):
         app.register_blueprint(blueprint, url_prefix=f'/api/{API_VERSION}/')  # Remove '_bp' for the URL prefix
         print(f"Registered blueprint: {module_name} with prefix /api/{API_VERSION}/")
 
-@app.route('/api/health', methods=['GET'])
+@app.route(f'/api/{API_VERSION}/health', methods=['GET'])
 def health_check():
     """
     Health check endpoint to verify the server is running.
     """
     return jsonify({"status": "ok"}), STATUS_CODES["ok"]
 
-@app.route('/api/endpoints', methods=['GET']) # Only used for testing purposes should be removed in production (could also just set API_SERVER_DEBUG_MODE to False)
+@app.route(f'/api/{API_VERSION}/endpoints', methods=['GET']) # Only used for testing purposes should be removed in production (could also just set API_SERVER_DEBUG_MODE to False)
 def list_endpoints():
     if API_SERVER_DEBUG_MODE == True:
         endpoints = []
@@ -44,7 +44,7 @@ def list_endpoints():
     else:
         return jsonify({"error": "Feature not available while server is in production mode"}), STATUS_CODES["forbidden"]
 
-@app.route('/api/shutdown', methods=['GET']) # Only used for testing purposes should be removed in production (could also just set API_SERVER_DEBUG_MODE to False)
+@app.route(f'/api/{API_VERSION}/shutdown', methods=['GET']) # Only used for testing purposes should be removed in production (could also just set API_SERVER_DEBUG_MODE to False)
 def shutdown_endpoint():
     if API_SERVER_DEBUG_MODE == True:
         close_api(None, None) # Call the close_api function
