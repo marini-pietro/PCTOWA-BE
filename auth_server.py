@@ -56,11 +56,11 @@ def login():
     try:
         # Query the database to validate the user's credentials
         user: Dict[str, Any] = fetchone_query(
-                "SELECT emailUtente, password, ruolo" \
-                "FROM utenti" \
-                "WHERE emailUtente = %s AND password = %s", 
-                (email, password)
-                )
+                                "SELECT emailUtente, password, ruolo "
+                                "FROM utenti "
+                                "WHERE emailUtente = %s AND password = %s",
+                                (email, password)
+                                )
 
         if user:
             access_token: str = create_access_token(identity={'email': email,'role': user['ruolo']})

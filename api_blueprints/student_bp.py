@@ -294,12 +294,12 @@ class StudentList(Resource):
             )
 
         # Get all students
-        students: List[Dict[str, Any]] = fetchall_query('SELECT S.matricola, S.nome, S.cognome, S.comune"' \
-                                  "FROM studenti AS S" \
-                                  "JOIN studenteTurno AS ST ON S.matricola = ST.matricola JOIN turni AS T ON ST.idTurno = T.idTurno" \
-                                  "WHERE T.idTurno = %s", 
-                                  (turn_id,)
-                                  )
+        students: List[Dict[str, Any]] = fetchall_query("SELECT S.matricola, S.nome, S.cognome, S.comune"
+                                                        "FROM studenti AS S "
+                                                        "JOIN studenteTurno AS ST ON S.matricola = ST.matricola JOIN turni AS T ON ST.idTurno = T.idTurno "
+                                                        "WHERE T.idTurno = %s", 
+                                                        (turn_id,)
+                                                        )
 
         # Return the response
         return create_response(message=students, status_code=STATUS_CODES["ok"])

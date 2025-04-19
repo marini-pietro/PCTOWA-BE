@@ -299,9 +299,11 @@ class ReadBindedUser(Resource):
                 return create_response(message={'outcome': 'error, specified company does not exist'}, status_code=STATUS_CODES["not_found"])
         
             # Build query
-            query: str = "SELECT U.emailUtente, U.nome, U.cognome, RT.anno " \
-                    "FROM docenteReferente AS RT JOIN utenti AS U ON U.emailUtente = RT.docenteReferente " \
-                    "WHERE RT.idAzienda = %s"
+            query: str = (
+                "SELECT U.emailUtente, U.nome, U.cognome, RT.anno "
+                "FROM docenteReferente AS RT JOIN utenti AS U ON U.emailUtente = RT.docenteReferente "
+                "WHERE RT.idAzienda = %s"
+            )
             
         # Check that the specified resource exist
         elif id_type == 'class':
@@ -309,9 +311,11 @@ class ReadBindedUser(Resource):
             if not class_:
                 return create_response(message={'outcome': 'error, specified class does not exist'}, status_code=STATUS_CODES["not_found"])
       
-            query = "SELECT U.emailUtente, U.nome, U.cognome, C.anno" \
-                    "FROM classi AS C JOIN utenti AS U ON U.emailUtente = C.emailResponsabile" \
+            query: str = (
+                    "SELECT U.emailUtente, U.nome, U.cognome, C.anno "
+                    "FROM classi AS C JOIN utenti AS U ON U.emailUtente = C.emailResponsabile "
                     "WHERE C.idClasse = %s"
+            )
 
         # Get the list of associated users
         resources: List[Dict[str, Any]] = fetchall_query(query, (id,))
