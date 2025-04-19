@@ -148,9 +148,9 @@ class Tutor(Resource):
         
         # Get the data
         tutors: List[Dict[str, Any]] = fetchall_query(
-            "SELECT TU.nome, TU.cognome, TU.emailTutor, TU.telefonoTutor " \
-            "FROM turni AS T JOIN turnoTutor AS TT ON T.idTurno = TT.idTurno" \
-            "JOIN tutor AS TU ON TU.idTutor = TT.idTutor" \
+            "SELECT TU.nome, TU.cognome, TU.emailTutor, TU.telefonoTutor "
+            "FROM turni AS T JOIN turnoTutor AS TT ON T.idTurno = TT.idTurno "
+            "JOIN tutor AS TU ON TU.idTutor = TT.idTutor "
             "WHERE T.idTurno = %s",  (turn_id, )
         )
 

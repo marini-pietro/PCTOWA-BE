@@ -192,9 +192,9 @@ class Company(Resource):
                 return create_response(message={'error': 'company not found with specified id'}, status_code=STATUS_CODES["not_found"])
 
             # Gather turn data
-            turns: List[Dict[str, Any]] = fetchall_query("SELECT dataInizio, dataFine, posti, postiOccupati," \
-                                                         "ore, idIndirizzo, oraInizio, oraFine, giornoInizio, giornoFine" \
-                                                         "FROM turni " \
+            turns: List[Dict[str, Any]] = fetchall_query("SELECT dataInizio, dataFine, posti, postiOccupati, "
+                                                         "ore, idIndirizzo, oraInizio, oraFine, giornoInizio, giornoFine "
+                                                         "FROM turni "
                                                          "WHERE idAzienda = %s", (id, ))
 
             # Add the turn endpoints to company dictionary
@@ -243,22 +243,22 @@ class CompanyList(Resource):
             ids_batch.extend(ids)
 
         if settore:
-            ids = fetchall_query("SELECT A.idAzienda " \
-                                 "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda" \
-                                 "JOIN turnoSettore AS TS ON TS.idTurno = T.idTurno" \
+            ids = fetchall_query("SELECT A.idAzienda "
+                                 "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda "
+                                 "JOIN turnoSettore AS TS ON TS.idTurno = T.idTurno "
                                  "WHERE TS.settore = %s", (settore, ))
             ids_batch.extend(ids)
 
         if mese:
-            ids = fetchall_query("SELECT A.idAzienda " \
-                                 "FROM aziende AS A JOIN turni AS T" \
+            ids = fetchall_query("SELECT A.idAzienda "
+                                 "FROM aziende AS A JOIN turni AS T "
                                  "WHERE MONTHNAME(T.dataInizio) = %s", (mese, ))
             ids_batch.extend(ids)
 
         if materia:
-            ids = fetchall_query("SELECT A.idAzienda " \
-                                 "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda" \
-                                 "JOIN turnoMateria AS TM ON TM.idTurno = T.idTurno" \
+            ids = fetchall_query("SELECT A.idAzienda " 
+                                 "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda "
+                                 "JOIN turnoMateria AS TM ON TM.idTurno = T.idTurno "
                                  "WHERE TM.materia = %s", (materia, ))
             ids_batch.extend(ids)
 
