@@ -6,14 +6,14 @@ from requests import post as requests_post
 from requests.exceptions import RequestException
 from mysql.connector import IntegrityError
 from typing import List
-from config import (API_SERVER_HOST, API_SERVER_PORT, 
-                    API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST, 
-                    AUTH_SERVER_PORT, STATUS_CODES)
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
                                create_response, build_update_query_from_filters,
-                               has_valid_json)
+                               has_valid_json, is_input_safe)
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST, 
+                    AUTH_SERVER_PORT, STATUS_CODES)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -36,6 +36,10 @@ class User(Resource):
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
+
         # Gather parameters
         email = data.get('email')
         password = data.get('password')
@@ -74,6 +78,10 @@ class User(Resource):
         data = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if user exists
         user = fetchone_query('SELECT * FROM utente WHERE emailUtente = %s', (email,))
@@ -138,6 +146,10 @@ class UserLogin(Resource):
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
+
         # Gather parameters
         email = data.get('email')
         password = data.get('password')
@@ -197,6 +209,10 @@ class BindUserToCompany(Resource):
         data = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
         company_id = data.get('idAzienda')

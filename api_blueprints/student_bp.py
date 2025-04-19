@@ -4,13 +4,13 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from typing import List
 from mysql.connector import IntegrityError
-from config import (API_SERVER_HOST, API_SERVER_PORT, 
-                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
                                create_response, build_update_query_from_filters, 
-                               has_valid_json)
+                               has_valid_json, is_input_safe)
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -32,6 +32,10 @@ class Student(Resource):
         data = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
         matricola = data.get('matricola')
@@ -104,6 +108,10 @@ class Student(Resource):
         data = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that the specified student exists
         student = fetchone_query('SELECT * FROM studenti WHERE matricola = %s', (matricola,))
@@ -214,6 +222,10 @@ class BindStudentToTurn(Resource):
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
+
         # Gather parameters
         idTurno = data.get('idTurno')
         if idTurno is None:

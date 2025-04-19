@@ -3,11 +3,13 @@ from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from mysql.connector import IntegrityError
-from config import API_SERVER_HOST, API_SERVER_PORT, API_SERVER_NAME_IN_LOG, STATUS_CODES
 from .blueprints_utils import (check_authorization, fetchone_query, 
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
-                               create_response, has_valid_json)
+                               create_response, has_valid_json,
+                               is_input_safe)
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -29,6 +31,10 @@ class Sector(Resource):
         data = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
         settore = data.get('settore')
@@ -109,8 +115,16 @@ class Sector(Resource):
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
 
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
+
         # Gather JSON data
         newValue = data.get('newValue')
+
+        # Validate parameters
+        if newValue is None or len(newValue) == 0:
+            return create_response(message={'error': 'newValue parameter is required'}, status_code=STATUS_CODES["bad_request"])
 
         # Check if sector exists
         sector = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))

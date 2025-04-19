@@ -9,7 +9,7 @@ from .blueprints_utils import (check_authorization, fetchone_query,
                                execute_query, log, 
                                jwt_required_endpoint, create_response, 
                                build_update_query_from_filters, fetchall_query,
-                               has_valid_json)
+                               has_valid_json, is_input_safe)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -31,6 +31,10 @@ class Contact(Resource):
         data = has_valid_json(request)
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Gather parameters
         params = {
@@ -105,6 +109,10 @@ class Contact(Resource):
         data = has_valid_json(request)
         if isinstance(data, str): 
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that the specified contact exists
         contact = fetchone_query('SELECT * FROM contatti WHERE idContatto = %s', (id,))

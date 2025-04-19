@@ -7,7 +7,8 @@ from re import match as re_match
 from .blueprints_utils import (check_authorization, has_valid_json,
                                fetchone_query, fetchall_query, 
                                execute_query, log, jwt_required_endpoint, 
-                               create_response, build_update_query_from_filters)
+                               create_response, build_update_query_from_filters,
+                               is_input_safe)
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
@@ -32,7 +33,11 @@ class Class(Resource):
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
         
-         # Gather parameters
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
+
+        # Gather parameters
         sigla = data.get('sigla'),
         anno = data.get('anno')
         emailResponsabile = data.get('emailResponsabile')
@@ -96,6 +101,10 @@ class Class(Resource):
         data = has_valid_json(request)
         if isinstance(data, str):
             return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
+
+        # Check for sql injection
+        if not is_input_safe(data):
+            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
 
         # Check that class exists
         class_ = fetchone_query('SELECT * FROM classi WHERE idClasse = %s', (id,))
