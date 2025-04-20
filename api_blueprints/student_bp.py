@@ -8,7 +8,8 @@ from .blueprints_utils import (check_authorization, fetchone_query,
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
                                create_response, build_update_query_from_filters, 
-                               has_valid_json, is_input_safe)
+                               has_valid_json, is_input_safe,
+                               get_class_http_verbs)
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
@@ -214,7 +215,22 @@ class Student(Resource):
 
         # Return the response
         return create_response(message=out_json, status_code=STATUS_CODES["ok"])
+
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
         
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
+
 class BindStudentToTurn(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
@@ -271,6 +287,21 @@ class BindStudentToTurn(Resource):
                 origin_port=API_SERVER_PORT)
             return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
 
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
+
 class StudentList(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
@@ -303,6 +334,21 @@ class StudentList(Resource):
 
         # Return the response
         return create_response(message=students, status_code=STATUS_CODES["ok"])
+
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
 
 api.add_resource(Student, f'/{BP_NAME}/<int:matricola>', f'/{BP_NAME}/<string:sigla>')
 api.add_resource(BindStudentToTurn, f'/{BP_NAME}/bind/<int:matricola>')

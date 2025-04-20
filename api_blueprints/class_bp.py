@@ -8,7 +8,7 @@ from .blueprints_utils import (check_authorization, has_valid_json,
                                fetchone_query, fetchall_query, 
                                execute_query, log, jwt_required_endpoint, 
                                create_response, build_update_query_from_filters,
-                               is_input_safe)
+                               is_input_safe, get_class_http_verbs)
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
@@ -171,6 +171,21 @@ class Class(Resource):
             status_code=STATUS_CODES["ok"]
         )
 
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
+
 class ClassFuzzySearch(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
@@ -214,6 +229,21 @@ class ClassFuzzySearch(Resource):
             status_code=STATUS_CODES["ok"]
         )
 
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
+
 class ClassList(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
@@ -240,6 +270,21 @@ class ClassList(Resource):
             message=class_names,
             status_code=STATUS_CODES["ok"]
         )
+
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
 
 api.add_resource(Class, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>', f'/{BP_NAME}/<string:email>')
 api.add_resource(ClassFuzzySearch, f'/{BP_NAME}/fsearch')
