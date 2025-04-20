@@ -10,7 +10,8 @@ from .blueprints_utils import (check_authorization, fetchone_query,
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
                                create_response, build_update_query_from_filters,
-                               has_valid_json, is_input_safe)
+                               has_valid_json, is_input_safe,
+                               get_class_http_verbs)
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, AUTH_SERVER_HOST, 
                     AUTH_SERVER_PORT, STATUS_CODES)
@@ -134,6 +135,21 @@ class User(Resource):
 
     # TODO GET method to get all user for an admin page???
 
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
+
 class UserLogin(Resource):
     def post(self) -> Response:
         """
@@ -199,6 +215,19 @@ class UserLogin(Resource):
             origin_host=API_SERVER_HOST, 
             origin_port=API_SERVER_PORT)
             return create_response(message={'error': 'Unexpected error during login'}, status_code=STATUS_CODES["internal_error"])
+
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
 
 class BindUserToCompany(Resource):
     @jwt_required_endpoint
@@ -267,6 +296,21 @@ class BindUserToCompany(Resource):
         # Return success message
         return create_response(message={'outcome': 'user successfully bound to company'}, status_code=STATUS_CODES["ok"])
 
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
+
 class ReadBindedUser(Resource):
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
@@ -322,6 +366,21 @@ class ReadBindedUser(Resource):
         
         # Return the list of users
         return create_response(message=resources, status_code=STATUS_CODES["ok"])
+
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
 
 # Add resources to the API
 api.add_resource(User, f'/{BP_NAME}', f'/{BP_NAME}/<string:email>')

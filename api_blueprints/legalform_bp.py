@@ -8,7 +8,7 @@ from .blueprints_utils import (check_authorization, fetchone_query,
                                fetchall_query, execute_query, 
                                log, jwt_required_endpoint, 
                                create_response, has_valid_json,
-                               is_input_safe)
+                               is_input_safe, get_class_http_verbs)
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
@@ -166,5 +166,20 @@ class LegalForm(Resource):
             return create_response(message=forms, status_code=STATUS_CODES["ok"])
         except Exception as err:
             return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
+
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
 
 api.add_resource(LegalForm, f'/{BP_NAME}', f'{BP_NAME}/<string:forma>')

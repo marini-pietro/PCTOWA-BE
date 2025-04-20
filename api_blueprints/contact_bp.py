@@ -9,7 +9,7 @@ from .blueprints_utils import (check_authorization, fetchone_query,
                                execute_query, log, 
                                jwt_required_endpoint, create_response, 
                                build_update_query_from_filters, fetchall_query,
-                               has_valid_json, is_input_safe)
+                               has_valid_json, is_input_safe, get_class_http_verbs)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -182,5 +182,20 @@ class Contact(Resource):
             message=contact, 
             status_code=STATUS_CODES["ok"]
         )
+
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    def options(self) -> Response:
+        # Define allowed methods
+        allowed_methods = get_class_http_verbs(type(self))
+        
+        # Create the response
+        response = Response(status=STATUS_CODES["ok"])
+        response.headers['Allow'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
+        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        
+        return response
 
 api.add_resource(Contact, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
