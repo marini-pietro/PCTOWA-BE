@@ -1,6 +1,7 @@
-import threading
 import re
 import inspect
+import requests
+import threading
 from flask import jsonify, make_response, request, Response, Request
 from flask_jwt_extended import get_jwt_identity
 from contextlib import contextmanager
@@ -127,10 +128,10 @@ def get_class_http_verbs(class_: type) -> List[str]:
         raise TypeError(f"class_ must be a class, not an instance. Got {class_} instead.")
     
     # List of HTTP verbs to filter
-    http_verbs = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'connect']
+    http_verbs = {'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD', 'TRACE', 'CONNECT'}
     
     # Get all methods of the class and filter by HTTP verbs
-    return [name.upper() for name, member in inspect.getmembers(class_, predicate=inspect.isfunction) if name.lower() in http_verbs]
+    return [verb for verb in http_verbs if hasattr(class_, verb.lower())]
 
 # Data handling related
 def parse_time_string(time_string: str) -> datetime:
@@ -164,19 +165,44 @@ def parse_date_string(date_string: str) -> datetime:
     except ValueError: return None
 
 # Database related
-# Create a connection pool
-try:
-    db_pool = mysql_pooling.MySQLConnectionPool(
-        pool_name="pctowa_connection_pool",
-        pool_size=max(1, CONNECTION_POOL_SIZE),
-        host=DB_HOST,
-        user=REDACTED_USER,
-        password=REDACTED_PASSWORD,
-        database=DB_NAME
-        )
-except Exception as ex:
-    print(f"Couldn't access database, see next line for full exception.\n{ex}\n\nhost: {DB_HOST}, dbname: {DB_NAME}, user: {REDACTED_USER}, password: {REDACTED_PASSWORD}")
-    exit(1)
+# Lazy initialization for the database connection pool
+_db_pool = None  # Private variable to hold the connection pool instance
+
+def get_db_pool():
+    global _db_pool
+    if _db_pool is None:  # Initialize only when accessed for the first time
+        try:
+            _db_pool = mysql_pooling.MySQLConnectionPool(
+                pool_name="pctowa_connection_pool",
+                pool_size=max(1, CONNECTION_POOL_SIZE),
+                pool_reset_session=False, # Session reset not needed for this application (no transactions)
+                host=DB_HOST,
+                user=REDACTED_USER,
+                password=REDACTED_PASSWORD,
+                database=DB_NAME
+            )
+        except Exception as ex:
+            print(f"Couldn't access database, see next line for full exception.\n{ex}\n\nhost: {DB_HOST}, dbname: {DB_NAME}, user: {REDACTED_USER}, password: {REDACTED_PASSWORD}")
+            exit(1)
+    return _db_pool
+
+# Function to get a connection from the pool
+@contextmanager # Make a context manager to ensure the connection is closed after use
+def get_db_connection():
+    """
+    Get a database connection from the pool using lazy initialization.
+    """
+    connection = get_db_pool().get_connection()  # Use the lazily initialized pool
+    try:
+        yield connection
+    finally:
+        connection.close()
+
+# Function to clear the connection pool
+def clear_db_connection_pool():
+    for connection in _db_pool._cnx_queue:
+        connection.close()
+    _db_pool._cnx_queue.clear()
 
 def build_select_query_from_filters(data, table_name, limit=1, offset=0): # TODO check if this function is necessary
     """
@@ -221,21 +247,6 @@ def build_update_query_from_filters(data, table_name, id_column, id_value) -> Tu
     params = list(data.values()) + [id_value]
     query = f"UPDATE {table_name} SET {filters} WHERE {id_column} = %s"
     return query, params
-
-# Function to get a connection from the pool
-@contextmanager
-def get_db_connection(): # Make the function a context manager and use a generator to yield the connection
-    connection = db_pool.get_connection()
-    try:
-        yield connection
-    finally:
-        connection.close()
-
-# Function to clear the connection pool
-def clear_db_connection_pool():
-    for connection in db_pool._cnx_queue:
-        connection.close()
-    db_pool._cnx_queue.clear()
 
 # Graceful shutdown handler
 def shutdown_handler(signal, frame):
@@ -289,31 +300,26 @@ def execute_query(query: str, params: Tuple[Any]) -> int:
             return cursor.lastrowid
 
 # Log server related
+# Create an asynchronous session for log server interactions
 def log(type: str, message: str, origin_name: str, origin_host: str, origin_port: int) -> None:
     """
-    Asynchronously logs a message to the log server via its API.
-        
-    params:
-        type - The type of the log message
-        message - The message to log
-        
-    returns: 
-        None
+    Send a log message to the log server asynchronously using threading.
     """
     def send_log():
+        log_data = {
+            'type': type,
+            'message': message,
+            'origin': f"{origin_name} ({origin_host}:{origin_port})",
+        }
         try:
-            log_data = {
-                'type': type,
-                'message': message,
-                'origin': f"{origin_name} ({origin_host}:{origin_port})",
-            }
-            response = requests_post(f"http://{LOG_SERVER_HOST}:{LOG_SERVER_PORT}/log", json=log_data)
-            if response.status_code != STATUS_CODES["ok"]:
-                print(f"Failed to log message: {response.status_code} - {response.text}")
+            response = requests.post(f"http://{LOG_SERVER_HOST}:{LOG_SERVER_PORT}/log", json=log_data)
+            if response.status_code != 200:
+                print(f"Failed to send log: {response.status_code} {response.text}")
         except Exception as ex:
             print(f"Failed to send log: {ex}")
 
-    threading.Thread(target=send_log, daemon=True).start()
+    # Run the log sending in a separate thread
+    threading.Thread(target=send_log, daemon=True).start() # Daemon thread will not block the program from exiting so it does not need to be waited (join command)
 
 # Token validation related
 # | Create a cache for token validation results with a time-to-live (TTL) of 300 seconds (5 minutes)
