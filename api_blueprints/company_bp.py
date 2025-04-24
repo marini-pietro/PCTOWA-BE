@@ -91,10 +91,11 @@ class Company(Resource):
         Delete a company from the database.
         The company ID is passed as a path variable.
         """
+
         # Check if specified company exists
-        company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
+        company: Dict[str, Any] = fetchone_query('SELECT ragioneSociale FROM aziende WHERE idAzienda = %s', (id,)) # Only fetch the province to check existence (could be any field)
         if not company:
-            return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
+            return create_response(message={'error': 'specified company does not exist'}, status_code=STATUS_CODES["not_found"])
 
         # Delete the company
         execute_query('DELETE FROM aziende WHERE idAzienda = %s', (id,))

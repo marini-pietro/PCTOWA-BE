@@ -90,6 +90,11 @@ class Student(Resource):
         The request must include the student matricola as a path variable.
         """
 
+        # Check that the specified student exists
+        student: Dict[str, Any] = fetchone_query('SELECT nome FROM studenti WHERE matricola = %s', (matricola,)) # Only fetch the province to check existence (could be any field)
+        if student is None:
+            return create_response(message={'error': 'specified student does not exist'}, status_code=STATUS_CODES["not_found"])
+
         # Delete the student
         execute_query('DELETE FROM studenti WHERE matricola = %s', (matricola,))
 

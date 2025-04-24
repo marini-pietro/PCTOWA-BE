@@ -86,9 +86,9 @@ class Sector(Resource):
         """
         
         # Check if sector exists
-        sector: Dict[str, Any] = fetchone_query('SELECT * FROM settori WHERE settore = %s', (settore,))
+        sector: Dict[str, Any] = fetchone_query('SELECT settore FROM settori WHERE settore = %s', (settore,)) # Only fetch the province to check existence (could be any field)
         if sector is None:
-            return {'outcome': 'error, specified sector does not exist'}, STATUS_CODES["not_found"]
+            return {'error': 'specified sector does not exist'}, STATUS_CODES["not_found"]
 
         # Delete the sector
         execute_query('DELETE FROM settori WHERE settore = %s', (settore,))

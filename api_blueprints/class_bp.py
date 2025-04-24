@@ -76,6 +76,12 @@ class Class(Resource):
         Delete a class from the database.
         The class ID is passed as a path parameter.
         """
+
+        # Check that class exists
+        class_: Dict[str, Any] = fetchone_query('SELECT sigla FROM classi WHERE idClasse = %s', (id,)) # Only fetch the province to check existence (could be any field)
+        if class_ is None:
+            return create_response(message={'error': 'specified class does not exist'}, status_code=STATUS_CODES["not_found"])
+
         # Delete the class
         execute_query('DELETE FROM classi WHERE idClasse = %s', (id,))
         
