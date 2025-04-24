@@ -67,6 +67,12 @@ class Tutor(Resource):
         Delete a tutor by ID.
         The id must be provided as a path variable.
         """
+
+        # Check if the tutor exists
+        tutor: Dict[str, Any] = fetchone_query('SELECT nome FROM tutor WHERE idTutor = %s', (id,))
+        if tutor is None:
+            return create_response(message={'error': 'specified tutor does not exist'}, status_code=STATUS_CODES["not_found"])
+
         # Delete the tutor
         execute_query('DELETE FROM tutor WHERE idTutor = %s', (id,))
 

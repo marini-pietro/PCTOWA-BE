@@ -125,6 +125,12 @@ class Turn(Resource):
         Delete a turn.
         The request must include the turn ID as a path variable.
         """
+
+        # Check that the specified turn exists
+        turn: Dict[str, Any] = fetchone_query('SELECT postiOccupati FROM turni WHERE idTurno = %s', (id,)) # Only fetch the province to check existence (could be any field)
+        if turn is None:
+            return create_response(message={'outcome': 'specified turn does not exist'}, status_code=STATUS_CODES["not_found"])
+
         # Delete the turn
         execute_query('DELETE FROM turni WHERE idTurno = %s', (id,))
 

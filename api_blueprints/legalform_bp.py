@@ -80,6 +80,12 @@ class LegalForm(Resource):
         Delete a legal form.
         The legal form is passed as a path variable.
         """
+
+        # Check that the legal form exists
+        form: Dict[str, Any] = fetchone_query('SELECT forma FROM formaGiuridica WHERE forma = %s', (forma,))
+        if form is None:
+            return create_response(message={'error': 'specified legal form does not exist'}, status_code=STATUS_CODES["not_found"])
+
         # Delete the legal form
         execute_query('DELETE FROM formaGiuridica WHERE forma = %s', (forma,))
 

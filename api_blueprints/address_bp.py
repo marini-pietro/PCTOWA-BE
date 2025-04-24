@@ -82,6 +82,12 @@ class Address(Resource):
         This endpoint requires authentication and authorization.
         The request must contain the id parameter in the URI as a path variable.
         """
+
+        # Check that specified resource exists
+        address: Dict[str, Any] = fetchone_query('SELECT provincia FROM indirizzi WHERE idIndirizzo = %s', (id,)) # Only fetch the province to check existence (could be any field)       
+        if address is None: # If the address does not exist, return a 404 error
+            return create_response(message={'error': 'specified address does not exist'}, status_code=STATUS_CODES["not_found"])
+
         # Delete the address
         execute_query('DELETE FROM indirizzi WHERE idIndirizzo = %s', (id,))
 

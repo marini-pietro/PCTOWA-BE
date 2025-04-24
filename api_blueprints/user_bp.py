@@ -69,6 +69,32 @@ class User(Resource):
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
+    def delete(self, email) -> Response:
+        """
+        Delete an existing user.
+        The id is passed as a path variable.
+        """
+
+        # Check if user exists
+        user: Dict[str, Any] = fetchone_query('SELECT nome FROM utente WHERE emailUtente = %s', (email,))
+        if user is None:
+            return create_response(message={'error': 'user with provided email does not exist'}, status_code=STATUS_CODES["not_found"])
+
+        # Delete the user
+        execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
+
+        # Log the deletion
+        log(type='info', 
+            message=f'User {get_jwt_identity().get("email")} deleted user {email}', 
+            origin_name=API_SERVER_NAME_IN_LOG, 
+            origin_host=API_SERVER_HOST, 
+            origin_port=API_SERVER_PORT)
+
+        # Return success message
+        return create_response(message={'outcome': 'user successfully deleted'}, status_code=STATUS_CODES["no_content"])
+
+    @jwt_required_endpoint
+    @check_authorization(allowed_roles=['admin'])
     def patch(self, email) -> Response:
         """
         Update an existing user.
@@ -112,26 +138,6 @@ class User(Resource):
 
         # Return success message
         return create_response(message={'outcome': 'user successfully updated'}, status_code=STATUS_CODES["ok"])
-
-    @jwt_required_endpoint
-    @check_authorization(allowed_roles=['admin'])
-    def delete(self, email) -> Response:
-        """
-        Delete an existing user.
-        The id is passed as a path variable.
-        """
-        # Delete the user
-        execute_query('DELETE FROM utente WHERE emailUtente = %s', (email,))
-
-        # Log the deletion
-        log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} deleted user {email}', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-
-        # Return success message
-        return create_response(message={'outcome': 'user successfully deleted'}, status_code=STATUS_CODES["no_content"])
 
     # TODO GET method to get all user for an admin page???
 
