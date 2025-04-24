@@ -21,6 +21,9 @@ turn_bp = Blueprint(BP_NAME, __name__)
 api = Api(turn_bp)
 
 class Turn(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}', f'/{BP_NAME}/<int:id>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self) -> Response:
@@ -112,7 +115,8 @@ class Turn(Resource):
             message=f'User {get_jwt_identity().get("email")} created turn {lastrowid}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Turn.ENDPOINT_PATHS[0]} Verb POST]")
 
         # Return a success message
         return create_response(message={'outcome': 'turn successfully created',
@@ -139,7 +143,8 @@ class Turn(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted turn {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Turn.ENDPOINT_PATHS[1]} Verb DELETE]")
 
         # Return a success message
         return create_response(message={'outcome': 'turn successfully deleted'}, status_code=STATUS_CODES["no_content"])
@@ -190,7 +195,8 @@ class Turn(Resource):
             message=f'User {get_jwt_identity().get("email")} updated turn {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Turn.ENDPOINT_PATHS[1]} Verb PATCH]")
 
         # Return a success message
         return create_response(message={'outcome': 'turn successfully updated'}, status_code=STATUS_CODES["ok"])
@@ -208,7 +214,8 @@ class Turn(Resource):
             message=f'User {get_jwt_identity().get("email")} requested turn list with company id {company_id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Turn.ENDPOINT_PATHS[1]} Verb GET]")
         
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
@@ -249,4 +256,4 @@ class Turn(Resource):
         
         return response
 
-api.add_resource(Turn, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
+api.add_resource(Turn, *Turn.ENDPOINT_PATHS)

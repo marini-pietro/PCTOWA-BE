@@ -20,6 +20,9 @@ address_bp = Blueprint(BP_NAME, __name__)
 api = Api(address_bp)
 
 class Address(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}', f'/{BP_NAME}/<int:id>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self) -> Response:
@@ -69,7 +72,8 @@ class Address(Resource):
             message=f'User {get_jwt_identity().get("email")} created address {lastrowid}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Address.ENDPOINT_PATHS[0]} Verb POST]")
 
         return create_response(message={'outcome': 'address successfully created', 
                                         'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
@@ -96,7 +100,8 @@ class Address(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted address {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Address.ENDPOINT_PATHS[1]} Verb DELETE]")
 
         return create_response(message={'outcome': 'address successfully deleted'}, status_code=STATUS_CODES["no_content"])
     
@@ -142,7 +147,8 @@ class Address(Resource):
             message=f'User {get_jwt_identity().get("email")} updated address {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Address.ENDPOINT_PATHS[1]} Verb PATCH]")
 
         # Return a success message
         return create_response(message={'outcome': f'address {id} successfully updated'}, status_code=STATUS_CODES["ok"])
@@ -190,7 +196,8 @@ class Address(Resource):
                 message=f'User {get_jwt_identity().get("email")} read address {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{Address.ENDPOINT_PATHS[1]} Verb GET]")
 
             # Return the results
             return create_response(message=addresses, status_code=STATUS_CODES["ok"])
@@ -212,4 +219,4 @@ class Address(Resource):
         
         return response
 
-api.add_resource(Address, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
+api.add_resource(Address, *Address.ENDPOINT_PATHS)

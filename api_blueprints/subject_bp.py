@@ -22,6 +22,9 @@ subject_bp = Blueprint(BP_NAME, __name__)
 api = Api(subject_bp)
 
 class Subject(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}/<string:materia>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def post(self, materia) -> Response:
@@ -60,31 +63,35 @@ class Subject(Resource):
         # Insert the subject
         try:
             lastrowid: int = execute_query('INSERT INTO materie (materia, descrizione, hexColor) VALUES (%s, %s, %s)', (materia, descrizione, hex))
+
+            # Log the subject creation
+            log(type='info', 
+                message=f'User {get_jwt_identity().get("email")} created subject {materia}', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb POST]")
+
+            # Return a success message
+            return create_response(message={'outcome': 'subject successfully created',
+                                            'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
+
         except IntegrityError as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} tried to create subject {materia} but it already generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': 'conflict error'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create subject {materia} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
-
-        # Log the subject creation
-        log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} created subject {materia}', 
-            origin_name=API_SERVER_NAME_IN_LOG, 
-            origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
-
-        # Return a success message
-        return create_response(message={'outcome': 'subject successfully created',
-                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
 
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
@@ -112,7 +119,8 @@ class Subject(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted subject {materia}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb DELETE]")
 
         # Return a success message
         return create_response(message={'outcome': 'subject successfully deleted'}, status_code=STATUS_CODES["no_content"])
@@ -158,7 +166,8 @@ class Subject(Resource):
             message=f'User {get_jwt_identity().get("email")} updated subject {materia}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb PATCH]")
 
         # Return a success message
         return create_response(message={'outcome': 'subject successfully updated'}, status_code=STATUS_CODES["ok"])
@@ -202,7 +211,8 @@ class Subject(Resource):
                 message=f'User {get_jwt_identity().get("email")} read subjects {ids}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb GET]")
 
             # Return the subjects
             return create_response(message=subjects, status_code=STATUS_CODES["ok"])
@@ -223,4 +233,4 @@ class Subject(Resource):
         
         return response
 
-api.add_resource(Subject, f'/{BP_NAME}/<string:materia>')
+api.add_resource(Subject, *Subject.ENDPOINT_PATHS)
