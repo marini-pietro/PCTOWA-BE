@@ -20,6 +20,9 @@ tutor_bp = Blueprint(BP_NAME, __name__)
 api = Api(tutor_bp)
 
 class Tutor(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}', f'/{BP_NAME}/<int:id>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self) -> Response:
@@ -54,7 +57,8 @@ class Tutor(Resource):
             message=f'User {get_jwt_identity().get("email")} created tutor {lastrowid}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Tutor.ENDPOINT_PATHS[0]} Verb POST]")
 
         # Return a success message
         return create_response(message={'outcome': 'tutor successfully created',
@@ -81,7 +85,8 @@ class Tutor(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted tutor {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Tutor.ENDPOINT_PATHS[1]} Verb DELETE]")
 
         # Return a success message
         return create_response(message={'outcome': 'tutor successfully deleted'}, status_code=STATUS_CODES["no_content"])
@@ -127,7 +132,8 @@ class Tutor(Resource):
             message=f'User {get_jwt_identity().get("email")} updated tutor {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Tutor.ENDPOINT_PATHS[1]} Verb PATCH]")
 
         # Return a success message
         return create_response(message={'outcome': 'tutor successfully updated'}, status_code=STATUS_CODES["ok"])
@@ -145,7 +151,8 @@ class Tutor(Resource):
             message=f'User {get_jwt_identity().get("email")} requested tutor list with turn id {turn_id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Tutor.ENDPOINT_PATHS[1]} Verb GET]")
         
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (turn_id,))
@@ -188,4 +195,4 @@ class Tutor(Resource):
         
         return response
 
-api.add_resource(Tutor, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
+api.add_resource(Tutor, *Tutor.ENDPOINT_PATHS)

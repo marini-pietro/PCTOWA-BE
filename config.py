@@ -24,6 +24,7 @@ API_SERVER_HOST : str = '172.16.1.98' # The host of the API server (should be on
 API_SERVER_PORT: int = 5000 # The port of the API server
 API_SERVER_NAME_IN_LOG : str = 'api-server' # The name of the server in the log messages
 API_VERSION: str = 'v1' # The version of the API
+URL_PREFIX: str = f'/api/{API_VERSION}/'
 API_SERVER_DEBUG_MODE: bool = True
 
 # Database configuration

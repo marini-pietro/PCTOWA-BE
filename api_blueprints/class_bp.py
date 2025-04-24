@@ -20,6 +20,9 @@ class_bp = Blueprint(BP_NAME, __name__)
 api = Api(class_bp)
 
 class Class(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}', f'/{BP_NAME}/<int:id>', f'/{BP_NAME}/<string:email>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self) -> Response:
@@ -63,7 +66,8 @@ class Class(Resource):
             message=f'User {get_jwt_identity().get("email")} created class {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Class.ENDPOINT_PATHS[0]} Verb POST]")
             
         # Return a success message
         return create_response(message={'outcome': 'class created',
@@ -90,7 +94,8 @@ class Class(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted class {id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Class.ENDPOINT_PATHS[1]} Verb DELETE]")
         
         # Return a success message
         return create_response(message={'outcome': 'class deleted'}, status_code=STATUS_CODES["no_content"])
@@ -136,7 +141,8 @@ class Class(Resource):
             message=f'User {get_jwt_identity().get("email")} updated class {id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Class.ENDPOINT_PATHS[1]} Verb PATCH]")
         
         # Return a success message
         return create_response(message={'outcome': 'class updated'}, status_code=STATUS_CODES["ok"])
@@ -153,7 +159,8 @@ class Class(Resource):
             message=f'User {get_jwt_identity().get("email")} requested to read class with email {emailResponsabile}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Class.ENDPOINT_PATHS[2]} Verb GET]"
             )
         
         # Check if user exists
@@ -193,6 +200,9 @@ class Class(Resource):
         return response
 
 class ClassFuzzySearch(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}/fsearch']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self) -> Response:
@@ -218,7 +228,8 @@ class ClassFuzzySearch(Resource):
             message=f'User {get_jwt_identity().get("email")} requested fuzzy search in classes with string {input_str}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{ClassFuzzySearch.ENDPOINT_PATHS[0]} Verb GET]"
             )
 
         # Get the data
@@ -251,6 +262,9 @@ class ClassFuzzySearch(Resource):
         return response
 
 class ClassList(Resource):
+        
+    ENDPOINT_PATHS = [f'/{BP_NAME}/list']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get() -> Response:
@@ -263,7 +277,8 @@ class ClassList(Resource):
             message=f'User {get_jwt_identity().get("email")} read class list',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{ClassList.ENDPOINT_PATHS[0]} Verb GET]"
             )
 
         # Get data
@@ -292,6 +307,6 @@ class ClassList(Resource):
         
         return response
 
-api.add_resource(Class, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>', f'/{BP_NAME}/<string:email>')
-api.add_resource(ClassFuzzySearch, f'/{BP_NAME}/fsearch')
-api.add_resource(ClassList, f'/{BP_NAME}/list')
+api.add_resource(Class, *Class.ENDPOINT_PATHS)
+api.add_resource(ClassFuzzySearch, *ClassFuzzySearch.ENDPOINT_PATHS)
+api.add_resource(ClassList, *ClassList.ENDPOINT_PATHS)

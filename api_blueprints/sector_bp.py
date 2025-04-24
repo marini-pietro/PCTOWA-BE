@@ -20,6 +20,9 @@ sector_bp = Blueprint(BP_NAME, __name__)
 api = Api(sector_bp)
 
 class Sector(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}', f'{BP_NAME}/<string:settore>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def post(self) -> Response:
@@ -56,14 +59,16 @@ class Sector(Resource):
                 message=f'User {get_jwt_identity().get("email")} tried to create sector {settore} but it generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{Sector.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': 'conflict error'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create sector {settore} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{Sector.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
 
         # Log the sector creation
@@ -71,7 +76,8 @@ class Sector(Resource):
             message=f'User {get_jwt_identity().get("email")} created sector {settore}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Sector.ENDPOINT_PATHS[0]} Verb POST]")
 
         # Return a success message
         return create_response(message={'outcome': 'sector successfully created',
@@ -98,7 +104,8 @@ class Sector(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted sector {settore}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Sector.ENDPOINT_PATHS[1]} Verb DELETE]")
 
         # Return a success message
         return create_response(message={'outcome': 'sector successfully deleted'}, status_code=STATUS_CODES["no_content"])
@@ -140,7 +147,8 @@ class Sector(Resource):
             message=f'User {get_jwt_identity().get("email")} updated sector {settore}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Sector.ENDPOINT_PATHS[1]} Verb PATCH]")
 
         # Return a success message
         return create_response(message={'outcome': 'sector successfully updated'}, status_code=STATUS_CODES["ok"])
@@ -171,7 +179,8 @@ class Sector(Resource):
                 message=f'User {get_jwt_identity().get("email")} read all sectors', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{Sector.ENDPOINT_PATHS[0]} Verb GET]")
 
             # Return result
             return create_response(message=sectors, status_code=STATUS_CODES["ok"])
@@ -193,4 +202,4 @@ class Sector(Resource):
         
         return response
 
-api.add_resource(Sector, f'/{BP_NAME}', f'{BP_NAME}/<string:settore>')
+api.add_resource(Sector, *Sector.ENDPOINT_PATHS)

@@ -20,6 +20,9 @@ legalform_bp = Blueprint(BP_NAME, __name__)
 api = Api(legalform_bp)
 
 class LegalForm(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}', f'{BP_NAME}/<string:forma>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self) -> Response:
@@ -52,14 +55,16 @@ class LegalForm(Resource):
                 message=f'User {get_jwt_identity().get("email")} tried to create legal form {forma} but it generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{LegalForm.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': 'conflict error'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to create legal form {forma} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{LegalForm.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
 
         # Log the legal form creation
@@ -67,7 +72,8 @@ class LegalForm(Resource):
             message=f'User {get_jwt_identity().get("email")} created legal form {forma}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{LegalForm.ENDPOINT_PATHS[0]} Verb POST]")
 
         # Return a success message
         return create_response(message={'outcome': 'legal form successfully created',
@@ -94,7 +100,8 @@ class LegalForm(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted legal form {forma}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{LegalForm.ENDPOINT_PATHS[1]} Verb DELETE]")
 
         # Return a success message
         return create_response(message={'outcome': 'legal form successfully deleted'}, status_code=STATUS_CODES["no_content"])
@@ -136,7 +143,8 @@ class LegalForm(Resource):
             message=f'User {get_jwt_identity().get("email")} updated legal form {forma} to {newValue}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{LegalForm.ENDPOINT_PATHS[1]} Verb PATCH]")
 
         # Return a success message
         return create_response(message={'outcome': 'legal form successfully updated'}, status_code=STATUS_CODES["ok"])
@@ -166,7 +174,8 @@ class LegalForm(Resource):
                 message=f'User {get_jwt_identity().get("email")} read all legal forms', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{LegalForm.ENDPOINT_PATHS[0]} Verb GET]")
 
             # Return the result
             return create_response(message=forms, status_code=STATUS_CODES["ok"])
@@ -188,4 +197,4 @@ class LegalForm(Resource):
         
         return response
 
-api.add_resource(LegalForm, f'/{BP_NAME}', f'{BP_NAME}/<string:forma>')
+api.add_resource(LegalForm, *LegalForm.ENDPOINT_PATHS)

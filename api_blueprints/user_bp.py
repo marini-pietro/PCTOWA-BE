@@ -24,6 +24,9 @@ user_bp = Blueprint(BP_NAME, __name__)
 api = Api(user_bp)
 
 class User(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}', f'/{BP_NAME}/<string:email>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def post(self) -> Response:
@@ -59,7 +62,8 @@ class User(Resource):
                 message=f'User {get_jwt_identity().get("email")} registered user {email}', 
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{User.ENDPOINT_PATHS[0]} Verb POST]")
             
             # Return success message
             return create_response(message={"outcome": "user successfully created",
@@ -88,7 +92,8 @@ class User(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted user {email}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{User.ENDPOINT_PATHS[1]} Verb DELETE]")
 
         # Return success message
         return create_response(message={'outcome': 'user successfully deleted'}, status_code=STATUS_CODES["no_content"])
@@ -134,7 +139,8 @@ class User(Resource):
             message=f'User {get_jwt_identity().get("email")} updated user {email}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{User.ENDPOINT_PATHS[1]} Verb PATCH]")
 
         # Return success message
         return create_response(message={'outcome': 'user successfully updated'}, status_code=STATUS_CODES["ok"])
@@ -157,6 +163,9 @@ class User(Resource):
         return response
 
 class UserLogin(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}/auth/login']
+
     def post(self) -> Response:
         """
         User login endpoint.
@@ -188,6 +197,14 @@ class UserLogin(Resource):
 
         # Handle response from the authentication service
         if response.status_code == STATUS_CODES["ok"]:  # If the login is successful, send the token back to the user
+
+            log(type='info',
+                message=f'User {get_jwt_identity().get("email")} logged in successfully with email: {email}', 
+                origin_name=API_SERVER_NAME_IN_LOG, 
+                origin_host=API_SERVER_HOST, 
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]")
+
             return create_response(message=response.json(), status_code=STATUS_CODES["ok"])
         
         elif response.status_code == STATUS_CODES["unauthorized"]:
@@ -195,7 +212,8 @@ class UserLogin(Resource):
             message=f'Failed login attempt for email: {email}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': 'Invalid credentials'}, status_code=STATUS_CODES["unauthorized"])
         
         elif response.status_code == STATUS_CODES["bad_request"]:
@@ -203,7 +221,8 @@ class UserLogin(Resource):
             message=f'Bad request during login for email: {email}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': 'Bad request'}, status_code=STATUS_CODES["bad_request"])
         
         elif response.status_code == STATUS_CODES["internal_error"]:
@@ -211,7 +230,8 @@ class UserLogin(Resource):
             message=f'Internal error during login for email: {email}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': 'Internal error'}, status_code=STATUS_CODES["internal_error"])
         
         else:
@@ -219,7 +239,8 @@ class UserLogin(Resource):
             message=f'Unexpected error during login for email: {email} with status code: {response.status_code}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': 'Unexpected error during login'}, status_code=STATUS_CODES["internal_error"])
 
     def options(self) -> Response:
@@ -236,6 +257,9 @@ class UserLogin(Resource):
         return response
 
 class BindUserToCompany(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}/bind/<string:email>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin'])
     def post(self, email) -> Response:
@@ -297,7 +321,8 @@ class BindUserToCompany(Resource):
             message=f'User {get_jwt_identity().get("email")} bound user {email} to company {company_id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{BindUserToCompany.ENDPOINT_PATHS[0]} Verb POST]")
 
         # Return success message
         return create_response(message={'outcome': 'user successfully bound to company'}, status_code=STATUS_CODES["ok"])
@@ -318,20 +343,26 @@ class BindUserToCompany(Resource):
         return response
 
 class ReadBindedUser(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}/bind/<string:id>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self, id) -> Response:
         """
-        Get the list of the reference teachers associated with a given company.
-        The company is passed as a path variable id.
+        Get the list of the reference teachers associated with a given company or class.
+        The company or class is passed as a path variable id.
+        The id_type is passed as a query parameter.
+        The id_type can be either 'company' or 'class'.
         """
         
         # Log the read
         log(type='info', 
-            message=f'User {get_jwt_identity().get("email")} requested reference teacher list with {id_type} id {id}', 
+            message=f'User {get_jwt_identity().get("email")} requested reference teacher list with {id_type} and id {id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{ReadBindedUser.ENDPOINT_PATHS[0]} Verb GET]")
 
         # Gather parameters
         id_type: str = request.args.get('id_type')
@@ -389,6 +420,7 @@ class ReadBindedUser(Resource):
         return response
 
 # Add resources to the API
-api.add_resource(User, f'/{BP_NAME}', f'/{BP_NAME}/<string:email>')
-api.add_resource(UserLogin, f'/{BP_NAME}/auth/login')
-api.add_resource(BindUserToCompany, f'/{BP_NAME}/bind/<string:email>')
+api.add_resource(User, *User.ENDPOINT_PATHS)
+api.add_resource(UserLogin, *UserLogin.ENDPOINT_PATHS)
+api.add_resource(BindUserToCompany, *BindUserToCompany.ENDPOINT_PATHS)
+api.add_resource(ReadBindedUser, *ReadBindedUser.ENDPOINT_PATHS)
