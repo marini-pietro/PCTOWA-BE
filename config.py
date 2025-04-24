@@ -11,11 +11,13 @@ JWT_SECRET_KEY: str = 'Lorem ipsum dolor sit amet eget.'
 
 # Define log server host, port and server name in log files
 LOG_SERVER_HOST: str = 'localhost' # The host of the log server
-LOG_SERVER_PORT: int = 5001 # The port of the log server
+LOG_SERVER_PORT: int = 514 # The port of the log server (default syslog port, can modified to open port for testing)
 LOG_FILE_NAME: str = 'pctowa_log.txt'
 LOGGER_NAME: str = 'pctowa_logger' # The name of the logger
 LOG_SERVER_NAME_IN_LOG: str = 'log-server' # The name of the server in the log messages
-LOG_SERVER_DEBUG_MODE: bool = True
+RATE_LIMIT = 100  # Maximum messages per source
+TIME_WINDOW = 1   # Time window in seconds
+DELAYED_LOGS_QUEUE_SIZE = 100 # The size of the delayed logs queue (if the queue is full, the oldest logs will be removed to make space for new ones)
 
 # Define host and port of the API server
 API_SERVER_HOST : str = '172.16.1.98' # The host of the API server (should be only server open to the rest of the network)

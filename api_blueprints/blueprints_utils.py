@@ -1,7 +1,10 @@
 import re
 import inspect
-import requests
+import socket
 import threading
+import traceback
+from os import getpid
+from datetime import datetime, timezone
 from flask import jsonify, make_response, request, Response, Request
 from flask_jwt_extended import get_jwt_identity
 from contextlib import contextmanager
@@ -301,25 +304,37 @@ def execute_query(query: str, params: Tuple[Any]) -> int:
 
 # Log server related
 # Create an asynchronous session for log server interactions
-def log(type: str, message: str, origin_name: str, origin_host: str, origin_port: int) -> None:
+def log(type: str, message: str, origin_name: str, origin_host: str, structured_data: str = "- -") -> None:
     """
-    Send a log message to the log server asynchronously using threading.
+    Send a log message to the syslog server asynchronously using threading.
     """
     def send_log():
-        log_data = {
-            'type': type,
-            'message': message,
-            'origin': f"{origin_name} ({origin_host}:{origin_port})",
-        }
+        # Format the log message in RFC 5424 format
+        syslog_message = (
+            f"<14>1 "
+            f"{datetime.now(timezone.utc).isoformat()} "  # Timestamp in ISO 8601 format with timezone
+            f"{origin_host} "  # Hostname
+            f"{origin_name} "  # App name
+            f"{getpid()} "  # Process ID
+            f"{structured_data} "  # Message ID and Structured Data
+            f"{type.upper()}: {message}"  # Log type and message
+        )
+
+        print(f"{syslog_message}, len: {len(syslog_message)}")  # Debugging
+
         try:
-            response = requests.post(f"http://{LOG_SERVER_HOST}:{LOG_SERVER_PORT}/log", json=log_data)
-            if response.status_code != 200:
-                print(f"Failed to send log: {response.status_code} {response.text}")
+            # Create a UDP socket and send the log message
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                print(f"Sending syslog message: {syslog_message}")  # Debugging
+                sock.sendto(syslog_message.encode('utf-8'), (LOG_SERVER_HOST, LOG_SERVER_PORT))
         except Exception as ex:
             print(f"Failed to send log: {ex}")
+            traceback.print_exc()
 
     # Run the log sending in a separate thread
-    threading.Thread(target=send_log, daemon=True).start() # Daemon thread will not block the program from exiting so it does not need to be waited (join command)
+    thread = threading.Thread(target=send_log, daemon=True)
+    thread.start()
+    thread.join()  # Wait for the thread to complete # Daemon thread will not block the program from exiting so it does not need to be waited (join command)
 
 # Token validation related
 # | Create a cache for token validation results with a time-to-live (TTL) of 300 seconds (5 minutes)
