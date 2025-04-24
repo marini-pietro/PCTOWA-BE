@@ -21,6 +21,9 @@ student_bp = Blueprint(BP_NAME, __name__)
 api = Api(student_bp)
 
 class Student(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}/<int:matricola>', f'/{BP_NAME}/<int:matricola>', f'/{BP_NAME}/<int:class_id>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self) -> Response:
@@ -77,7 +80,8 @@ class Student(Resource):
             message=f'User {get_jwt_identity().get("email")} created student {matricola}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Student.ENDPOINT_PATHS[0]} Verb POST]")
 
         return create_response(message={"outcome": "student successfully created",
                                         'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
@@ -103,7 +107,8 @@ class Student(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted student {matricola}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Student.ENDPOINT_PATHS[1]} Verb DELETE]")
 
         # Return a success message
         return create_response(message={'outcome': 'student successfully deleted'}, status_code=STATUS_CODES["no_content"])
@@ -149,7 +154,8 @@ class Student(Resource):
             message=f'User {get_jwt_identity().get("email")} updated student {matricola}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Student.ENDPOINT_PATHS[1]} Verb PATCH]")
 
         # Return a success message
         return create_response(message={'outcome': 'student successfully updated'}, status_code=STATUS_CODES["ok"])
@@ -165,7 +171,8 @@ class Student(Resource):
             message=f'User {get_jwt_identity().get("email")} requested student list for class {class_id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Student.ENDPOINT_PATHS[2]} Verb GET]")
 
         # Check if the class exists
         class_: Dict[str, Any] = fetchone_query("SELECT * FROM classi WHERE idClasse = %s", (class_id,))
@@ -237,6 +244,9 @@ class Student(Resource):
         return response
 
 class BindStudentToTurn(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}/bind/<int:matricola>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor'])
     def post(self, matricola) -> Response:
@@ -277,19 +287,30 @@ class BindStudentToTurn(Resource):
         # Bind the student to the turn
         try:
             execute_query('INSERT INTO studenteTurno (matricola, idTurno) VALUES (%s, %s)', (matricola, idTurno))
+
+            # Log the binding
+            log(type='info',
+                message=f'User {get_jwt_identity().get("email")} bound student {matricola} to turn {idTurno}',
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{BindStudentToTurn.ENDPOINT_PATHS[0]} Verb POST]")
+            return create_response(message={'outcome': 'student successfully bound to turn'}, status_code=STATUS_CODES["created"])
         except IntegrityError as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} tried to bind student {matricola} to turn {idTurno} but it already generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{BindStudentToTurn.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': 'conflict error'}, status_code=STATUS_CODES["conflict"])
         except Exception as ex:
             log(type='error',
                 message=f'User {get_jwt_identity().get("email")} failed to bind student {matricola} to turn {idTurno} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG, 
                 origin_host=API_SERVER_HOST, 
-                origin_port=API_SERVER_PORT)
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{BindStudentToTurn.ENDPOINT_PATHS[0]} Verb POST]")
             return create_response(message={'error': "internal server error"}, status_code=STATUS_CODES["internal_error"])
 
     @jwt_required_endpoint
@@ -308,6 +329,9 @@ class BindStudentToTurn(Resource):
         return response
 
 class StudentList(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}/list/<int:turn_id>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self, turn_id) -> Response:
@@ -319,7 +343,8 @@ class StudentList(Resource):
             message=f'User {get_jwt_identity().get("email")} requested student list that are associated to turn {turn_id}', 
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{StudentList.ENDPOINT_PATHS[0]} Verb GET]")
         
         # Check if the turn exists
         turn: Dict[str, Any] = fetchone_query("SELECT * FROM turni WHERE idTurno = %s", (turn_id,))
@@ -355,5 +380,6 @@ class StudentList(Resource):
         
         return response
 
-api.add_resource(Student, f'/{BP_NAME}/<int:matricola>', f'/{BP_NAME}/<string:sigla>')
-api.add_resource(BindStudentToTurn, f'/{BP_NAME}/bind/<int:matricola>')
+api.add_resource(Student, *Student.ENDPOINT_PATHS)
+api.add_resource(BindStudentToTurn, *BindStudentToTurn.ENDPOINT_PATHS)
+api.add_resource(StudentList, *StudentList.ENDPOINT_PATHS)

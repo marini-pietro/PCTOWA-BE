@@ -3,13 +3,13 @@ from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from typing import List, Dict, Union, Any
-from config import (API_SERVER_HOST, API_SERVER_PORT, 
-                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 from .blueprints_utils import (check_authorization, fetchone_query,
                                execute_query, log, 
                                jwt_required_endpoint, create_response, 
                                build_update_query_from_filters, fetchall_query,
                                has_valid_json, is_input_safe, get_class_http_verbs)
+from config import (API_SERVER_HOST, API_SERVER_PORT, 
+                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
@@ -19,6 +19,9 @@ contact_bp = Blueprint(BP_NAME, __name__)
 api = Api(contact_bp)
 
 class Contact(Resource):
+
+    ENDPOINTS_PATHS = [f'/{BP_NAME}', f'/{BP_NAME}/<int:id>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self) -> Response:
@@ -71,7 +74,8 @@ class Contact(Resource):
             message=f'User {get_jwt_identity().get("email")} created contact with id {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Contact.ENDPOINTS_PATHS[0]} Verb POST]")
             
         # Return a success message
         return create_response(message={'outcome': 'contact created',
@@ -98,7 +102,8 @@ class Contact(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted contact {id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Contact.ENDPOINTS_PATHS[1]} Verb DELETE]")
         
         # Return a success message
         return create_response(message={'outcome': 'contact successfully deleted'}, status_code=STATUS_CODES["no_content"])
@@ -146,7 +151,8 @@ class Contact(Resource):
             message=f'User {get_jwt_identity().get("email")} updated contact {id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Contact.ENDPOINTS_PATHS[1]} Verb PATCH]")
         
         # Return a success message
         return create_response(message={'outcome': 'contact successfully updated'}, status_code=STATUS_CODES["ok"])
@@ -164,7 +170,8 @@ class Contact(Resource):
             message=f'User {get_jwt_identity().get("email")} requested contact list for company {company_id}',
             origin_name=API_SERVER_NAME_IN_LOG, 
             origin_host=API_SERVER_HOST, 
-            origin_port=API_SERVER_PORT)
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Contact.ENDPOINTS_PATHS[1]} Verb GET]")
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (company_id,))
@@ -204,4 +211,4 @@ class Contact(Resource):
         
         return response
 
-api.add_resource(Contact, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
+api.add_resource(Contact, *Contact.ENDPOINTS_PATHS)

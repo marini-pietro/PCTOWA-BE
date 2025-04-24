@@ -21,6 +21,9 @@ company_bp = Blueprint(BP_NAME, __name__)
 api = Api(company_bp)
 
 class Company(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}', f'/{BP_NAME}/<int:id>']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
     def post(self) -> Response:
@@ -77,7 +80,8 @@ class Company(Resource):
             message=f'User {get_jwt_identity().get("email")} created company {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Company.ENDPOINT_PATHS[0]} Verb POST]"
         )
 
         # Return a success message
@@ -106,7 +110,8 @@ class Company(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted company {id}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb DELETE]"
         )
 
         # Return a success message
@@ -170,7 +175,8 @@ class Company(Resource):
             message=f'User {get_jwt_identity().get("email")} updated company {id}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb PATCH]"
         )
 
         # Return a success message
@@ -213,7 +219,8 @@ class Company(Resource):
                 message=f'User {get_jwt_identity().get("email")} read company {id}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT
+                origin_port=API_SERVER_PORT,
+                structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb GET]"
             )
 
             # Return the companies
@@ -237,6 +244,9 @@ class Company(Resource):
         return response
 
 class CompanyList(Resource):
+
+    ENDPOINT_PATHS = [f'/{BP_NAME}/list']
+
     @jwt_required_endpoint
     @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
     def get(self) -> Response:
@@ -281,6 +291,16 @@ class CompanyList(Resource):
         # Remove duplicates from ids_batch
         ids_batch: List[int] = list(set(ids_batch))
 
+        # Log the read operation
+        log(
+            type='info',
+            message=f'User {get_jwt_identity().get("email")} read companies with filters: {anno}, {comune}, {settore}, {mese}, {materia}',
+            origin_name=API_SERVER_NAME_IN_LOG,
+            origin_host=API_SERVER_HOST,
+            origin_port=API_SERVER_PORT,
+            structured_data=f"[{CompanyList.ENDPOINT_PATHS[0]} Verb GET]"
+        )
+
         # Get company data
         if ids_batch:
             placeholders: str = ', '.join(['%s'] * len(ids_batch))
@@ -314,5 +334,5 @@ class CompanyList(Resource):
         
         return response
 
-api.add_resource(Company, f'/{BP_NAME}', f'/{BP_NAME}/<int:id>')
-api.add_resource(CompanyList, f'/{BP_NAME}/list')
+api.add_resource(Company, *Company.ENDPOINT_PATHS)
+api.add_resource(CompanyList, *CompanyList.ENDPOINT_PATHS)

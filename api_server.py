@@ -8,7 +8,8 @@ from importlib import import_module
 from api_blueprints.blueprints_utils import log
 from config import (API_SERVER_HOST, API_SERVER_PORT, 
                     API_SERVER_DEBUG_MODE, API_SERVER_NAME_IN_LOG, 
-                    STATUS_CODES, API_VERSION)
+                    STATUS_CODES, API_VERSION,
+                    URL_PREFIX)
 
 # Create a Flask app
 app = Flask(__name__)
@@ -20,8 +21,8 @@ for filename in os_listdir(blueprints_dir):
         module_name: str = filename[:-3]  # Remove the .py extension
         module = import_module(f'api_blueprints.{module_name}')
         blueprint = getattr(module, module_name)  # Get the Blueprint object (assumes the object has the same name as the file)
-        app.register_blueprint(blueprint, url_prefix=f'/api/{API_VERSION}/')  # Remove '_bp' for the URL prefix
-        print(f"Registered blueprint: {module_name} with prefix /api/{API_VERSION}/")
+        app.register_blueprint(blueprint, url_prefix=URL_PREFIX)  # Remove '_bp' for the URL prefix
+        print(f"Registered blueprint: {module_name} with prefix {URL_PREFIX}")
 
 @app.route(f'/api/{API_VERSION}/health', methods=['GET'])
 def health_check():
