@@ -1,3 +1,12 @@
+"""
+This module contains the configuration settings for the API server, including:
+- Authentication server settings
+- Log server settings
+- API server settings
+- Database settings
+- HTTP status codes and their explanations
+- Authorization settings
+"""
 from typing import Dict
 
 # Define authentication server data
@@ -7,7 +16,8 @@ AUTH_SERVER_VALIDATE_URL: str = f'http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/a
 AUTH_SERVER_NAME_IN_LOG: str = 'auth-server'
 AUTH_SERVER_DEBUG_MODE: bool = True
 JWT_TOKEN_DURATION: int = 3 # In hours
-JWT_SECRET_KEY: str = 'Lorem ipsum dolor sit amet eget.'  
+JWT_SECRET_KEY: str = 'Lorem ipsum dolor sit amet eget.'
+VALIDATION_REQUEST_TIMEOUT: int = 3 # In seconds 
 
 # Define log server host, port and server name in log files
 LOG_SERVER_HOST: str = 'localhost' # The host of the log server

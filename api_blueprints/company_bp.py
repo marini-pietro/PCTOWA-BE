@@ -4,28 +4,51 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from re import match as re_match
 from typing import List, Dict, Union, Any
-from .blueprints_utils import (check_authorization, has_valid_json, 
-                               fetchone_query, fetchall_query, 
-                               execute_query, log, 
-                               jwt_required_endpoint, create_response, 
-                               build_update_query_from_filters, parse_date_string,
-                               is_input_safe, get_class_http_verbs)
-from config import (API_SERVER_HOST, API_SERVER_PORT, 
-                    API_SERVER_NAME_IN_LOG, STATUS_CODES)
+from .blueprints_utils import (
+    check_authorization,
+    has_valid_json,
+    fetchone_query,
+    fetchall_query,
+    execute_query,
+    log,
+    jwt_required_endpoint,
+    create_response,
+    build_update_query_from_filters,
+    parse_date_string,
+    is_input_safe,
+    get_class_http_verbs,
+    validate_json_request,
+)
+from config import (
+    API_SERVER_HOST,
+    API_SERVER_PORT,
+    API_SERVER_NAME_IN_LOG,
+    STATUS_CODES,
+)
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace('_bp.py', '')
+BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 
 # Create the blueprint and API
 company_bp = Blueprint(BP_NAME, __name__)
 api = Api(company_bp)
 
-class Company(Resource):
 
-    ENDPOINT_PATHS = [f'/{BP_NAME}', f'/{BP_NAME}/<int:id>']
+class Company(Resource):
+    """
+    Company resource for managing companies in the database.
+    This class handles the following HTTP methods:
+    - POST: Create a new company
+    - DELETE: Delete a company by ID
+    - PATCH: Update a company by ID
+    - GET: Retrieve a company by ID
+    - OPTIONS: Get allowed methods for the resource
+    """
+
+    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
 
     @jwt_required_endpoint
-    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def post(self) -> Response:
         """
         Create a new company in the database.
@@ -33,158 +56,190 @@ class Company(Resource):
         """
 
         # Validate request
-        data: Union[str, Dict[str, Any]] = has_valid_json(request)
+        data = validate_json_request(request)
         if isinstance(data, str):
-            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
-
-        # Check for sql injection
-        if not is_input_safe(data):
-            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
+            return create_response(
+                message={"error": data}, status_code=STATUS_CODES["bad_request"]
+            )
 
         # Gather parameters from the request body (new dictionary is necessary so that user can provide JSON with fields in any order)
         params: Dict[str, str] = {
-            'ragioneSociale': data.get('ragioneSociale'),
-            'nome': data.get('nome'),
-            'sitoWeb': data.get('sitoWeb'),
-            'indirizzoLogo': data.get('indirizzoLogo'),
-            'codiceAteco': data.get('codiceAteco'),
-            'partitaIVA': data.get('partitaIVA'),
-            'telefonoAzienda': data.get('telefonoAzienda'),
-            'fax': data.get('fax'),
-            'emailAzienda': data.get('emailAzienda'),
-            'pec': data.get('pec'),
-            'formaGiuridica': data.get('formaGiuridica'),
-            'dataConvenzione': parse_date_string(data.get('dataConvenzione')),
-            'scadenzaConvenzione': parse_date_string(data.get('scadenzaConvenzione')),
-            'settore': data.get('settore'),
-            'categoria': data.get('categoria')
+            "ragioneSociale": data.get("ragioneSociale"),
+            "nome": data.get("nome"),
+            "sitoWeb": data.get("sitoWeb"),
+            "indirizzoLogo": data.get("indirizzoLogo"),
+            "codiceAteco": data.get("codiceAteco"),
+            "partitaIVA": data.get("partitaIVA"),
+            "telefonoAzienda": data.get("telefonoAzienda"),
+            "fax": data.get("fax"),
+            "emailAzienda": data.get("emailAzienda"),
+            "pec": data.get("pec"),
+            "formaGiuridica": data.get("formaGiuridica"),
+            "dataConvenzione": parse_date_string(data.get("dataConvenzione")),
+            "scadenzaConvenzione": parse_date_string(data.get("scadenzaConvenzione")),
+            "settore": data.get("settore"),
+            "categoria": data.get("categoria"),
         }
 
         # Validate parameters
-        if not re_match(r'^\+\d{1,3}\s?\d{4,14}$', params['telefonoAzienda']):
-            return create_response(message={'error': 'invalid phone number format'}, status_code=STATUS_CODES["bad_request"])
+        if not re_match(r"^\+\d{1,3}\s?\d{4,14}$", params["telefonoAzienda"]):
+            return create_response(
+                message={"error": "invalid phone number format"},
+                status_code=STATUS_CODES["bad_request"],
+            )
         # TODO: add regex check to all the other fields
-        
+
         lastrowid: int = execute_query(
-            '''INSERT INTO aziende 
+            """INSERT INTO aziende 
             (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, 
              partitaIVA, telefonoAzienda, fax, emailAzienda, pec, 
              formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''',
-            params.values()
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            params.values(),
         )
 
         # Log the creation of the company
         log(
-            type='info',
+            type="info",
             message=f'User {get_jwt_identity().get("email")} created company {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT,
-            structured_data=f"[{Company.ENDPOINT_PATHS[0]} Verb POST]"
+            structured_data=f"[{Company.ENDPOINT_PATHS[0]} Verb POST]",
         )
 
         # Return a success message
-        return create_response(message={'outcome': 'company successfully created',
-                                        'location': f'http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}'}, status_code=STATUS_CODES["created"])
-        
+        return create_response(
+            message={
+                "outcome": "company successfully created",
+                "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}",
+            },
+            status_code=STATUS_CODES["created"],
+        )
+
     @jwt_required_endpoint
-    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def delete(self, id) -> Response:
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
+    def delete(self, id_) -> Response:
         """
         Delete a company from the database.
         The company ID is passed as a path variable.
         """
 
         # Check if specified company exists
-        company: Dict[str, Any] = fetchone_query('SELECT ragioneSociale FROM aziende WHERE idAzienda = %s', (id,)) # Only fetch the province to check existence (could be any field)
+        company: Dict[str, Any] = fetchone_query(
+            "SELECT ragioneSociale FROM aziende WHERE idAzienda = %s", (id_,)
+        )  # Only fetch the province to check existence (could be any field)
         if not company:
-            return create_response(message={'error': 'specified company does not exist'}, status_code=STATUS_CODES["not_found"])
+            return create_response(
+                message={"error": "specified company does not exist"},
+                status_code=STATUS_CODES["not_found"],
+            )
 
         # Delete the company
-        execute_query('DELETE FROM aziende WHERE idAzienda = %s', (id,))
-        
+        execute_query("DELETE FROM aziende WHERE idAzienda = %s", (id_,))
+
         # Log the deletion of the company
         log(
-            type='info',
-            message=f'User {get_jwt_identity().get("email")} deleted company {id}',
+            type="info",
+            message=f'User {get_jwt_identity().get("email")} deleted company {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT,
-            structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb DELETE]"
+            structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb DELETE]",
         )
 
         # Return a success message
-        return create_response(message={'outcome': 'company successfully deleted'}, status_code=STATUS_CODES["no_content"])
+        return create_response(
+            message={"outcome": "company successfully deleted"},
+            status_code=STATUS_CODES["no_content"],
+        )
 
     @jwt_required_endpoint
-    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor'])
-    def patch(self, id) -> Response:
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
+    def patch(self, id_) -> Response:
         """
         Update a company in the database.
         The company ID is passed as a path variable.
         """
 
         # Validate request
-        data: Union[str, Dict[str, Any]] = has_valid_json(request)
+        data = validate_json_request(request)
         if isinstance(data, str):
-            return create_response(message={'error': data}, status_code=STATUS_CODES["bad_request"])
-
-        # Check for sql injection
-        if not is_input_safe(data):
-            return create_response(message={'error': 'invalid input, suspected sql injection'}, status_code=STATUS_CODES["bad_request"])
+            return create_response(
+                message={"error": data}, status_code=STATUS_CODES["bad_request"]
+            )
 
         # Check if the company exists
-        company: Dict[str, Any] = fetchone_query('SELECT * FROM aziende WHERE idAzienda = %s', (id,))
+        company: Dict[str, Any] = fetchone_query(
+            "SELECT * FROM aziende WHERE idAzienda = %s", (id_,)
+        )
         if not company:
-            return create_response(message={'outcome': 'error, company does not exist'}, status_code=STATUS_CODES["not_found"])
+            return create_response(
+                message={"outcome": "error, company does not exist"},
+                status_code=STATUS_CODES["not_found"],
+            )
 
         # Check that the specified fields can be modified
-        not_allowed_fields: List[str] = ['idAzienda']
-        for field in toModify:
+        not_allowed_fields: List[str] = ["idAzienda"]
+        for field in to_modify:
             if field in not_allowed_fields:
-                return create_response(message={'outcome': f'error, field "{field}" cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+                return create_response(
+                    message={"outcome": f'error, field "{field}" cannot be modified'},
+                    status_code=STATUS_CODES["bad_request"],
+                )
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = [
-                              'ragioneSociale', 'codiceAteco', 
-                              'partitaIVA', 'fax', 
-                              'pec', 'telefonoAzienda',
-                              'emailAzienda', 'dataConvenzione', 
-                              'scadenzaConvenzione', 'categoria', 
-                              'indirizzoLogo', 'sitoWeb', 
-                              'formaGiuridica'
-                              ]
-        toModify: List[str]  = list(data.keys())
-        error_columns: List[str] = [field for field in toModify if field not in modifiable_columns]
+            "ragioneSociale",
+            "codiceAteco",
+            "partitaIVA",
+            "fax",
+            "pec",
+            "telefonoAzienda",
+            "emailAzienda",
+            "dataConvenzione",
+            "scadenzaConvenzione",
+            "categoria",
+            "indirizzoLogo",
+            "sitoWeb",
+            "formaGiuridica",
+        ]
+        to_modify: List[str] = list(data.keys())
+        error_columns: List[str] = [
+            field for field in to_modify if field not in modifiable_columns
+        ]
         if error_columns:
-            return create_response(message={'outcome': f'error, field(s) {error_columns} do not exist or cannot be modified'}, status_code=STATUS_CODES["bad_request"])
+            return create_response(
+                message={
+                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
+                },
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name='aziende', 
-            id_column='idAzienda', id_value=id
+            data=data, table_name="aziende", id_column="idAzienda", id_value=id_
         )
 
         # Execute the update query
         execute_query(query, params)
 
-        # Log the update of the company        
+        # Log the update of the company
         log(
-            type='info',
-            message=f'User {get_jwt_identity().get("email")} updated company {id}',
+            type="info",
+            message=f'User {get_jwt_identity().get("email")} updated company {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT,
-            structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb PATCH]"
+            structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb PATCH]",
         )
 
         # Return a success message
-        return create_response(message={'outcome': 'company successfully updated'}, status_code=STATUS_CODES["ok"])
+        return create_response(
+            message={"outcome": "company successfully updated"},
+            status_code=STATUS_CODES["ok"],
+        )
 
     @jwt_required_endpoint
-    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
-    def get(self, id) -> Response:
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
+    def get(self, id_) -> Response:
         """
         Retrieve a company from the database.
         The company ID is passed as a path variable.
@@ -192,100 +247,133 @@ class Company(Resource):
 
         try:
             # Execute the query
-            company: Dict[str, Any] = fetchone_query("SELECT * FROM aziende WHERE = %s", (id, ))
+            company: Dict[str, Any] = fetchone_query(
+                "SELECT * FROM aziende WHERE = %s", (id_,)
+            )
 
             # Check if the company exists
             if not company:
-                return create_response(message={'error': 'company not found with specified id'}, status_code=STATUS_CODES["not_found"])
+                return create_response(
+                    message={"error": "company not found with specified id_"},
+                    status_code=STATUS_CODES["not_found"],
+                )
 
             # Gather turn data
-            turns: List[Dict[str, Any]] = fetchall_query("SELECT dataInizio, dataFine, posti, postiOccupati, "
-                                                         "ore, idIndirizzo, oraInizio, oraFine, giornoInizio, giornoFine "
-                                                         "FROM turni "
-                                                         "WHERE idAzienda = %s", (id, ))
+            turns: List[Dict[str, Any]] = fetchall_query(
+                "SELECT dataInizio, dataFine, posti, postiOccupati, "
+                "ore, idIndirizzo, oraInizio, oraFine, giornoInizio, giornoFine "
+                "FROM turni "
+                "WHERE idAzienda = %s",
+                (id_,),
+            )
 
             # Add the turn endpoints to company dictionary
             company["turns"] = turns
 
             # Gather address data
-            addresses: List[Dict[str, Any]] = fetchall_query("SELECT stato, provincia, comune, cap, indirizzo FROM indirizzi WHERE idAzienda = %s", (id, ))
-            
+            addresses: List[Dict[str, Any]] = fetchall_query(
+                "SELECT stato, provincia, comune, cap, indirizzo FROM indirizzi WHERE idAzienda = %s",
+                (id_,),
+            )
+
             # Add the address data to company dictionary
             company["addresses"] = addresses
 
-            # Log the read operation            
+            # Log the read operation
             log(
-                type='info',
-                message=f'User {get_jwt_identity().get("email")} read company {id}',
+                type="info",
+                message=f'User {get_jwt_identity().get("email")} read company {id_}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT,
-                structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb GET]"
+                structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb GET]",
             )
 
             # Return the companies
             return create_response(message=company, status_code=STATUS_CODES["ok"])
         except Exception as err:
-            return create_response(message={'error': str(err)}, status_code=STATUS_CODES["internal_error"])
+            return create_response(
+                message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
+            )
 
     @jwt_required_endpoint
-    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
+        """
+        Handle OPTIONS requests for the resource.
+        This method is used to define the allowed HTTP methods for the resource.
+        """
+
         # Define allowed methods
         allowed_methods = get_class_http_verbs(type(self))
-        
+
         # Create the response
         response = Response(status=STATUS_CODES["ok"])
-        response.headers['Allow'] = ', '.join(allowed_methods)
-        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
-        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-        
+        response.headers["Allow"] = ", ".join(allowed_methods)
+        response.headers["Access-Control-Allow-Origin"] = (
+            "*"  # Adjust as needed for CORS
+        )
+        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+
         return response
+
 
 class CompanyList(Resource):
 
-    ENDPOINT_PATHS = [f'/{BP_NAME}/list']
+    ENDPOINT_PATHS = [f"/{BP_NAME}/list"]
 
     @jwt_required_endpoint
-    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self) -> Response:
 
         # Gather parameters
-        anno: str = request.args.get('anno')
-        comune: str = request.args.get('comune')
-        settore: str = request.args.get('settore')
-        mese: str = request.args.get('mese')
-        materia: str = request.args.get('materie')
+        anno: str = request.args.get("anno")
+        comune: str = request.args.get("comune")
+        settore: str = request.args.get("settore")
+        mese: str = request.args.get("mese")
+        materia: str = request.args.get("materie")
 
         # Gather data
-        ids_batch: List[int] = [] # List of ids to be used in the query
+        ids_batch: List[int] = []  # List of ids to be used in the query
         if anno:
-            ids = fetchall_query(f"SELECT idAzienda FROM turni WHERE dataInizio Like '%/{anno}'")
+            ids = fetchall_query(
+                f"SELECT idAzienda FROM turni WHERE dataInizio Like '%/{anno}'"
+            )
             ids_batch.extend(ids)
 
-        if comune: 
-            ids = fetchall_query("SELECT idAzienda FROM indirizzi WHERE comune = %s", (comune, ))
+        if comune:
+            ids = fetchall_query(
+                "SELECT idAzienda FROM indirizzi WHERE comune = %s", (comune,)
+            )
             ids_batch.extend(ids)
 
         if settore:
-            ids = fetchall_query("SELECT A.idAzienda "
-                                 "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda "
-                                 "JOIN turnoSettore AS TS ON TS.idTurno = T.idTurno "
-                                 "WHERE TS.settore = %s", (settore, ))
+            ids = fetchall_query(
+                "SELECT A.idAzienda "
+                "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda "
+                "JOIN turnoSettore AS TS ON TS.idTurno = T.idTurno "
+                "WHERE TS.settore = %s",
+                (settore,),
+            )
             ids_batch.extend(ids)
 
         if mese:
-            ids = fetchall_query("SELECT A.idAzienda "
-                                 "FROM aziende AS A JOIN turni AS T "
-                                 "WHERE MONTHNAME(T.dataInizio) = %s", (mese, ))
+            ids = fetchall_query(
+                "SELECT A.idAzienda "
+                "FROM aziende AS A JOIN turni AS T "
+                "WHERE MONTHNAME(T.dataInizio) = %s",
+                (mese,),
+            )
             ids_batch.extend(ids)
 
         if materia:
-            ids = fetchall_query("SELECT A.idAzienda " 
-                                 "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda "
-                                 "JOIN turnoMateria AS TM ON TM.idTurno = T.idTurno "
-                                 "WHERE TM.materia = %s", (materia, ))
+            ids = fetchall_query(
+                "SELECT A.idAzienda "
+                "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda "
+                "JOIN turnoMateria AS TM ON TM.idTurno = T.idTurno "
+                "WHERE TM.materia = %s",
+                (materia,),
+            )
             ids_batch.extend(ids)
 
         # Remove duplicates from ids_batch
@@ -293,17 +381,16 @@ class CompanyList(Resource):
 
         # Log the read operation
         log(
-            type='info',
+            type="info",
             message=f'User {get_jwt_identity().get("email")} read companies with filters: {anno}, {comune}, {settore}, {mese}, {materia}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            origin_port=API_SERVER_PORT,
-            structured_data=f"[{CompanyList.ENDPOINT_PATHS[0]} Verb GET]"
+            structured_data=f"[{CompanyList.ENDPOINT_PATHS[0]} Verb GET]",
         )
 
         # Get company data
         if ids_batch:
-            placeholders: str = ', '.join(['%s'] * len(ids_batch))
+            placeholders: str = ", ".join(["%s"] * len(ids_batch))
             query = (
                 "SELECT A.ragioneSociale, A.codiceAteco, A.partitaIva, A.fax, A.pec, "
                 "A.telefonoAzienda, A.emailAzienda, A.dataConvenzione, A.scadenzaConvenzione, "
@@ -314,25 +401,36 @@ class CompanyList(Resource):
             )
             companies: List[Dict[str, Any]] = fetchall_query(query, tuple(ids_batch))
         else:
-            return create_response(message={'error': 'no company matches filters'}, status_code=STATUS_CODES["not_found"])
+            return create_response(
+                message={"error": "no company matches filters"},
+                status_code=STATUS_CODES["not_found"],
+            )
 
         # Return data
         return create_response(message=companies, status_code=STATUS_CODES["ok"])
 
     @jwt_required_endpoint
-    @check_authorization(allowed_roles=['admin', 'supertutor', 'tutor', 'teacher'])
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
+        """
+        Handle OPTIONS requests for the resource.
+        This method is used to define the allowed HTTP methods for the resource.
+        """
+
         # Define allowed methods
         allowed_methods = get_class_http_verbs(type(self))
-        
+
         # Create the response
         response = Response(status=STATUS_CODES["ok"])
-        response.headers['Allow'] = ', '.join(allowed_methods)
-        response.headers['Access-Control-Allow-Origin'] = '*'  # Adjust as needed for CORS
-        response.headers['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-        
+        response.headers["Allow"] = ", ".join(allowed_methods)
+        response.headers["Access-Control-Allow-Origin"] = (
+            "*"  # Adjust as needed for CORS
+        )
+        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+
         return response
+
 
 api.add_resource(Company, *Company.ENDPOINT_PATHS)
 api.add_resource(CompanyList, *CompanyList.ENDPOINT_PATHS)
