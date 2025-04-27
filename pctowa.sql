@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.1.0
+-- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: localhost
--- Creato il: Apr 19, 2025 alle 17:52
--- Versione del server: 8.0.27
--- Versione PHP: 7.3.31-1~deb10u7
+-- Host: 127.0.0.1
+-- Creato il: Apr 27, 2025 alle 14:41
+-- Versione del server: 10.4.32-MariaDB
+-- Versione PHP: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -28,27 +28,27 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `aziende` (
-  `idAzienda` int NOT NULL,
-  `ragioneSociale` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `codiceAteco` varchar(10) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `partitaIVA` char(11) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `fax` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `pec` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `telefonoAzienda` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'con prefisso',
-  `emailAzienda` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `dataConvenzione` date DEFAULT NULL,
-  `scadenzaConvenzione` date DEFAULT NULL,
-  `categoria` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `indirizzoLogo` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
-  `sitoWeb` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
-  `formaGiuridica` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `id_azienda` int(11) NOT NULL,
+  `ragione_sociale` varchar(255) NOT NULL,
+  `codice_ateco` varchar(10) NOT NULL,
+  `partita_iva` char(11) NOT NULL,
+  `fax` varchar(50) NOT NULL,
+  `pec` varchar(50) NOT NULL,
+  `telefono_azienda` varchar(13) NOT NULL COMMENT 'con prefisso',
+  `email_azienda` varchar(50) NOT NULL,
+  `data_convenzione` date DEFAULT NULL,
+  `scadenza_convenzione` date DEFAULT NULL,
+  `categoria` varchar(25) NOT NULL,
+  `indirizzo_logo` varchar(255) DEFAULT NULL,
+  `sito_web` varchar(255) DEFAULT NULL,
+  `forma_giuridica` varchar(25) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `aziende`
 --
 
-INSERT INTO `aziende` (`idAzienda`, `ragioneSociale`, `codiceAteco`, `partitaIVA`, `fax`, `pec`, `telefonoAzienda`, `emailAzienda`, `dataConvenzione`, `scadenzaConvenzione`, `categoria`, `indirizzoLogo`, `sitoWeb`, `formaGiuridica`) VALUES
+INSERT INTO `aziende` (`id_azienda`, `ragione_sociale`, `codice_ateco`, `partita_iva`, `fax`, `pec`, `telefono_azienda`, `email_azienda`, `data_convenzione`, `scadenza_convenzione`, `categoria`, `indirizzo_logo`, `sito_web`, `forma_giuridica`) VALUES
 (1, 'Tech Solutions', '6201', '12345678901', '0123456789', 'tech@pec.it', '1234567890', 'info@techsolutions.it', '2023-01-01', '2026-01-01', 'Tecnologia', 'logo1.png', 'https://techsolutions.it', 'S.r.l.'),
 (2, 'GreenFuture', '0112', '98765432109', '0234567890', 'green@pec.it', '0987654321', 'info@greenfuture.it', '2022-09-01', '2025-09-01', 'Energia', 'logo2.png', 'https://greenfuture.it', 'S.p.A.'),
 (3, 'EduInnovazione', '8542', '19283746501', '0345678912', 'edu@pec.it', '1122334455', 'info@eduinnovazione.it', '2024-01-10', '2027-01-10', 'Formazione', 'logo3.png', 'https://eduinnovazione.it', 'Cooperativa');
@@ -60,17 +60,17 @@ INSERT INTO `aziende` (`idAzienda`, `ragioneSociale`, `codiceAteco`, `partitaIVA
 --
 
 CREATE TABLE `classi` (
-  `idClasse` int NOT NULL,
+  `id_classe` int(11) NOT NULL,
   `sigla` char(3) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'sigla della classe (e.g. 5BI)',
-  `emailResponsabile` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `email_responsabile` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `anno` char(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'anno scolastico (e.g. 24-25)'
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dump dei dati per la tabella `classi`
 --
 
-INSERT INTO `classi` (`idClasse`, `sigla`, `emailResponsabile`, `anno`) VALUES
+INSERT INTO `classi` (`id_classe`, `sigla`, `email_responsabile`, `anno`) VALUES
 (1, '4AI', 'lorenzo.decarli@marconiverona.edu.it', '24-25'),
 (2, '4BI', 'lorenzo.decarli@marconiverona.edu.it', '24-25'),
 (3, '4CI', 'lorenzo.decarli@marconiverona.edu.it', '24-25');
@@ -82,20 +82,20 @@ INSERT INTO `classi` (`idClasse`, `sigla`, `emailResponsabile`, `anno`) VALUES
 --
 
 CREATE TABLE `contatti` (
-  `idContatto` int NOT NULL,
-  `nome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `cognome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `telefono` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `email` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `ruolo` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `idAzienda` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `id_contatto` int(11) NOT NULL,
+  `nome` varchar(255) NOT NULL,
+  `cognome` varchar(255) NOT NULL,
+  `telefono` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `ruolo` varchar(255) DEFAULT NULL,
+  `id_azienda` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `contatti`
 --
 
-INSERT INTO `contatti` (`idContatto`, `nome`, `cognome`, `telefono`, `email`, `ruolo`, `idAzienda`) VALUES
+INSERT INTO `contatti` (`id_contatto`, `nome`, `cognome`, `telefono`, `email`, `ruolo`, `id_azienda`) VALUES
 (1, 'Mario', 'Rossi', '3216549870', 'm.rossi@techsolutions.it', 'HR', 1),
 (2, 'Lucia', 'Neri', '3311122233', 'l.neri@greenfuture.it', 'Referente', 2),
 (3, 'Paolo', 'Bianchi', '3667788990', 'p.bianchi@eduinnovazione.it', 'Tutor Aziendale', 3);
@@ -103,20 +103,20 @@ INSERT INTO `contatti` (`idContatto`, `nome`, `cognome`, `telefono`, `email`, `r
 -- --------------------------------------------------------
 
 --
--- Struttura della tabella `docenteReferente`
+-- Struttura della tabella `docente_referente`
 --
 
-CREATE TABLE `docenteReferente` (
-  `emailDocente` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `anno` char(4) COLLATE utf8_unicode_ci NOT NULL,
-  `idAzienda` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+CREATE TABLE `docente_referente` (
+  `email_docente` varchar(255) NOT NULL,
+  `anno` char(4) NOT NULL,
+  `id_azienda` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Dump dei dati per la tabella `docenteReferente`
+-- Dump dei dati per la tabella `docente_referente`
 --
 
-INSERT INTO `docenteReferente` (`emailDocente`, `anno`, `idAzienda`) VALUES
+INSERT INTO `docente_referente` (`email_docente`, `anno`, `id_azienda`) VALUES
 ('cinzia.decarli@marconiverona.edu.it', '2025', 3),
 ('irene.decarli@marconiverona.edu.it', '2025', 2),
 ('lorenzo.decarli@marconiverona.edu.it', '2025', 1);
@@ -124,18 +124,18 @@ INSERT INTO `docenteReferente` (`emailDocente`, `anno`, `idAzienda`) VALUES
 -- --------------------------------------------------------
 
 --
--- Struttura della tabella `formaGiuridica`
+-- Struttura della tabella `forma_giuridica`
 --
 
-CREATE TABLE `formaGiuridica` (
-  `forma` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+CREATE TABLE `forma_giuridica` (
+  `forma` varchar(25) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Dump dei dati per la tabella `formaGiuridica`
+-- Dump dei dati per la tabella `forma_giuridica`
 --
 
-INSERT INTO `formaGiuridica` (`forma`) VALUES
+INSERT INTO `forma_giuridica` (`forma`) VALUES
 ('Cooperativa'),
 ('S.p.A.'),
 ('S.r.l.');
@@ -147,20 +147,20 @@ INSERT INTO `formaGiuridica` (`forma`) VALUES
 --
 
 CREATE TABLE `indirizzi` (
-  `idIndirizzo` int NOT NULL,
-  `stato` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `provincia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `comune` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `id_indirizzo` int(11) NOT NULL,
+  `stato` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `provincia` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `comune` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cap` char(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `indirizzo` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `idAzienda` int NOT NULL
-) ;
+  `indirizzo` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `id_azienda` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dump dei dati per la tabella `indirizzi`
 --
 
-INSERT INTO `indirizzi` (`idIndirizzo`, `stato`, `provincia`, `comune`, `cap`, `indirizzo`, `idAzienda`) VALUES
+INSERT INTO `indirizzi` (`id_indirizzo`, `stato`, `provincia`, `comune`, `cap`, `indirizzo`, `id_azienda`) VALUES
 (1, 'Italia', 'VR', 'Verona', '20100', 'Via Roma 10', 1),
 (2, 'Italia', 'VR', 'Verona', '10100', 'Via Andrea d’Angeli', 2),
 (3, 'Italia', 'VR', 'Verona', '50100', 'Via Verdi 7', 3);
@@ -172,10 +172,10 @@ INSERT INTO `indirizzi` (`idIndirizzo`, `stato`, `provincia`, `comune`, `cap`, `
 --
 
 CREATE TABLE `materie` (
-  `materia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `materia` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `descrizione` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
   `hexColor` char(7) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'colore della tag nel frontend, obbligatorio esprimerlo con 7 caratteri'
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dump dei dati per la tabella `materie`
@@ -193,8 +193,8 @@ INSERT INTO `materie` (`materia`, `descrizione`, `hexColor`) VALUES
 --
 
 CREATE TABLE `settori` (
-  `settore` varchar(255) COLLATE utf8_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `settore` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `settori`
@@ -211,19 +211,19 @@ INSERT INTO `settori` (`settore`) VALUES
 -- --------------------------------------------------------
 
 --
--- Struttura della tabella `studenteTurno`
+-- Struttura della tabella `studente_turno`
 --
 
-CREATE TABLE `studenteTurno` (
-  `matricola` int NOT NULL,
-  `idTurno` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+CREATE TABLE `studente_turno` (
+  `matricola` int(11) NOT NULL,
+  `id_turno` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Dump dei dati per la tabella `studenteTurno`
+-- Dump dei dati per la tabella `studente_turno`
 --
 
-INSERT INTO `studenteTurno` (`matricola`, `idTurno`) VALUES
+INSERT INTO `studente_turno` (`matricola`, `id_turno`) VALUES
 (10001, 1),
 (10002, 2),
 (10003, 3);
@@ -235,18 +235,18 @@ INSERT INTO `studenteTurno` (`matricola`, `idTurno`) VALUES
 --
 
 CREATE TABLE `studenti` (
-  `matricola` int NOT NULL,
-  `nome` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `cognome` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `idClasse` int NOT NULL,
-  `comune` varchar(255) COLLATE utf8_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `matricola` int(11) NOT NULL,
+  `nome` varchar(255) NOT NULL,
+  `cognome` varchar(255) NOT NULL,
+  `id_classe` int(11) NOT NULL,
+  `comune` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `studenti`
 --
 
-INSERT INTO `studenti` (`matricola`, `nome`, `cognome`, `idClasse`, `comune`) VALUES
+INSERT INTO `studenti` (`matricola`, `nome`, `cognome`, `id_classe`, `comune`) VALUES
 (10001, 'Marco', 'Neri', 1, '37131'),
 (10002, 'Giulia', 'Bianchi', 2, '37132'),
 (10003, 'Luca', 'Verdi', 3, '37133');
@@ -258,25 +258,25 @@ INSERT INTO `studenti` (`matricola`, `nome`, `cognome`, `idClasse`, `comune`) VA
 --
 
 CREATE TABLE `turni` (
-  `idTurno` int NOT NULL,
-  `dataInizio` date DEFAULT NULL,
-  `dataFine` date DEFAULT NULL,
-  `posti` int DEFAULT NULL,
-  `postiOccupati` int DEFAULT '0',
-  `ore` int DEFAULT NULL,
-  `idAzienda` int NOT NULL,
-  `idIndirizzo` int DEFAULT NULL,
-  `oraInizio` varchar(5) COLLATE utf8_unicode_ci NOT NULL,
-  `oraFine` varchar(5) COLLATE utf8_unicode_ci NOT NULL,
-  `giornoInizio` enum('lunedì','martedì','mercoledì','giovedì','venerdì') COLLATE utf8_unicode_ci DEFAULT NULL,
-  `giornoFine` enum('lunedì','martedì','mercoledì','giovedì','venerdì') COLLATE utf8_unicode_ci DEFAULT NULL
-) ;
+  `id_turno` int(11) NOT NULL,
+  `data_inizio` date DEFAULT NULL,
+  `data_fine` date DEFAULT NULL,
+  `posti` int(11) DEFAULT NULL,
+  `postiOccupati` int(11) DEFAULT 0,
+  `ore` int(11) DEFAULT NULL,
+  `id_azienda` int(11) NOT NULL,
+  `id_indirizzo` int(11) DEFAULT NULL,
+  `oraInizio` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `oraFine` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `giorno_inizio` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
+  `giorno_fine` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dump dei dati per la tabella `turni`
 --
 
-INSERT INTO `turni` (`idTurno`, `dataInizio`, `dataFine`, `posti`, `postiOccupati`, `ore`, `idAzienda`, `idIndirizzo`, `oraInizio`, `oraFine`, `giornoInizio`, `giornoFine`) VALUES
+INSERT INTO `turni` (`id_turno`, `data_inizio`, `data_fine`, `posti`, `postiOccupati`, `ore`, `id_azienda`, `id_indirizzo`, `oraInizio`, `oraFine`, `giorno_inizio`, `giorno_fine`) VALUES
 (1, '2024-03-01', '2024-05-31', 2, 2, 120, 1, 1, '09:00', '13:00', 'lunedì', 'venerdì'),
 (2, '2024-04-01', '2024-06-30', 3, 1, 100, 2, 2, '10:00', '14:00', 'martedì', 'giovedì'),
 (3, '2024-05-15', '2024-07-31', 1, 1, 80, 3, 3, '08:30', '12:00', 'mercoledì', 'venerdì');
@@ -284,52 +284,52 @@ INSERT INTO `turni` (`idTurno`, `dataInizio`, `dataFine`, `posti`, `postiOccupat
 -- --------------------------------------------------------
 
 --
--- Struttura della tabella `turnoMateria`
+-- Struttura della tabella `turno_materia`
 --
 
-CREATE TABLE `turnoMateria` (
-  `materia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `idTurno` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+CREATE TABLE `turno_materia` (
+  `materia` varchar(255) NOT NULL,
+  `id_turno` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Dump dei dati per la tabella `turnoMateria`
+-- Dump dei dati per la tabella `turno_materia`
 --
 
-INSERT INTO `turnoMateria` (`materia`, `idTurno`) VALUES
+INSERT INTO `turno_materia` (`materia`, `id_turno`) VALUES
+('Android App', 3),
 ('Sistemista', 1),
-('Sistemista', 2),
-('Android App', 3);
+('Sistemista', 2);
 
 -- --------------------------------------------------------
 
 --
--- Struttura della tabella `turnoSettore`
+-- Struttura della tabella `turno_settore`
 --
 
-CREATE TABLE `turnoSettore` (
-  `settore` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `idTurno` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+CREATE TABLE `turno_settore` (
+  `settore` varchar(255) NOT NULL,
+  `id_turno` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Dump dei dati per la tabella `turnoSettore`
+-- Dump dei dati per la tabella `turno_settore`
 --
 
-INSERT INTO `turnoSettore` (`settore`, `idTurno`) VALUES
-('Informatica', 1),
-('Elettronica', 3);
+INSERT INTO `turno_settore` (`settore`, `id_turno`) VALUES
+('Elettronica', 3),
+('Informatica', 1);
 
 -- --------------------------------------------------------
 
 --
--- Struttura della tabella `turnoTutor`
+-- Struttura della tabella `turno_tutor`
 --
 
-CREATE TABLE `turnoTutor` (
-  `idTutor` int NOT NULL,
-  `idTurno` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+CREATE TABLE `turno_tutor` (
+  `id_tutor` int(11) NOT NULL,
+  `id_turno` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -338,12 +338,12 @@ CREATE TABLE `turnoTutor` (
 --
 
 CREATE TABLE `tutor` (
-  `idTutor` int NOT NULL,
+  `idTutor` int(11) NOT NULL,
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `emailTutor` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `emailTutor` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `telefonoTutor` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dump dei dati per la tabella `tutor`
@@ -361,12 +361,12 @@ INSERT INTO `tutor` (`idTutor`, `nome`, `cognome`, `emailTutor`, `telefonoTutor`
 --
 
 CREATE TABLE `utenti` (
-  `emailUtente` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `password` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `emailUtente` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `password` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `ruolo` int NOT NULL
-) ;
+  `ruolo` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dump dei dati per la tabella `utenti`
@@ -385,43 +385,43 @@ INSERT INTO `utenti` (`emailUtente`, `password`, `nome`, `cognome`, `ruolo`) VAL
 -- Indici per le tabelle `aziende`
 --
 ALTER TABLE `aziende`
-  ADD PRIMARY KEY (`idAzienda`),
-  ADD UNIQUE KEY `partitaIVA` (`partitaIVA`),
-  ADD KEY `fk_formaGiuridica` (`formaGiuridica`);
+  ADD PRIMARY KEY (`id_azienda`),
+  ADD UNIQUE KEY `partitaIVA` (`partita_iva`),
+  ADD KEY `fk_formaGiuridica` (`forma_giuridica`);
 
 --
 -- Indici per le tabelle `classi`
 --
 ALTER TABLE `classi`
-  ADD PRIMARY KEY (`idClasse`),
-  ADD KEY `classi_ibfk_1` (`emailResponsabile`);
+  ADD PRIMARY KEY (`id_classe`),
+  ADD KEY `classi_ibfk_1` (`email_responsabile`);
 
 --
 -- Indici per le tabelle `contatti`
 --
 ALTER TABLE `contatti`
-  ADD PRIMARY KEY (`idContatto`),
-  ADD KEY `contatti_ibfk_1` (`idAzienda`);
+  ADD PRIMARY KEY (`id_contatto`),
+  ADD KEY `contatti_ibfk_1` (`id_azienda`);
 
 --
--- Indici per le tabelle `docenteReferente`
+-- Indici per le tabelle `docente_referente`
 --
-ALTER TABLE `docenteReferente`
-  ADD PRIMARY KEY (`emailDocente`,`idAzienda`),
-  ADD KEY `docenteReferente_ibfk_2` (`idAzienda`);
+ALTER TABLE `docente_referente`
+  ADD PRIMARY KEY (`email_docente`,`id_azienda`),
+  ADD KEY `docenteReferente_ibfk_2` (`id_azienda`);
 
 --
--- Indici per le tabelle `formaGiuridica`
+-- Indici per le tabelle `forma_giuridica`
 --
-ALTER TABLE `formaGiuridica`
+ALTER TABLE `forma_giuridica`
   ADD PRIMARY KEY (`forma`);
 
 --
 -- Indici per le tabelle `indirizzi`
 --
 ALTER TABLE `indirizzi`
-  ADD PRIMARY KEY (`idIndirizzo`),
-  ADD KEY `indirizzi_ibfk_1` (`idAzienda`);
+  ADD PRIMARY KEY (`id_indirizzo`),
+  ADD KEY `indirizzi_ibfk_1` (`id_azienda`);
 
 --
 -- Indici per le tabelle `materie`
@@ -436,47 +436,47 @@ ALTER TABLE `settori`
   ADD PRIMARY KEY (`settore`);
 
 --
--- Indici per le tabelle `studenteTurno`
+-- Indici per le tabelle `studente_turno`
 --
-ALTER TABLE `studenteTurno`
-  ADD PRIMARY KEY (`matricola`,`idTurno`),
-  ADD KEY `studenteTurno_ibfk_2` (`idTurno`);
+ALTER TABLE `studente_turno`
+  ADD PRIMARY KEY (`matricola`,`id_turno`),
+  ADD KEY `studenteTurno_ibfk_2` (`id_turno`);
 
 --
 -- Indici per le tabelle `studenti`
 --
 ALTER TABLE `studenti`
   ADD PRIMARY KEY (`matricola`),
-  ADD KEY `studenti_ibfk_1` (`idClasse`);
+  ADD KEY `studenti_ibfk_1` (`id_classe`);
 
 --
 -- Indici per le tabelle `turni`
 --
 ALTER TABLE `turni`
-  ADD PRIMARY KEY (`idTurno`),
-  ADD KEY `turni_ibfk_1` (`idAzienda`),
-  ADD KEY `turni_ibfk_3` (`idIndirizzo`);
+  ADD PRIMARY KEY (`id_turno`),
+  ADD KEY `turni_ibfk_1` (`id_azienda`),
+  ADD KEY `turni_ibfk_3` (`id_indirizzo`);
 
 --
--- Indici per le tabelle `turnoMateria`
+-- Indici per le tabelle `turno_materia`
 --
-ALTER TABLE `turnoMateria`
-  ADD PRIMARY KEY (`materia`,`idTurno`),
-  ADD KEY `turnoMateria_ibfk_2` (`idTurno`);
+ALTER TABLE `turno_materia`
+  ADD PRIMARY KEY (`materia`,`id_turno`),
+  ADD KEY `turnoMateria_ibfk_2` (`id_turno`);
 
 --
--- Indici per le tabelle `turnoSettore`
+-- Indici per le tabelle `turno_settore`
 --
-ALTER TABLE `turnoSettore`
-  ADD PRIMARY KEY (`settore`,`idTurno`),
-  ADD KEY `turnoSettore_ibfk_2` (`idTurno`);
+ALTER TABLE `turno_settore`
+  ADD PRIMARY KEY (`settore`,`id_turno`),
+  ADD KEY `turnoSettore_ibfk_2` (`id_turno`);
 
 --
--- Indici per le tabelle `turnoTutor`
+-- Indici per le tabelle `turno_tutor`
 --
-ALTER TABLE `turnoTutor`
-  ADD PRIMARY KEY (`idTutor`,`idTurno`),
-  ADD KEY `idTurno` (`idTurno`);
+ALTER TABLE `turno_tutor`
+  ADD PRIMARY KEY (`id_tutor`,`id_turno`),
+  ADD KEY `idTurno` (`id_turno`);
 
 --
 -- Indici per le tabelle `tutor`
@@ -498,37 +498,37 @@ ALTER TABLE `utenti`
 -- AUTO_INCREMENT per la tabella `aziende`
 --
 ALTER TABLE `aziende`
-  MODIFY `idAzienda` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_azienda` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `classi`
 --
 ALTER TABLE `classi`
-  MODIFY `idClasse` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id_classe` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `contatti`
 --
 ALTER TABLE `contatti`
-  MODIFY `idContatto` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_contatto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `indirizzi`
 --
 ALTER TABLE `indirizzi`
-  MODIFY `idIndirizzo` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id_indirizzo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `turni`
 --
 ALTER TABLE `turni`
-  MODIFY `idTurno` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id_turno` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `tutor`
 --
 ALTER TABLE `tutor`
-  MODIFY `idTutor` int NOT NULL AUTO_INCREMENT;
+  MODIFY `idTutor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Limiti per le tabelle scaricate
@@ -538,79 +538,79 @@ ALTER TABLE `tutor`
 -- Limiti per la tabella `aziende`
 --
 ALTER TABLE `aziende`
-  ADD CONSTRAINT `aziende_ibfk_1` FOREIGN KEY (`formaGiuridica`) REFERENCES `formaGiuridica` (`forma`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_formaGiuridica` FOREIGN KEY (`formaGiuridica`) REFERENCES `formaGiuridica` (`forma`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `aziende_ibfk_1` FOREIGN KEY (`forma_giuridica`) REFERENCES `forma_giuridica` (`forma`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_formaGiuridica` FOREIGN KEY (`forma_giuridica`) REFERENCES `forma_giuridica` (`forma`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `classi`
 --
 ALTER TABLE `classi`
-  ADD CONSTRAINT `classi_ibfk_1` FOREIGN KEY (`emailResponsabile`) REFERENCES `utenti` (`emailUtente`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `classi_ibfk_1` FOREIGN KEY (`email_responsabile`) REFERENCES `utenti` (`emailUtente`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `contatti`
 --
 ALTER TABLE `contatti`
-  ADD CONSTRAINT `contatti_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `contatti_ibfk_1` FOREIGN KEY (`id_azienda`) REFERENCES `aziende` (`id_azienda`) ON UPDATE CASCADE;
 
 --
--- Limiti per la tabella `docenteReferente`
+-- Limiti per la tabella `docente_referente`
 --
-ALTER TABLE `docenteReferente`
-  ADD CONSTRAINT `docenteReferente_ibfk_1` FOREIGN KEY (`emailDocente`) REFERENCES `utenti` (`emailUtente`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `docenteReferente_ibfk_2` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE;
+ALTER TABLE `docente_referente`
+  ADD CONSTRAINT `docenteReferente_ibfk_1` FOREIGN KEY (`email_docente`) REFERENCES `utenti` (`emailUtente`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `docenteReferente_ibfk_2` FOREIGN KEY (`id_azienda`) REFERENCES `aziende` (`id_azienda`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `indirizzi`
 --
 ALTER TABLE `indirizzi`
-  ADD CONSTRAINT `indirizzi_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `indirizzi_ibfk_1` FOREIGN KEY (`id_azienda`) REFERENCES `aziende` (`id_azienda`) ON UPDATE CASCADE;
 
 --
--- Limiti per la tabella `studenteTurno`
+-- Limiti per la tabella `studente_turno`
 --
-ALTER TABLE `studenteTurno`
+ALTER TABLE `studente_turno`
   ADD CONSTRAINT `studenteTurno_ibfk_1` FOREIGN KEY (`matricola`) REFERENCES `studenti` (`matricola`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `studenteTurno_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `studenteTurno_ibfk_2` FOREIGN KEY (`id_turno`) REFERENCES `turni` (`id_turno`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `studenti`
 --
 ALTER TABLE `studenti`
-  ADD CONSTRAINT `studenti_ibfk_1` FOREIGN KEY (`idClasse`) REFERENCES `classi` (`idClasse`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `studenti_ibfk_1` FOREIGN KEY (`id_classe`) REFERENCES `classi` (`id_classe`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `turni`
 --
 ALTER TABLE `turni`
-  ADD CONSTRAINT `fk_azienda` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `turni_ibfk_1` FOREIGN KEY (`idAzienda`) REFERENCES `aziende` (`idAzienda`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `turni_ibfk_3` FOREIGN KEY (`idIndirizzo`) REFERENCES `indirizzi` (`idIndirizzo`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `fk_azienda` FOREIGN KEY (`id_azienda`) REFERENCES `aziende` (`id_azienda`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `turni_ibfk_1` FOREIGN KEY (`id_azienda`) REFERENCES `aziende` (`id_azienda`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `turni_ibfk_3` FOREIGN KEY (`id_indirizzo`) REFERENCES `indirizzi` (`id_indirizzo`) ON UPDATE CASCADE;
 
 --
--- Limiti per la tabella `turnoMateria`
+-- Limiti per la tabella `turno_materia`
 --
-ALTER TABLE `turnoMateria`
+ALTER TABLE `turno_materia`
   ADD CONSTRAINT `fk_materia` FOREIGN KEY (`materia`) REFERENCES `materie` (`materia`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_turno_cascade` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_turno_cascade` FOREIGN KEY (`id_turno`) REFERENCES `turni` (`id_turno`) ON UPDATE CASCADE,
   ADD CONSTRAINT `turnoMateria_ibfk_1` FOREIGN KEY (`materia`) REFERENCES `materie` (`materia`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `turnoMateria_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `turnoMateria_ibfk_2` FOREIGN KEY (`id_turno`) REFERENCES `turni` (`id_turno`) ON UPDATE CASCADE;
 
 --
--- Limiti per la tabella `turnoSettore`
+-- Limiti per la tabella `turno_settore`
 --
-ALTER TABLE `turnoSettore`
+ALTER TABLE `turno_settore`
   ADD CONSTRAINT `fk_settore` FOREIGN KEY (`settore`) REFERENCES `settori` (`settore`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_turno` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_turno` FOREIGN KEY (`id_turno`) REFERENCES `turni` (`id_turno`) ON UPDATE CASCADE,
   ADD CONSTRAINT `turnoSettore_ibfk_1` FOREIGN KEY (`settore`) REFERENCES `settori` (`settore`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `turnoSettore_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `turnoSettore_ibfk_2` FOREIGN KEY (`id_turno`) REFERENCES `turni` (`id_turno`) ON UPDATE CASCADE;
 
 --
--- Limiti per la tabella `turnoTutor`
+-- Limiti per la tabella `turno_tutor`
 --
-ALTER TABLE `turnoTutor`
-  ADD CONSTRAINT `turnoTutor_ibfk_1` FOREIGN KEY (`idTutor`) REFERENCES `tutor` (`idTutor`),
-  ADD CONSTRAINT `turnoTutor_ibfk_2` FOREIGN KEY (`idTurno`) REFERENCES `turni` (`idTurno`);
+ALTER TABLE `turno_tutor`
+  ADD CONSTRAINT `turnoTutor_ibfk_1` FOREIGN KEY (`id_tutor`) REFERENCES `tutor` (`idTutor`),
+  ADD CONSTRAINT `turnoTutor_ibfk_2` FOREIGN KEY (`id_turno`) REFERENCES `turni` (`id_turno`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
