@@ -110,7 +110,8 @@ class Subject(Resource):
                 message=f'User {get_jwt_identity().get("email")} created subject {materia}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
 
             # Return a success message
@@ -128,7 +129,8 @@ class Subject(Resource):
                 message=f'User {get_jwt_identity().get("email")} tried to create subject {materia} but it already generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -140,7 +142,8 @@ class Subject(Resource):
                 message=f'User {get_jwt_identity().get("email")} failed to create subject {materia} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -184,7 +187,8 @@ class Subject(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted subject {materia}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb DELETE]",
+            message_id="UserAction",
+            structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'DELETE'},
         )
 
         # Return a success message
@@ -246,7 +250,8 @@ class Subject(Resource):
             message=f'User {get_jwt_identity().get("email")} updated subject {materia}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb PATCH]",
+            message_id="UserAction",
+            structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'PATCH'}
         )
 
         # Return a success message
@@ -308,7 +313,8 @@ class Subject(Resource):
                 message=f'User {get_jwt_identity().get("email")} read subjects {ids}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{Subject.ENDPOINT_PATHS[0]} Verb GET]",
+                message_id="UserAction",
+                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'GET'}
             )
 
             # Return the subjects

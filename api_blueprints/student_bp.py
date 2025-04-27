@@ -102,7 +102,8 @@ class Student(Resource):
                 message=f'User {get_jwt_identity().get("email")} tried to create student {matricola} but it already generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT,
+                message_id="UserAction",
+                structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": 'POST'},
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -114,7 +115,8 @@ class Student(Resource):
                 message=f'User {get_jwt_identity().get("email")} failed to create student {matricola} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT,
+                message_id="UserAction",
+                structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": 'POST'},
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -127,7 +129,8 @@ class Student(Resource):
             message=f'User {get_jwt_identity().get("email")} created student {matricola}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Student.ENDPOINT_PATHS[0]} Verb POST]",
+            message_id="UserAction",
+            structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": 'POST'},
         )
 
         return create_response(
@@ -165,7 +168,8 @@ class Student(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted student {matricola}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Student.ENDPOINT_PATHS[1]} Verb DELETE]",
+            message_id="UserAction",
+            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": 'DELETE'},
         )
 
         # Return a success message
@@ -227,7 +231,8 @@ class Student(Resource):
             message=f'User {get_jwt_identity().get("email")} updated student {matricola}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Student.ENDPOINT_PATHS[1]} Verb PATCH]",
+            message_id="UserAction",
+            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": 'PATCH'}
         )
 
         # Return a success message
@@ -248,7 +253,8 @@ class Student(Resource):
             message=f'User {get_jwt_identity().get("email")} requested student list for class {class_id}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Student.ENDPOINT_PATHS[2]} Verb GET]",
+            message_id="UserAction",
+            structured_data={"endpoint":Student.ENDPOINT_PATHS[2], "verb": 'GET'}
         )
 
         # Check if the class exists
@@ -404,7 +410,8 @@ class BindStudentToTurn(Resource):
                 message=f'User {get_jwt_identity().get("email")} bound student {matricola} to turn {idTurno}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{BindStudentToTurn.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": BindStudentToTurn.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"outcome": "student successfully bound to turn"},
@@ -416,7 +423,8 @@ class BindStudentToTurn(Resource):
                 message=f'User {get_jwt_identity().get("email")} tried to bind student {matricola} to turn {idTurno} but it already generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{BindStudentToTurn.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": BindStudentToTurn.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -428,7 +436,8 @@ class BindStudentToTurn(Resource):
                 message=f'User {get_jwt_identity().get("email")} failed to bind student {matricola} to turn {idTurno} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{BindStudentToTurn.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": BindStudentToTurn.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -475,7 +484,8 @@ class StudentList(Resource):
             message=f'User {get_jwt_identity().get("email")} requested student list that are associated to turn {turn_id}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{StudentList.ENDPOINT_PATHS[0]} Verb GET]",
+            message_id="UserAction",
+            structured_data={"endpoint": StudentList.ENDPOINT_PATHS[0], "verb": 'GET'}
         )
 
         # Check if the turn exists

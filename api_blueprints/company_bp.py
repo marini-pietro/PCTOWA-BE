@@ -104,7 +104,8 @@ class Company(Resource):
             message=f'User {get_jwt_identity().get("email")} created company {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Company.ENDPOINT_PATHS[0]} Verb POST]",
+            message_id="UserAction",
+            structured_data={"endpoint": {Company.ENDPOINT_PATHS[0]}, "verb": 'POST'}
         )
 
         # Return a success message
@@ -143,7 +144,8 @@ class Company(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted company {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb DELETE]",
+            message_id="UserAction",
+            structured_data={"endpoint": {Company.ENDPOINT_PATHS[1]}, "verb": 'DELETE'}
         )
 
         # Return a success message
@@ -228,7 +230,8 @@ class Company(Resource):
             message=f'User {get_jwt_identity().get("email")} updated company {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb PATCH]",
+            message_id="UserAction",
+            structured_data={"endpoint": {Company.ENDPOINT_PATHS[1]}, "verb": 'PATCH'}
         )
 
         # Return a success message
@@ -285,7 +288,8 @@ class Company(Resource):
                 message=f'User {get_jwt_identity().get("email")} read company {id_}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{Company.ENDPOINT_PATHS[1]} Verb GET]",
+                message_id="UserAction",
+                structured_data={"endpoint": {Company.ENDPOINT_PATHS[1]}, "verb": 'GET'}
             )
 
             # Return the companies
@@ -385,7 +389,8 @@ class CompanyList(Resource):
             message=f'User {get_jwt_identity().get("email")} read companies with filters: {anno}, {comune}, {settore}, {mese}, {materia}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{CompanyList.ENDPOINT_PATHS[0]} Verb GET]",
+            message_id="UserAction",
+            structured_data={"endpoint": {CompanyList.ENDPOINT_PATHS[0]}, "verb": 'GET'}
         )
 
         # Get company data

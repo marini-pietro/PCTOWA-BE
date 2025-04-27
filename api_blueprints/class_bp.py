@@ -131,7 +131,8 @@ class Class(Resource):
             message=f'User {get_jwt_identity().get("email")} created class {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Class.ENDPOINT_PATHS[0]} Verb POST]",
+            message_id="UserAction",
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[0]}, "verb": 'POST'}
         )
 
         # Return a success message
@@ -171,7 +172,8 @@ class Class(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted class {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Class.ENDPOINT_PATHS[1]} Verb DELETE]",
+            message_id="UserAction",
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": 'DELETE'}
         )
 
         # Return a success message
@@ -232,7 +234,8 @@ class Class(Resource):
             message=f'User {get_jwt_identity().get("email")} updated class {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Class.ENDPOINT_PATHS[1]} Verb PATCH]",
+            message_id="UserAction",
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": 'PATCH'}
         )
 
         # Return a success message
@@ -253,7 +256,8 @@ class Class(Resource):
             message=f'User {get_jwt_identity().get("email")} requested to read class with email {email_responsabile}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Class.ENDPOINT_PATHS[2]} Verb GET]",
+            message_id="UserAction",
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[2]}, "verb": 'GET'},
         )
 
         # Check if user exists
@@ -342,7 +346,8 @@ class ClassFuzzySearch(Resource):
             message=f'User {get_jwt_identity().get("email")} requested fuzzy search in classes with string {input_str}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{ClassFuzzySearch.ENDPOINT_PATHS[0]} Verb GET]",
+            message_id="UserAction",
+            structured_data={"endpoint": {ClassFuzzySearch.ENDPOINT_PATHS[0]}, "verb": 'GET'}
         )
 
         # Get the data
@@ -395,7 +400,8 @@ class ClassList(Resource):
             message=f'User {get_jwt_identity().get("email")} read class list',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{ClassList.ENDPOINT_PATHS[0]} Verb GET]",
+            message_id="UserAction",
+            structured_data={"endpoint": {ClassList.ENDPOINT_PATHS[0]}, "verb": 'GET'}
         )
 
         # Get data

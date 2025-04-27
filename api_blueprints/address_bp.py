@@ -102,7 +102,8 @@ class Address(Resource):
             message=f'User {get_jwt_identity().get("email")} created address {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Address.ENDPOINT_PATHS[0]} Verb POST]",
+            message_id="UserAction",
+            structured_data={"endpoint": Address.ENDPOINT_PATHS[0], "verb": "POST"},
         )
 
         return create_response(
@@ -141,7 +142,8 @@ class Address(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted address {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Address.ENDPOINT_PATHS[1]} Verb DELETE]",
+            message_id="UserAction",
+            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "DELETE"}
         )
 
         return create_response(
@@ -210,7 +212,8 @@ class Address(Resource):
             message=f'User {get_jwt_identity().get("email")} updated address {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Address.ENDPOINT_PATHS[1]} Verb PATCH]",
+            message_id="UserAction",
+            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "PATCH"}
         )
 
         # Return a success message
@@ -285,7 +288,8 @@ class Address(Resource):
                 message=f'User {get_jwt_identity().get("email")} read address {ids}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{Address.ENDPOINT_PATHS[1]} Verb GET]",
+                message_id="UserAction",
+                structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": 'GET'},
             )
 
             # Return the results

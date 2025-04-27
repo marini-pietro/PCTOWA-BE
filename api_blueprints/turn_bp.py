@@ -167,7 +167,7 @@ class Turn(Resource):
         if materia is not None:
             execute_query(
                 "INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)",
-                (lastrowid, materia),
+                (lastrowid, materia)
             )
 
         # Log the turn creation
@@ -176,7 +176,8 @@ class Turn(Resource):
             message=f'User {get_jwt_identity().get("email")} created turn {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Turn.ENDPOINT_PATHS[0]} Verb POST]",
+            message_id="UserAction",
+            structured_data={"endpoint": Turn.ENDPOINT_PATHS[0], "verb": 'POST'}
         )
 
         # Return a success message
@@ -215,7 +216,8 @@ class Turn(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted turn {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Turn.ENDPOINT_PATHS[1]} Verb DELETE]",
+            message_id="UserAction",
+            structured_data={"endpoint": Turn.ENDPOINT_PATHS[1], "verb": 'DELETE'}
         )
 
         # Return a success message
@@ -290,7 +292,8 @@ class Turn(Resource):
             message=f'User {get_jwt_identity().get("email")} updated turn {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Turn.ENDPOINT_PATHS[1]} Verb PATCH]",
+            message_id="UserAction",
+            structured_data={"endpoint": Turn.ENDPOINT_PATHS[1], "verb":'PATCH'}
         )
 
         # Return a success message
@@ -313,7 +316,8 @@ class Turn(Resource):
             message=f'User {get_jwt_identity().get("email")} requested turn list with company id {company_id}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Turn.ENDPOINT_PATHS[1]} Verb GET]",
+            message_id="UserAction",
+            structured_data={"endpoint": Turn.ENDPOINT_PATHS[0], "verb": 'GET'}
         )
 
         # Check that the specified company exists

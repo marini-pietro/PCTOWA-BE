@@ -82,7 +82,8 @@ class User(Resource):
                 message=f'User {get_jwt_identity().get("email")} registered user {email}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{User.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": User.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
 
             # Return success message
@@ -128,7 +129,8 @@ class User(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted user {email}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{User.ENDPOINT_PATHS[1]} Verb DELETE]",
+            message_id="UserAction",
+            structured_data={"endpoint": User.ENDPOINT_PATHS[1], "verb": 'DELETE'}
         )
 
         # Return success message
@@ -196,7 +198,8 @@ class User(Resource):
             message=f'User {get_jwt_identity().get("email")} updated user {email}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{User.ENDPOINT_PATHS[1]} Verb PATCH]",
+            message_id="UserAction",
+            structured_data={"endpoint": User.ENDPOINT_PATHS[1], "verb": 'PATCH'}
         )
 
         # Return success message
@@ -287,7 +290,8 @@ class UserLogin(Resource):
                 message=f'User {email} logged in successfully',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": UserLogin.ENDPOINT_PATHS[0], "verb":'POST'}
             )
 
             return create_response(
@@ -300,7 +304,8 @@ class UserLogin(Resource):
                 message=f"Failed login attempt for email: {email}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": UserLogin.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "Invalid credentials"},
@@ -313,7 +318,8 @@ class UserLogin(Resource):
                 message=f"Bad request during login for email: {email}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": UserLogin.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "Bad request"},
@@ -326,7 +332,8 @@ class UserLogin(Resource):
                 message=f"Internal error during login for email: {email}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": UserLogin.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "Internal error"},
@@ -339,7 +346,8 @@ class UserLogin(Resource):
                 message=f"Unexpected error during login for email: {email} with status code: {response.status_code}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": UserLogin.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "Unexpected error during login"},
@@ -440,7 +448,8 @@ class BindUserToCompany(Resource):
                 message=f'User {get_jwt_identity().get("email")} tried to bind user {email} to company {company_id} but it already generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT,
+                message_id="UserAction",
+                structured_data={"endpoint": BindUserToCompany.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -452,7 +461,8 @@ class BindUserToCompany(Resource):
                 message=f'User {get_jwt_identity().get("email")} failed to bind user {email} to company {company_id} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                origin_port=API_SERVER_PORT,
+                message_id="UserAction",
+                structured_data={"endpoint": BindUserToCompany.ENDPOINT_PATHS[0], "verb": 'POST'}
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -465,7 +475,8 @@ class BindUserToCompany(Resource):
             message=f'User {get_jwt_identity().get("email")} bound user {email} to company {company_id}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{BindUserToCompany.ENDPOINT_PATHS[0]} Verb POST]",
+            message_id="UserAction",
+            structured_data={"endpoint": BindUserToCompany.ENDPOINT_PATHS[0], "verb": 'POST'}
         )
 
         # Return success message
@@ -524,7 +535,8 @@ class ReadBindedUser(Resource):
             message=f'User {get_jwt_identity().get("email")} requested reference teacher list with {id_type} and id_ {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{ReadBindedUser.ENDPOINT_PATHS[0]} Verb GET]",
+            message_id="UserAction",
+            structured_data={"endpoint": ReadBindedUser.ENDPOINT_PATHS[0], "verb": 'GET'}
         )
 
         # Validate parameters

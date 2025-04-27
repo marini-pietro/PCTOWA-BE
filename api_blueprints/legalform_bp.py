@@ -78,7 +78,8 @@ class LegalForm(Resource):
                 message=f'User {get_jwt_identity().get("email")} tried to create legal form {forma} but it generated {ex}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{LegalForm.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": 'POST'}
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -90,7 +91,8 @@ class LegalForm(Resource):
                 message=f'User {get_jwt_identity().get("email")} failed to create legal form {forma} with error: {str(ex)}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{LegalForm.ENDPOINT_PATHS[0]} Verb POST]",
+                message_id="UserAction",
+                structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": 'POST'}
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -103,7 +105,8 @@ class LegalForm(Resource):
             message=f'User {get_jwt_identity().get("email")} created legal form {forma}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{LegalForm.ENDPOINT_PATHS[0]} Verb POST]",
+            message_id="UserAction",
+            structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": 'POST'}
         )
 
         # Return a success message
@@ -142,7 +145,8 @@ class LegalForm(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted legal form {forma}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{LegalForm.ENDPOINT_PATHS[1]} Verb DELETE]",
+            message_id="UserAction",
+            structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[1]}, "verb": 'DELETE'}
         )
 
         # Return a success message
@@ -197,7 +201,8 @@ class LegalForm(Resource):
             message=f'User {get_jwt_identity().get("email")} updated legal form {forma} to {new_value}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{LegalForm.ENDPOINT_PATHS[1]} Verb PATCH]",
+            message_id="UserAction",
+            structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[1]}, "verb": 'PATCH'}
         )
 
         # Return a success message
@@ -242,7 +247,8 @@ class LegalForm(Resource):
                 message=f'User {get_jwt_identity().get("email")} read all legal forms',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
-                structured_data=f"[{LegalForm.ENDPOINT_PATHS[0]} Verb GET]",
+                message_id="UserAction",
+                structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": 'GET'}
             )
 
             # Return the result

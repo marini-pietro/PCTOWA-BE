@@ -96,7 +96,8 @@ class Contact(Resource):
             message=f'User {get_jwt_identity().get("email")} created contact with id_ {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Contact.ENDPOINTS_PATHS[0]} Verb POST]",
+            message_id="UserAction",
+            structured_data={"endpoint": Contact.ENDPOINTS_PATHS[0], "verb": 'POST'}
         )
 
         # Return a success message
@@ -135,7 +136,8 @@ class Contact(Resource):
             message=f'User {get_jwt_identity().get("email")} deleted contact {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Contact.ENDPOINTS_PATHS[1]} Verb DELETE]",
+            message_id="UserAction",
+            structured_data={"endpoint": Contact.ENDPOINTS_PATHS[1], "verb": 'DELETE'}
         )
 
         # Return a success message
@@ -204,7 +206,8 @@ class Contact(Resource):
             message=f'User {get_jwt_identity().get("email")} updated contact {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Contact.ENDPOINTS_PATHS[1]} Verb PATCH]",
+            message_id="UserAction",
+            structured_data={"endpoint": Contact.ENDPOINTS_PATHS[1], "verb": 'PATCH'}
         )
 
         # Return a success message
@@ -227,7 +230,8 @@ class Contact(Resource):
             message=f'User {get_jwt_identity().get("email")} requested contact list for company {company_id}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
-            structured_data=f"[{Contact.ENDPOINTS_PATHS[1]} Verb GET]",
+            message_id="UserAction",
+            structured_data={"endpoint": Contact.ENDPOINTS_PATHS[0], "verb": 'GET'}
         )
 
         # Check that the specified company exists

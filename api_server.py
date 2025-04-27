@@ -106,6 +106,12 @@ def close_api():  # Parameters are necessary to match the signal handler signatu
         message="API server shutting down",
         origin_name=API_SERVER_NAME_IN_LOG,
         origin_host=API_SERVER_HOST,
+        message_id="UserAction",
+        structured_data={
+            "host": API_SERVER_HOST,
+            "port": API_SERVER_PORT,
+            "debug_mode": API_SERVER_DEBUG_MODE,
+            }
     )
 
     # Use the Flask shutdown function directly
@@ -124,4 +130,10 @@ if __name__ == "__main__":
         message="API server started",
         origin_name=API_SERVER_NAME_IN_LOG,
         origin_host=API_SERVER_HOST,
+        message_id="UserAction",
+        structured_data={
+            "host": API_SERVER_HOST,
+            "port": API_SERVER_PORT,
+            "debug_mode": API_SERVER_DEBUG_MODE,
+            }
     )
