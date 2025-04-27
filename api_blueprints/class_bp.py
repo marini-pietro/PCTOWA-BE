@@ -154,7 +154,7 @@ class Class(Resource):
         # Check that class exists
         # Only fetch the province to check existence (could be any field)
         class_: Dict[str, Any] = fetchone_query(
-            "SELECT sigla FROM classi WHERE idClasse = %s", (id_,)
+            "SELECT sigla FROM classi WHERE id_classe = %s", (id_,)
         )
         if class_ is None:
             return create_response(
@@ -163,7 +163,7 @@ class Class(Resource):
             )
 
         # Delete the class
-        execute_query("DELETE FROM classi WHERE idClasse = %s", (id_,))
+        execute_query("DELETE FROM classi WHERE id_classe = %s", (id_,))
 
         # Log the deletion of the class
         log(
@@ -196,7 +196,7 @@ class Class(Resource):
 
         # Check that class exists
         class_: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM classi WHERE idClasse = %s", (id_,)
+            "SELECT * FROM classi WHERE id_classe = %s", (id_,)
         )
         if class_ is None:
             return create_response(
@@ -220,7 +220,7 @@ class Class(Resource):
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="classi", id_column="idClasse", id_value=id_
+            data=data, table_name="classi", id_column="id_classe", id_value=id_
         )
 
         # Execute the update query
@@ -258,7 +258,7 @@ class Class(Resource):
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM utenti WHERE emailUtente = %s", (email_responsabile)
+            "SELECT * FROM utenti WHERE email_utente = %s", (email_responsabile)
         )
         if not user:
             return create_response(

@@ -19,6 +19,7 @@ from flask import jsonify, make_response, request, Response, Request
 from flask_jwt_extended import get_jwt_identity
 from mysql.connector import pooling as mysql_pooling
 from requests import post as requests_post
+from requests.exceptions import RequestException
 from cachetools import TTLCache
 from config import (
     DB_HOST,
@@ -274,7 +275,7 @@ def get_db_pool():
     global _DB_POOL
     if _DB_POOL is None:  # Initialize only when accessed for the first time
         try:
-            _db_pool = mysql_pooling.MySQLConnectionPool(
+            _DB_POOL = mysql_pooling.MySQLConnectionPool(
                 pool_name="pctowa_connection_pool",
                 pool_size=max(1, CONNECTION_POOL_SIZE),
                 pool_reset_session=False,  # Session reset not needed for this application (no transactions)
@@ -307,6 +308,10 @@ def get_db_connection():
 
 # Function to clear the connection pool
 def clear_db_connection_pool():
+    """
+    Clear the database connection pool by closing all connections.
+    """
+    global _DB_POOL
     for connection in _DB_POOL._cnx_queue:
         connection.close()
     _DB_POOL._cnx_queue.clear()
@@ -490,8 +495,8 @@ def shutdown_logging():
 
 
 # Token validation related
-# | Create a cache for token validation results with a time-to-live (TTL) of 300 seconds (5 minutes)
-token_cache = TTLCache(maxsize=1000, ttl=300)
+# | Create a cache for token validation results with a time-to-live (TTL) of 600 seconds (10 minutes)
+token_cache = TTLCache(maxsize=5000, ttl=600)
 
 
 def jwt_required_endpoint(func: callable) -> callable:
@@ -501,7 +506,14 @@ def jwt_required_endpoint(func: callable) -> callable:
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        # Extract the token from the Authorization header
+        def get_bearer_token():
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                return auth_header[len("Bearer "):]
+            return None
+
+        token = get_bearer_token()
         if not token:
             return create_response(
                 message={"error": "missing token"},
@@ -513,28 +525,39 @@ def jwt_required_endpoint(func: callable) -> callable:
         if cached_result:
             is_valid, identity = cached_result
         else:
-            # Validate token with auth server
-            headers = {"Authorization": f"Bearer {token}"}
-            response = requests_post(
-                AUTH_SERVER_VALIDATE_URL,
-                headers=headers,
-                timeout=VALIDATION_REQUEST_TIMEOUT,
-            )
+            try:
 
-            if response.status_code != STATUS_CODES["ok"] or not response.json().get(
-                "valid"
-            ):
+                # Headers (e.g., Authorization token)
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                }
+ 
+                # Send a POST request to the auth server to validate the token
+                response = requests_post(
+                    url=AUTH_SERVER_VALIDATE_URL,
+                    headers=headers,
+                    timeout=VALIDATION_REQUEST_TIMEOUT,
+                )
+                response.raise_for_status()  # Raise exception for HTTP errors
+
+                if response.status_code != STATUS_CODES["ok"] or not response.json().get("valid"):
+                    return create_response(
+                        message={"error": "Invalid or expired token"},
+                        status_code=STATUS_CODES["unauthorized"],
+                    )
+
+                is_valid = response.json().get("valid")
+                identity = response.json().get("identity")
+                token_cache[token] = (is_valid, identity)
+
+            except RequestException as e:
                 return create_response(
-                    message={"error": "Invalid or expired token"},
-                    status_code=STATUS_CODES["unauthorized"],
+                    message={"error": f"Authentication server error: {str(e)}"},
+                    status_code=STATUS_CODES["service_unavailable"],
                 )
 
-            is_valid = response.json().get("valid")
-            identity = response.json().get(
-                "identity"
-            )  # Extract the identity from the response
-            token_cache[token] = (is_valid, identity)
-
-        return func(*args, **kwargs)
+        # Pass the identity to the wrapped function
+        return func(*args, **kwargs, identity=identity)
 
     return wrapper

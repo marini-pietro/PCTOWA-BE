@@ -63,13 +63,13 @@ class Student(Resource):
         matricola: str = data.get("matricola")
         nome: str = data.get("nome")
         cognome: str = data.get("cognome")
-        idClasse: int = data.get("idClasse")
+        id_classe: int = data.get("id_classe")
 
         # Validate parameters
-        if matricola is None or nome is None or cognome is None or idClasse is None:
+        if matricola is None or nome is None or cognome is None or id_classe is None:
             return create_response(
                 message={
-                    "error": "matricola, nome, cognome and idClasse parameters are required"
+                    "error": "matricola, nome, cognome and id_classe parameters are required"
                 },
                 status_code=STATUS_CODES["bad_request"],
             )
@@ -83,10 +83,10 @@ class Student(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
         try:
-            idClasse = int(idClasse)
+            id_classe = int(id_classe)
         except (ValueError, TypeError):
             return create_response(
-                message={"error": "idClasse must be an integer"},
+                message={"error": "id_classe must be an integer"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
@@ -94,7 +94,7 @@ class Student(Resource):
             # Insert the student
             lastrowid: int = execute_query(
                 "INSERT INTO studenti VALUES (%s, %s, %s, %s)",
-                (matricola, nome, cognome, idClasse),
+                (matricola, nome, cognome, id_classe),
             )
         except IntegrityError as ex:
             log(
@@ -200,7 +200,7 @@ class Student(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = ["nome", "cognome", "idClasse", "comune"]
+        modifiable_columns: List[str] = ["nome", "cognome", "id_classe", "comune"]
         to_modify: List[str] = list(data.keys())
         error_columns: List[str] = [
             field for field in to_modify if field not in modifiable_columns
@@ -253,7 +253,7 @@ class Student(Resource):
 
         # Check if the class exists
         class_: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM classi WHERE idClasse = %s", (class_id,)
+            "SELECT * FROM classi WHERE id_classe = %s", (class_id,)
         )
         if not class_:
             return create_response(
@@ -264,14 +264,14 @@ class Student(Resource):
         # Get student data
         student_data: List[Dict[str, Any]] = fetchall_query(
             """
-            SELECT S.matricola, S.nome, S.cognome, S.comune, T.idTurno, T.dataInizio, T.dataFine,
-                   T.giornoInizio, T.giornoFine, T.oraInizio, T.oraFine, T.ore,
+            SELECT S.matricola, S.nome, S.cognome, S.comune, T.idTurno, T.data_inizio, T.data_fine,
+                   T.giorno_inizio, T.giorno_fine, T.ora_inizio, T.ora_fine, T.ore,
                    A.ragioneSociale, A.indirizzo, A.cap, A.comune AS comuneAzienda, A.provincia, A.stato
             FROM studenti AS S
             LEFT JOIN studenteTurno AS ST ON S.matricola = ST.matricola
             LEFT JOIN turni AS T ON ST.idTurno = T.idTurno
-            LEFT JOIN aziende AS A ON T.idAzienda = A.idAzienda
-            WHERE S.idClasse = %s
+            LEFT JOIN aziende AS A ON T.id_azienda = A.id_azienda
+            WHERE S.id_classe = %s
             """,
             (class_id,),
         )
@@ -287,12 +287,12 @@ class Student(Resource):
                 "turno": (
                     {
                         "ragioneSociale": row.get("ragioneSociale"),
-                        "dataInizio": row.get("dataInizio"),
-                        "dataFine": row.get("dataFine"),
-                        "giornoInizio": row.get("giornoInizio"),
-                        "giornoFine": row.get("giornoFine"),
-                        "oraInizio": row.get("oraInizio"),
-                        "oraFine": row.get("oraFine"),
+                        "data_inizio": row.get("data_inizio"),
+                        "data_fine": row.get("data_fine"),
+                        "giorno_inizio": row.get("giorno_inizio"),
+                        "giorno_fine": row.get("giorno_fine"),
+                        "ora_inizio": row.get("ora_inizio"),
+                        "ora_fine": row.get("ora_fine"),
                         "ore": row.get("ore"),
                         "turnoPK": row.get("idTurno"),
                         "indirizzo": {

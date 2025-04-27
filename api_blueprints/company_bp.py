@@ -126,7 +126,7 @@ class Company(Resource):
 
         # Check if specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT ragioneSociale FROM aziende WHERE idAzienda = %s", (id_,)
+            "SELECT ragioneSociale FROM aziende WHERE id_azienda = %s", (id_,)
         )  # Only fetch the province to check existence (could be any field)
         if not company:
             return create_response(
@@ -135,7 +135,7 @@ class Company(Resource):
             )
 
         # Delete the company
-        execute_query("DELETE FROM aziende WHERE idAzienda = %s", (id_,))
+        execute_query("DELETE FROM aziende WHERE id_azienda = %s", (id_,))
 
         # Log the deletion of the company
         log(
@@ -169,7 +169,7 @@ class Company(Resource):
 
         # Check if the company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE idAzienda = %s", (id_,)
+            "SELECT * FROM aziende WHERE id_azienda = %s", (id_,)
         )
         if not company:
             return create_response(
@@ -178,7 +178,7 @@ class Company(Resource):
             )
 
         # Check that the specified fields can be modified
-        not_allowed_fields: List[str] = ["idAzienda"]
+        not_allowed_fields: List[str] = ["id_azienda"]
         for field in to_modify:
             if field in not_allowed_fields:
                 return create_response(
@@ -216,7 +216,7 @@ class Company(Resource):
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="aziende", id_column="idAzienda", id_value=id_
+            data=data, table_name="aziende", id_column="id_azienda", id_value=id_
         )
 
         # Execute the update query
@@ -260,10 +260,10 @@ class Company(Resource):
 
             # Gather turn data
             turns: List[Dict[str, Any]] = fetchall_query(
-                "SELECT dataInizio, dataFine, posti, postiOccupati, "
-                "ore, idIndirizzo, oraInizio, oraFine, giornoInizio, giornoFine "
+                "SELECT data_inizio, data_fine, posti, posti_occupati, "
+                "ore, id_indirizzo, ora_inizio, ora_fine, giorno_inizio, giorno_fine "
                 "FROM turni "
-                "WHERE idAzienda = %s",
+                "WHERE id_azienda = %s",
                 (id_,),
             )
 
@@ -272,7 +272,7 @@ class Company(Resource):
 
             # Gather address data
             addresses: List[Dict[str, Any]] = fetchall_query(
-                "SELECT stato, provincia, comune, cap, indirizzo FROM indirizzi WHERE idAzienda = %s",
+                "SELECT stato, provincia, comune, cap, indirizzo FROM indirizzi WHERE id_azienda = %s",
                 (id_,),
             )
 
@@ -337,20 +337,20 @@ class CompanyList(Resource):
         ids_batch: List[int] = []  # List of ids to be used in the query
         if anno:
             ids = fetchall_query(
-                f"SELECT idAzienda FROM turni WHERE dataInizio Like '%/{anno}'"
+                f"SELECT id_azienda FROM turni WHERE data_inizio Like '%/{anno}'"
             )
             ids_batch.extend(ids)
 
         if comune:
             ids = fetchall_query(
-                "SELECT idAzienda FROM indirizzi WHERE comune = %s", (comune,)
+                "SELECT id_azienda FROM indirizzi WHERE comune = %s", (comune,)
             )
             ids_batch.extend(ids)
 
         if settore:
             ids = fetchall_query(
-                "SELECT A.idAzienda "
-                "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda "
+                "SELECT A.id_azienda "
+                "FROM aziende AS A JOIN turni AS T ON A.id_azienda = T.id_azienda "
                 "JOIN turnoSettore AS TS ON TS.idTurno = T.idTurno "
                 "WHERE TS.settore = %s",
                 (settore,),
@@ -359,17 +359,17 @@ class CompanyList(Resource):
 
         if mese:
             ids = fetchall_query(
-                "SELECT A.idAzienda "
+                "SELECT A.id_azienda "
                 "FROM aziende AS A JOIN turni AS T "
-                "WHERE MONTHNAME(T.dataInizio) = %s",
+                "WHERE MONTHNAME(T.data_inizio) = %s",
                 (mese,),
             )
             ids_batch.extend(ids)
 
         if materia:
             ids = fetchall_query(
-                "SELECT A.idAzienda "
-                "FROM aziende AS A JOIN turni AS T ON A.idAzienda = T.idAzienda "
+                "SELECT A.id_azienda "
+                "FROM aziende AS A JOIN turni AS T ON A.id_azienda = T.id_azienda "
                 "JOIN turnoMateria AS TM ON TM.idTurno = T.idTurno "
                 "WHERE TM.materia = %s",
                 (materia,),
@@ -396,8 +396,8 @@ class CompanyList(Resource):
                 "A.telefonoAzienda, A.emailAzienda, A.dataConvenzione, A.scadenzaConvenzione, "
                 "A.categoria, A.indirizzoLogo, A.sitoWeb, A.formaGiuridica, I.stato, "
                 "I.provincia, I.comune, I.cap, I.indirizzo "
-                "FROM aziende AS A JOIN indirizzi AS I ON A.idAzienda = I.idAzienda "
-                f"WHERE A.idAzienda IN ({placeholders})"
+                "FROM aziende AS A JOIN indirizzi AS I ON A.id_azienda = I.id_azienda "
+                f"WHERE A.id_azienda IN ({placeholders})"
             )
             companies: List[Dict[str, Any]] = fetchall_query(query, tuple(ids_batch))
         else:

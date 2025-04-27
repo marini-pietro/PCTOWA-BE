@@ -15,8 +15,6 @@ from .blueprints_utils import (
     jwt_required_endpoint,
     create_response,
     build_update_query_from_filters,
-    has_valid_json,
-    is_input_safe,
     get_class_http_verbs,
     validate_json_request,
 )
@@ -74,7 +72,7 @@ class User(Resource):
 
         try:
             lastrowid: int = execute_query(
-                "INSERT INTO utenti (emailUtente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO utenti (email_utente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)",
                 (email, password, name, surname, int(user_type)),
             )
 
@@ -113,7 +111,7 @@ class User(Resource):
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM utente WHERE emailUtente = %s", (email,)
+            "SELECT nome FROM utente WHERE email_utente = %s", (email,)
         )
         if user is None:
             return create_response(
@@ -122,7 +120,7 @@ class User(Resource):
             )
 
         # Delete the user
-        execute_query("DELETE FROM utente WHERE emailUtente = %s", (email,))
+        execute_query("DELETE FROM utente WHERE email_utente = %s", (email,))
 
         # Log the deletion
         log(
@@ -156,7 +154,7 @@ class User(Resource):
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM utente WHERE emailUtente = %s", (email,)
+            "SELECT * FROM utente WHERE email_utente = %s", (email,)
         )
         if user is None:
             return create_response(
@@ -166,7 +164,7 @@ class User(Resource):
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = [
-            "emailUtente",
+            "email_utente",
             "password",
             "nome",
             "cognome",
@@ -186,7 +184,7 @@ class User(Resource):
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="utenti", id_column="emailUtente", id_value=email
+            data=data, table_name="utenti", id_column="email_utente", id_value=email
         )
 
         # Update the user
@@ -286,7 +284,7 @@ class UserLogin(Resource):
 
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} logged in successfully with email: {email}',
+                message=f'User {email} logged in successfully',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 structured_data=f"[{UserLogin.ENDPOINT_PATHS[0]} Verb POST]",
@@ -394,7 +392,7 @@ class BindUserToCompany(Resource):
             )
 
         # Gather parameters
-        company_id: Union[str, int] = data.get("idAzienda")
+        company_id: Union[str, int] = data.get("id_azienda")
 
         # Validate parameters
         if company_id is None:
@@ -412,7 +410,7 @@ class BindUserToCompany(Resource):
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM utenti WHERE emailUtente = %s", (email,)
+            "SELECT * FROM utenti WHERE email_utente = %s", (email,)
         )
         if user is None:
             return create_response(
@@ -422,7 +420,7 @@ class BindUserToCompany(Resource):
 
         # Check if company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE idAzienda = %s", (company_id,)
+            "SELECT * FROM aziende WHERE id_azienda = %s", (company_id,)
         )
         if company is None:
             return create_response(
@@ -433,7 +431,7 @@ class BindUserToCompany(Resource):
         # Bind the user to the company
         try:
             execute_query(
-                "UPDATE utenti SET company_id = %s WHERE emailUtente = %s",
+                "UPDATE utenti SET company_id = %s WHERE email_utente = %s",
                 (company_id, email),
             )
         except IntegrityError as ex:
@@ -544,7 +542,7 @@ class ReadBindedUser(Resource):
         # Check that the specified resource exist
         if id_type == "company":
             company: Dict[str, Any] = fetchone_query(
-                "SELECT * FROM aziende WHERE idAzienda = %s", (id_,)
+                "SELECT * FROM aziende WHERE id_azienda = %s", (id_,)
             )
             if not company:
                 return create_response(
@@ -554,15 +552,15 @@ class ReadBindedUser(Resource):
 
             # Build query
             query: str = (
-                "SELECT U.emailUtente, U.nome, U.cognome, RT.anno "
-                "FROM docenteReferente AS RT JOIN utenti AS U ON U.emailUtente = RT.docenteReferente "
-                "WHERE RT.idAzienda = %s"
+                "SELECT U.email_utente, U.nome, U.cognome, RT.anno "
+                "FROM docenteReferente AS RT JOIN utenti AS U ON U.email_utente = RT.docenteReferente "
+                "WHERE RT.id_azienda = %s"
             )
 
         # Check that the specified resource exist
         elif id_type == "class":
             class_: Dict[str, Any] = fetchone_query(
-                "SELECT * FROM classi WHERE idClasse = %s", (id_,)
+                "SELECT * FROM classi WHERE id_classe = %s", (id_,)
             )
             if not class_:
                 return create_response(
@@ -571,9 +569,9 @@ class ReadBindedUser(Resource):
                 )
 
             query: str = (
-                "SELECT U.emailUtente, U.nome, U.cognome, C.anno "
-                "FROM classi AS C JOIN utenti AS U ON U.emailUtente = C.emailResponsabile "
-                "WHERE C.idClasse = %s"
+                "SELECT U.email_utente, U.nome, U.cognome, C.anno "
+                "FROM classi AS C JOIN utenti AS U ON U.email_utente = C.emailResponsabile "
+                "WHERE C.id_classe = %s"
             )
 
         # Get the list of associated users

@@ -84,9 +84,9 @@ def login():
     try:
         # Query the database to validate the user's credentials
         user: Dict[str, Any] = fetchone_query(
-            "SELECT emailUtente, password, ruolo "
+            "SELECT email_utente, password, ruolo "
             "FROM utenti "
-            "WHERE emailUtente = %s AND password = %s",
+            "WHERE email_utente = %s AND password = %s",
             (email, password),
         )
 
@@ -144,20 +144,48 @@ def validate():
     Validate the JWT token and return the user's identity.
     """
 
-    # Validate request
-    data: Union[str, Dict[str, Any]] = has_valid_json(request)
-    if isinstance(data, str):
-        return jsonify({"error": data}), STATUS_CODES["bad_request"]
+    # Write the request headers to a file
+    with open("request_headers.log", "a") as file:
+        file.write(f"Headers: {dict(request.headers)}\n")
 
-    # Get the JWT identity
-    identity = get_jwt_identity()
+    try:
+        # Get the JWT identity
+        identity = get_jwt_identity()
 
-    # Validate the identity
-    if not identity:
-        return jsonify({"error": "Invalid token"}), STATUS_CODES["unauthorized"]
+        # Validate the identity
+        if not identity:
+            log(
+                log_type="warning",
+                message="Invalid token validation attempt",
+                origin_name=AUTH_SERVER_NAME_IN_LOG,
+                origin_host=AUTH_SERVER_HOST,
+                structured_data=f"[{request.path} Verb {request.method}]",
+            )
+            return jsonify({"error": "Invalid token"}), STATUS_CODES["unauthorized"]
 
-    # Return the identity of the user
-    return jsonify({"valid": True, "identity": identity}), STATUS_CODES["ok"]
+        # Log the successful validation
+        log(
+            log_type="info",
+            message=f"Token validation successful for identity: {identity}",
+            origin_name=AUTH_SERVER_NAME_IN_LOG,
+            origin_host=AUTH_SERVER_HOST,
+            structured_data=f"[{request.path} Verb {request.method}]",
+        )
+
+        # Return the identity of the user
+        response = jsonify({"valid": True, "identity": identity})
+        response.headers["Cache-Control"] = "no-store" # Prevent caching of sensitive data
+        return response, STATUS_CODES["ok"]
+
+    except Exception as e:
+        log(
+            log_type="error",
+            message=f"Error during token validation: {str(e)}",
+            origin_name=AUTH_SERVER_NAME_IN_LOG,
+            origin_host=AUTH_SERVER_HOST,
+            structured_data=f"[{request.path} Verb {request.method}]",
+        )
+        return jsonify({"error": "Token validation failed"}), STATUS_CODES["unauthorized"]
 
 
 @app.route("/health", methods=["GET"])

@@ -98,7 +98,7 @@ class Tutor(Resource):
 
         # Check if the tutor exists
         tutor: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM tutor WHERE idTutor = %s", (id_,)
+            "SELECT nome FROM tutor WHERE id_tutor = %s", (id_,)
         )
         if tutor is None:
             return create_response(
@@ -107,7 +107,7 @@ class Tutor(Resource):
             )
 
         # Delete the tutor
-        execute_query("DELETE FROM tutor WHERE idTutor = %s", (id_,))
+        execute_query("DELETE FROM tutor WHERE id_tutor = %s", (id_,))
 
         # Log the deletion
         log(
@@ -141,7 +141,7 @@ class Tutor(Resource):
 
         # Check if tutor exists
         tutor: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM tutor WHERE idTutor = %s", (id_,)
+            "SELECT * FROM tutor WHERE id_tutor = %s", (id_,)
         )
         if tutor is None:
             return create_response(
@@ -170,7 +170,7 @@ class Tutor(Resource):
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="tutor", id_column="idTutor", id_value=id_
+            data=data, table_name="tutor", id_column="id_tutor", id_value=id_
         )
 
         # Update the tutor
@@ -210,7 +210,7 @@ class Tutor(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE idAzienda = %s", (turn_id,)
+            "SELECT * FROM aziende WHERE id_azienda = %s", (turn_id,)
         )
         if not company:
             return create_response(
@@ -222,7 +222,7 @@ class Tutor(Resource):
         tutors: List[Dict[str, Any]] = fetchall_query(
             "SELECT TU.nome, TU.cognome, TU.emailTutor, TU.telefonoTutor "
             "FROM turni AS T JOIN turnoTutor AS TT ON T.idTurno = TT.idTurno "
-            "JOIN tutor AS TU ON TU.idTutor = TT.idTutor "
+            "JOIN tutor AS TU ON TU.id_tutor = TT.id_tutor "
             "WHERE T.idTurno = %s",
             (turn_id,),
         )

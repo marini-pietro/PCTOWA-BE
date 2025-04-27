@@ -80,9 +80,9 @@ class Address(Resource):
                     status_code=STATUS_CODES["bad_request"],
                 )
 
-        # Check if idAzienda exists
+        # Check if id_azienda exists
         company = fetchone_query(
-            "SELECT * FROM aziende WHERE idAzienda = %s", (id_azienda,)
+            "SELECT * FROM aziende WHERE id_azienda = %s", (id_azienda,)
         )
         if company is None:
             return create_response(
@@ -124,7 +124,7 @@ class Address(Resource):
 
         # Check that specified resource exists
         address: Dict[str, Any] = fetchone_query(
-            "SELECT provincia FROM indirizzi WHERE idIndirizzo = %s", (id_,)
+            "SELECT provincia FROM indirizzi WHERE id_indirizzo = %s", (id_,)
         )  # Only fetch the province to check existence (could be any field)
         if address is None:  # If the address does not exist, return a 404 error
             return create_response(
@@ -133,7 +133,7 @@ class Address(Resource):
             )
 
         # Delete the address
-        execute_query("DELETE FROM indirizzi WHERE idIndirizzo = %s", (id_,))
+        execute_query("DELETE FROM indirizzi WHERE id_indirizzo = %s", (id_,))
 
         # Log the deletion
         log(
@@ -167,7 +167,7 @@ class Address(Resource):
 
         # Check if address exists
         address = fetchone_query(
-            "SELECT * FROM indirizzi WHERE idIndirizzo = %s", (id_,)
+            "SELECT * FROM indirizzi WHERE id_indirizzo = %s", (id_,)
         )
         if address is None:
             return create_response(
@@ -182,7 +182,7 @@ class Address(Resource):
             "comune",
             "cap",
             "indirizzo",
-            "idAzienda",
+            "id_azienda",
         }
         to_modify: list[str] = list(data.keys())
         error_columns = [
@@ -198,7 +198,7 @@ class Address(Resource):
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="indirizzi", id_column="idIndirizzo", id_value=id_
+            data=data, table_name="indirizzi", id_column="id_indirizzo", id_value=id_
         )
 
         # Update the address
@@ -241,10 +241,10 @@ class Address(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
         try:
-            idAzienda = int(request.args.get("idAzienda"))
+            id_azienda = int(request.args.get("id_azienda"))
         except ValueError:
             return create_response(
-                message={"error": "invalid idAzienda parameter"},
+                message={"error": "invalid id_azienda parameter"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
@@ -252,7 +252,7 @@ class Address(Resource):
         data = {
             key: request.args.get(key)
             for key in [
-                "idIndirizzo",
+                "id_indirizzo",
                 "stato",
                 "provincia",
                 "comune",
@@ -260,12 +260,12 @@ class Address(Resource):
                 "indirizzo",
             ]
         }
-        if idAzienda is not None:
-            data["idAzienda"] = idAzienda
+        if id_azienda is not None:
+            data["id_azienda"] = id_azienda
 
         # If 'id' is provided, add it to the filter
         if id_ is not None:
-            data["idIndirizzo"] = id_
+            data["id_indirizzo"] = id_
 
         try:
             # Build the query
@@ -277,7 +277,7 @@ class Address(Resource):
             addresses = fetchall_query(query, params)
 
             # Get the ids to log
-            ids = [address["idIndirizzo"] for address in addresses]
+            ids = [address["id_indirizzo"] for address in addresses]
 
             # Log the read
             log(

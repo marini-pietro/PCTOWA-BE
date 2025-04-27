@@ -1,15 +1,22 @@
+"""
+LegalForm Blueprint
+This module defines a Flask blueprint for handling legal form related operations.
+"""
+
 from os.path import basename as os_path_basename
-from typing import Dict, Union, List, Any
+from typing import Any, Dict, List
 from config import (
     API_SERVER_HOST,
     API_SERVER_PORT,
     API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
+
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity
 from mysql.connector import IntegrityError
+
 from .blueprints_utils import (
     check_authorization,
     fetchone_query,
@@ -18,8 +25,6 @@ from .blueprints_utils import (
     log,
     jwt_required_endpoint,
     create_response,
-    has_valid_json,
-    is_input_safe,
     get_class_http_verbs,
     validate_json_request,
 )
@@ -30,7 +35,6 @@ BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 # Create the blueprint and API
 legalform_bp = Blueprint(BP_NAME, __name__)
 api = Api(legalform_bp)
-
 
 class LegalForm(Resource):
     """

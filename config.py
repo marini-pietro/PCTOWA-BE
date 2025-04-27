@@ -71,6 +71,7 @@ STATUS_CODES: Dict[str, int] = {
     "ok": 200,
     "no_content": 204,
     "internal_error": 500,
+    "service_unavailable": 503
 }
 
 # Authorization related

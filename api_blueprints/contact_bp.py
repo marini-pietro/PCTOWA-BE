@@ -59,13 +59,13 @@ class Contact(Resource):
             "telefono": data.get("telefono"),
             "email": data.get("email"),
             "ruolo": data.get("ruolo"),
-            "idAzienda": data.get("idAzienda"),
+            "id_azienda": data.get("id_azienda"),
         }
 
         # Validate parameters
-        if params["idAzienda"] is not None:
+        if params["id_azienda"] is not None:
             try:
-                params["idAzienda"] = int(params["idAzienda"])
+                params["id_azienda"] = int(params["id_azienda"])
             except (ValueError, TypeError):
                 return create_response(
                     message={"outcome": "invalid company ID"},
@@ -74,7 +74,7 @@ class Contact(Resource):
 
         # Check if azienda exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE idAzienda = %s", (params["idAzienda"],)
+            "SELECT * FROM aziende WHERE id_azienda = %s", (params["id_azienda"],)
         )
         if not company:
             return create_response(
@@ -85,7 +85,7 @@ class Contact(Resource):
         # Execute query to insert the contact
         lastrowid: int = execute_query(
             """INSERT INTO contatti 
-            (nome, cognome, telefono, email, ruolo, idAzienda)
+            (nome, cognome, telefono, email, ruolo, id_azienda)
             VALUES (%s, %s, %s, %s, %s, %s)""",
             tuple(params.values()),
         )
@@ -176,7 +176,7 @@ class Contact(Resource):
             "telefono",
             "email",
             "ruolo",
-            "idAzienda",
+            "id_azienda",
         ]
         to_modify: List[str] = list(data.keys())
         error_columns: List[str] = [
@@ -232,7 +232,7 @@ class Contact(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE idAzienda = %s", (company_id,)
+            "SELECT * FROM aziende WHERE id_azienda = %s", (company_id,)
         )
         if not company:
             return create_response(
@@ -242,7 +242,7 @@ class Contact(Resource):
 
         # Get the data
         contact: List[Dict[str, Any]] = fetchall_query(
-            "SELECT * FROM contatti WHERE idAzienda = %s", (company_id,)
+            "SELECT * FROM contatti WHERE id_azienda = %s", (company_id,)
         )
 
         # Check if query returned any results

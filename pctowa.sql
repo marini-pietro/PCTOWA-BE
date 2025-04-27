@@ -174,14 +174,14 @@ INSERT INTO `indirizzi` (`id_indirizzo`, `stato`, `provincia`, `comune`, `cap`, 
 CREATE TABLE `materie` (
   `materia` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `descrizione` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
-  `hexColor` char(7) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'colore della tag nel frontend, obbligatorio esprimerlo con 7 caratteri'
+  `hex_color` char(7) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'colore della tag nel frontend, obbligatorio esprimerlo con 7 caratteri'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dump dei dati per la tabella `materie`
 --
 
-INSERT INTO `materie` (`materia`, `descrizione`, `hexColor`) VALUES
+INSERT INTO `materie` (`materia`, `descrizione`, `hex_color`) VALUES
 ('Android app', 'Sistemi e Reti', '#ffcc00'),
 ('Programmazione web', 'Programmazione web', '#00ccff'),
 ('Sistemista', 'Sistemista', '#cc00ff');
@@ -262,12 +262,12 @@ CREATE TABLE `turni` (
   `data_inizio` date DEFAULT NULL,
   `data_fine` date DEFAULT NULL,
   `posti` int(11) DEFAULT NULL,
-  `postiOccupati` int(11) DEFAULT 0,
+  `posti_occupati` int(11) DEFAULT 0,
   `ore` int(11) DEFAULT NULL,
   `id_azienda` int(11) NOT NULL,
   `id_indirizzo` int(11) DEFAULT NULL,
-  `oraInizio` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `oraFine` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `ora_inizio` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `ora_fine` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `giorno_inizio` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
   `giorno_fine` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -276,7 +276,7 @@ CREATE TABLE `turni` (
 -- Dump dei dati per la tabella `turni`
 --
 
-INSERT INTO `turni` (`id_turno`, `data_inizio`, `data_fine`, `posti`, `postiOccupati`, `ore`, `id_azienda`, `id_indirizzo`, `oraInizio`, `oraFine`, `giorno_inizio`, `giorno_fine`) VALUES
+INSERT INTO `turni` (`id_turno`, `data_inizio`, `data_fine`, `posti`, `posti_occupati`, `ore`, `id_azienda`, `id_indirizzo`, `ora_inizio`, `ora_fine`, `giorno_inizio`, `giorno_fine`) VALUES
 (1, '2024-03-01', '2024-05-31', 2, 2, 120, 1, 1, '09:00', '13:00', 'lunedì', 'venerdì'),
 (2, '2024-04-01', '2024-06-30', 3, 1, 100, 2, 2, '10:00', '14:00', 'martedì', 'giovedì'),
 (3, '2024-05-15', '2024-07-31', 1, 1, 80, 3, 3, '08:30', '12:00', 'mercoledì', 'venerdì');
@@ -338,7 +338,7 @@ CREATE TABLE `turno_tutor` (
 --
 
 CREATE TABLE `tutor` (
-  `idTutor` int(11) NOT NULL,
+  `id_tutor` int(11) NOT NULL,
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `emailTutor` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
@@ -349,7 +349,7 @@ CREATE TABLE `tutor` (
 -- Dump dei dati per la tabella `tutor`
 --
 
-INSERT INTO `tutor` (`idTutor`, `nome`, `cognome`, `emailTutor`, `telefonoTutor`) VALUES
+INSERT INTO `tutor` (`id_tutor`, `nome`, `cognome`, `emailTutor`, `telefonoTutor`) VALUES
 (1, 'Andrea', 'Gialli', 'a.gialli@techsolutions.it', '3456789012'),
 (2, 'Chiara', 'Blu', 'c.blu@greenfuture.it', '3344556677'),
 (3, 'Elena', 'Rosa', 'e.rosa@eduinnovazione.it', '3399988776');
@@ -361,7 +361,7 @@ INSERT INTO `tutor` (`idTutor`, `nome`, `cognome`, `emailTutor`, `telefonoTutor`
 --
 
 CREATE TABLE `utenti` (
-  `emailUtente` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `email_utente` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `password` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
@@ -372,7 +372,7 @@ CREATE TABLE `utenti` (
 -- Dump dei dati per la tabella `utenti`
 --
 
-INSERT INTO `utenti` (`emailUtente`, `password`, `nome`, `cognome`, `ruolo`) VALUES
+INSERT INTO `utenti` (`email_utente`, `password`, `nome`, `cognome`, `ruolo`) VALUES
 ('cinzia.decarli@marconiverona.edu.it', 'hashed_pwd3', 'Giorgio', 'Rosa', 3),
 ('irene.decarli@marconiverona.edu.it', 'hashed_pwd2', 'Anna', 'Verdi', 2),
 ('lorenzo.decarli@marconiverona.edu.it', 'hashed_pwd1', 'Luca', 'Bianchi', 1);
@@ -482,13 +482,13 @@ ALTER TABLE `turno_tutor`
 -- Indici per le tabelle `tutor`
 --
 ALTER TABLE `tutor`
-  ADD PRIMARY KEY (`idTutor`);
+  ADD PRIMARY KEY (`id_tutor`);
 
 --
 -- Indici per le tabelle `utenti`
 --
 ALTER TABLE `utenti`
-  ADD PRIMARY KEY (`emailUtente`);
+  ADD PRIMARY KEY (`email_utente`);
 
 --
 -- AUTO_INCREMENT per le tabelle scaricate
@@ -528,7 +528,7 @@ ALTER TABLE `turni`
 -- AUTO_INCREMENT per la tabella `tutor`
 --
 ALTER TABLE `tutor`
-  MODIFY `idTutor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_tutor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Limiti per le tabelle scaricate
@@ -545,7 +545,7 @@ ALTER TABLE `aziende`
 -- Limiti per la tabella `classi`
 --
 ALTER TABLE `classi`
-  ADD CONSTRAINT `classi_ibfk_1` FOREIGN KEY (`email_responsabile`) REFERENCES `utenti` (`emailUtente`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `classi_ibfk_1` FOREIGN KEY (`email_responsabile`) REFERENCES `utenti` (`email_utente`) ON UPDATE CASCADE;
 
 --
 -- Limiti per la tabella `contatti`
@@ -557,7 +557,7 @@ ALTER TABLE `contatti`
 -- Limiti per la tabella `docente_referente`
 --
 ALTER TABLE `docente_referente`
-  ADD CONSTRAINT `docenteReferente_ibfk_1` FOREIGN KEY (`email_docente`) REFERENCES `utenti` (`emailUtente`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `docenteReferente_ibfk_1` FOREIGN KEY (`email_docente`) REFERENCES `utenti` (`email_utente`) ON UPDATE CASCADE,
   ADD CONSTRAINT `docenteReferente_ibfk_2` FOREIGN KEY (`id_azienda`) REFERENCES `aziende` (`id_azienda`) ON UPDATE CASCADE;
 
 --
@@ -609,7 +609,7 @@ ALTER TABLE `turno_settore`
 -- Limiti per la tabella `turno_tutor`
 --
 ALTER TABLE `turno_tutor`
-  ADD CONSTRAINT `turnoTutor_ibfk_1` FOREIGN KEY (`id_tutor`) REFERENCES `tutor` (`idTutor`),
+  ADD CONSTRAINT `turnoTutor_ibfk_1` FOREIGN KEY (`id_tutor`) REFERENCES `tutor` (`id_tutor`),
   ADD CONSTRAINT `turnoTutor_ibfk_2` FOREIGN KEY (`id_turno`) REFERENCES `turni` (`id_turno`);
 COMMIT;
 

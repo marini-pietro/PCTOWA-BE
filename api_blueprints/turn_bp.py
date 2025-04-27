@@ -64,47 +64,47 @@ class Turn(Resource):
         # Gather parameters
         settore = data.get("settore")
         materia = data.get("materia")
-        dataInizio = parse_date_string(date_string=data.get("dataInizio"))
-        dataFine = parse_date_string(date_string=data.get("dataFine"))
-        oraInizio = parse_time_string(time_string=data.get("oraInizio"))
-        oraFine = parse_time_string(time_string=data.get("oraFine"))
-        giornoInizio = data.get("giornoInizio")
-        giornoFine = data.get("giornoFine")
+        data_inizio = parse_date_string(date_string=data.get("data_inizio"))
+        data_fine = parse_date_string(date_string=data.get("data_fine"))
+        ora_inizio = parse_time_string(time_string=data.get("ora_inizio"))
+        ora_fine = parse_time_string(time_string=data.get("ora_fine"))
+        giorno_inizio = data.get("giorno_inizio")
+        giorno_fine = data.get("giorno_fine")
         ore = data.get("ore")
         posti = data.get("posti")
-        idIndirizzo = data.get("idIndirizzo")
-        idTutor = data.get("idTutor")
-        idAzienda = data.get("idAzienda")
+        id_indirizzo = data.get("id_indirizzo")
+        id_tutor = data.get("id_tutor")
+        id_azienda = data.get("id_azienda")
 
         # Validate data
         valid_days: List[str] = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"]
-        if giornoInizio not in valid_days:
+        if giorno_inizio not in valid_days:
             return create_response(
-                message={"error": "invalid giornoInizio value"},
+                message={"error": "invalid giorno_inizio value"},
                 status_code=STATUS_CODES["bad_request"],
             )
-        if giornoFine not in valid_days:
+        if giorno_fine not in valid_days:
             return create_response(
-                message={"error": "invalid giornoFine value"},
+                message={"error": "invalid giorno_fine value"},
                 status_code=STATUS_CODES["bad_request"],
             )
-        if valid_days.index(giornoInizio) >= valid_days.index(giornoFine):
+        if valid_days.index(giorno_inizio) >= valid_days.index(giorno_fine):
             return create_response(
-                message={"error": "giornoInizio must be before giornoFine"},
+                message={"error": "giorno_inizio must be before giorno_fine"},
                 status_code=STATUS_CODES["bad_request"],
             )
-        if giornoInizio == giornoFine:
+        if giorno_inizio == giorno_fine:
             return create_response(
-                message={"error": "giornoInizio and giornoFine cannot be the same"},
+                message={"error": "giorno_inizio and giorno_fine cannot be the same"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
         values_to_check: Dict[str, int] = {
             "ore": ore,
             "posti": posti,
-            "idIndirizzo": idIndirizzo,
-            "idTutor": idTutor,
-            "idAzienda": idAzienda,
+            "id_indirizzo": id_indirizzo,
+            "id_tutor": id_tutor,
+            "id_azienda": id_azienda,
         }
         for key, value in values_to_check.items():
             if value is not None:
@@ -118,9 +118,9 @@ class Turn(Resource):
 
         # CHECK THAT VALUES PROVIDED ACTUALLY EXIST IN THE DATABASE
         pk_to_check: Dict[str, List[Union[str, Any]]] = {
-            "aziende": ["idAzienda", idAzienda],
-            "indirizzi": ["idIndirizzo", idIndirizzo],
-            "tutor": ["idTutor", idTutor],
+            "aziende": ["id_azienda", id_azienda],
+            "indirizzi": ["id_indirizzo", id_indirizzo],
+            "tutor": ["id_tutor", id_tutor],
             "materie": ["materia", materia],
             "settori": ["settore", settore],
         }
@@ -140,19 +140,19 @@ class Turn(Resource):
 
         # Insert the turn
         lastrowid: int = execute_query(
-            "INSERT INTO turni (dataInizio, dataFine, settore, posti, ore, idAzienda, idIndirizzo, idTutor, oraInizio, oraFine) " \
+            "INSERT INTO turni (data_inizio, data_fine, settore, posti, ore, id_azienda, id_indirizzo, id_tutor, ora_inizio, ora_fine) " \
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
-                dataInizio,
-                dataFine,
+                data_inizio,
+                data_fine,
                 settore,
                 posti,
                 ore,
-                idAzienda,
-                idIndirizzo,
-                idTutor,
-                oraInizio,
-                oraFine,
+                id_azienda,
+                id_indirizzo,
+                id_tutor,
+                ora_inizio,
+                ora_fine,
             ),
         )
 
@@ -198,7 +198,7 @@ class Turn(Resource):
 
         # Check that the specified turn exists
         turn: Dict[str, Any] = fetchone_query(
-            "SELECT postiOccupati FROM turni WHERE idTurno = %s", (id_,)
+            "SELECT posti_occupati FROM turni WHERE idTurno = %s", (id_,)
         )  # Only fetch the province to check existence (could be any field)
         if turn is None:
             return create_response(
@@ -251,18 +251,18 @@ class Turn(Resource):
 
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = [
-            "dataInizio",
-            "dataFine",
+            "data_inizio",
+            "data_fine",
             "posti",
-            "postiOccupati",
+            "posti_occupati",
             "ore",
-            "idAzienda",
-            "idTutor",
-            "idIndirizzo",
-            "oraInizio",
-            "oraFine",
-            "giornoInizio",
-            "giornoFine",
+            "id_azienda",
+            "id_tutor",
+            "id_indirizzo",
+            "ora_inizio",
+            "ora_fine",
+            "giorno_inizio",
+            "giorno_fine",
         ]
         to_modify: List[str] = list(data.keys())
         error_columns: List[str] = [
@@ -318,7 +318,7 @@ class Turn(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE idAzienda = %s", (company_id,)
+            "SELECT * FROM aziende WHERE id_azienda = %s", (company_id,)
         )
         if not company:
             return create_response(
@@ -328,7 +328,7 @@ class Turn(Resource):
 
         # Get the data
         turns: List[Dict[str, Any]] = fetchall_query(
-            "SELECT dataInizio, dataFine, posti, postiOccupati, ore, idAzienda, idTutor, indirizzo, oraInizio, oraFine, giornoInizio, giornoFine FROM turni WHERE idAzienda = %s",
+            "SELECT data_inizio, data_fine, posti, posti_occupati, ore, id_azienda, id_tutor, indirizzo, ora_inizio, ora_fine, giorno_inizio, giorno_fine FROM turni WHERE id_azienda = %s",
             (company_id,),
         )
 
