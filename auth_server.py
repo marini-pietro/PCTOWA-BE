@@ -174,7 +174,9 @@ def validate():
 
         # Return the identity of the user
         response = jsonify({"valid": True, "identity": identity})
-        response.headers["Cache-Control"] = "no-store" # Prevent caching of sensitive data
+        response.headers["Cache-Control"] = (
+            "no-store"  # Prevent caching of sensitive data
+        )
         return response, STATUS_CODES["ok"]
 
     except Exception as e:
@@ -185,7 +187,10 @@ def validate():
             origin_host=AUTH_SERVER_HOST,
             structured_data=f"[{request.path} Verb {request.method}]",
         )
-        return jsonify({"error": "Token validation failed"}), STATUS_CODES["unauthorized"]
+        return (
+            jsonify({"error": "Token validation failed"}),
+            STATUS_CODES["unauthorized"],
+        )
 
 
 @app.route("/health", methods=["GET"])

@@ -103,7 +103,7 @@ class Student(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": 'POST'},
+                structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": "POST"},
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -116,7 +116,7 @@ class Student(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": 'POST'},
+                structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": "POST"},
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -130,7 +130,7 @@ class Student(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": 'POST'},
+            structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": "POST"},
         )
 
         return create_response(
@@ -169,7 +169,7 @@ class Student(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": 'DELETE'},
+            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": "DELETE"},
         )
 
         # Return a success message
@@ -232,7 +232,7 @@ class Student(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": 'PATCH'}
+            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": "PATCH"},
         )
 
         # Return a success message
@@ -254,7 +254,7 @@ class Student(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint":Student.ENDPOINT_PATHS[2], "verb": 'GET'}
+            structured_data={"endpoint": Student.ENDPOINT_PATHS[2], "verb": "GET"},
         )
 
         # Check if the class exists
@@ -411,7 +411,10 @@ class BindStudentToTurn(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": BindStudentToTurn.ENDPOINT_PATHS[0], "verb": 'POST'}
+                structured_data={
+                    "endpoint": BindStudentToTurn.ENDPOINT_PATHS[0],
+                    "verb": "POST",
+                },
             )
             return create_response(
                 message={"outcome": "student successfully bound to turn"},
@@ -424,7 +427,10 @@ class BindStudentToTurn(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": BindStudentToTurn.ENDPOINT_PATHS[0], "verb": 'POST'}
+                structured_data={
+                    "endpoint": BindStudentToTurn.ENDPOINT_PATHS[0],
+                    "verb": "POST",
+                },
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -437,7 +443,10 @@ class BindStudentToTurn(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": BindStudentToTurn.ENDPOINT_PATHS[0], "verb": 'POST'}
+                structured_data={
+                    "endpoint": BindStudentToTurn.ENDPOINT_PATHS[0],
+                    "verb": "POST",
+                },
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -485,7 +494,7 @@ class StudentList(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": StudentList.ENDPOINT_PATHS[0], "verb": 'GET'}
+            structured_data={"endpoint": StudentList.ENDPOINT_PATHS[0], "verb": "GET"},
         )
 
         # Check if the turn exists

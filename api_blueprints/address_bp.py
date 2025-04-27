@@ -143,7 +143,7 @@ class Address(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "DELETE"}
+            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "DELETE"},
         )
 
         return create_response(
@@ -213,7 +213,7 @@ class Address(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "PATCH"}
+            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "PATCH"},
         )
 
         # Return a success message
@@ -289,7 +289,7 @@ class Address(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": 'GET'},
+                structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "GET"},
             )
 
             # Return the results

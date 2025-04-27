@@ -38,6 +38,7 @@ BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 turn_bp = Blueprint(BP_NAME, __name__)
 api = Api(turn_bp)
 
+
 class Turn(Resource):
     """
     Class representing the Turn resource.
@@ -140,7 +141,7 @@ class Turn(Resource):
 
         # Insert the turn
         lastrowid: int = execute_query(
-            "INSERT INTO turni (data_inizio, data_fine, settore, posti, ore, id_azienda, id_indirizzo, id_tutor, ora_inizio, ora_fine) " \
+            "INSERT INTO turni (data_inizio, data_fine, settore, posti, ore, id_azienda, id_indirizzo, id_tutor, ora_inizio, ora_fine) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 data_inizio,
@@ -167,7 +168,7 @@ class Turn(Resource):
         if materia is not None:
             execute_query(
                 "INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)",
-                (lastrowid, materia)
+                (lastrowid, materia),
             )
 
         # Log the turn creation
@@ -177,7 +178,7 @@ class Turn(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Turn.ENDPOINT_PATHS[0], "verb": 'POST'}
+            structured_data={"endpoint": Turn.ENDPOINT_PATHS[0], "verb": "POST"},
         )
 
         # Return a success message
@@ -217,7 +218,7 @@ class Turn(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Turn.ENDPOINT_PATHS[1], "verb": 'DELETE'}
+            structured_data={"endpoint": Turn.ENDPOINT_PATHS[1], "verb": "DELETE"},
         )
 
         # Return a success message
@@ -293,7 +294,7 @@ class Turn(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Turn.ENDPOINT_PATHS[1], "verb":'PATCH'}
+            structured_data={"endpoint": Turn.ENDPOINT_PATHS[1], "verb": "PATCH"},
         )
 
         # Return a success message
@@ -317,7 +318,7 @@ class Turn(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Turn.ENDPOINT_PATHS[0], "verb": 'GET'}
+            structured_data={"endpoint": Turn.ENDPOINT_PATHS[0], "verb": "GET"},
         )
 
         # Check that the specified company exists

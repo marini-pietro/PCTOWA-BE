@@ -111,7 +111,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'POST'}
+                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "POST"},
             )
 
             # Return a success message
@@ -130,7 +130,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'POST'}
+                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "POST"},
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -143,7 +143,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'POST'}
+                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "POST"},
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -188,7 +188,7 @@ class Subject(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'DELETE'},
+            structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "DELETE"},
         )
 
         # Return a success message
@@ -251,7 +251,7 @@ class Subject(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'PATCH'}
+            structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "PATCH"},
         )
 
         # Return a success message
@@ -314,7 +314,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": 'GET'}
+                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "GET"},
             )
 
             # Return the subjects

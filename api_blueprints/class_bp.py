@@ -132,7 +132,7 @@ class Class(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[0]}, "verb": 'POST'}
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[0]}, "verb": "POST"},
         )
 
         # Return a success message
@@ -173,7 +173,7 @@ class Class(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": 'DELETE'}
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": "DELETE"},
         )
 
         # Return a success message
@@ -235,7 +235,7 @@ class Class(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": 'PATCH'}
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": "PATCH"},
         )
 
         # Return a success message
@@ -257,7 +257,7 @@ class Class(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[2]}, "verb": 'GET'},
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[2]}, "verb": "GET"},
         )
 
         # Check if user exists
@@ -347,7 +347,10 @@ class ClassFuzzySearch(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {ClassFuzzySearch.ENDPOINT_PATHS[0]}, "verb": 'GET'}
+            structured_data={
+                "endpoint": {ClassFuzzySearch.ENDPOINT_PATHS[0]},
+                "verb": "GET",
+            },
         )
 
         # Get the data
@@ -401,7 +404,7 @@ class ClassList(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {ClassList.ENDPOINT_PATHS[0]}, "verb": 'GET'}
+            structured_data={"endpoint": {ClassList.ENDPOINT_PATHS[0]}, "verb": "GET"},
         )
 
         # Get data

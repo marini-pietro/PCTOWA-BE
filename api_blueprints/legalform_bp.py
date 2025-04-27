@@ -36,6 +36,7 @@ BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 legalform_bp = Blueprint(BP_NAME, __name__)
 api = Api(legalform_bp)
 
+
 class LegalForm(Resource):
     """
     LegalForm class to handle legal form related operations.
@@ -79,7 +80,10 @@ class LegalForm(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": 'POST'}
+                structured_data={
+                    "endpoint": {LegalForm.ENDPOINT_PATHS[0]},
+                    "verb": "POST",
+                },
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -92,7 +96,10 @@ class LegalForm(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": 'POST'}
+                structured_data={
+                    "endpoint": {LegalForm.ENDPOINT_PATHS[0]},
+                    "verb": "POST",
+                },
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -106,7 +113,7 @@ class LegalForm(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": 'POST'}
+            structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": "POST"},
         )
 
         # Return a success message
@@ -146,7 +153,10 @@ class LegalForm(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[1]}, "verb": 'DELETE'}
+            structured_data={
+                "endpoint": {LegalForm.ENDPOINT_PATHS[1]},
+                "verb": "DELETE",
+            },
         )
 
         # Return a success message
@@ -202,7 +212,10 @@ class LegalForm(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[1]}, "verb": 'PATCH'}
+            structured_data={
+                "endpoint": {LegalForm.ENDPOINT_PATHS[1]},
+                "verb": "PATCH",
+            },
         )
 
         # Return a success message
@@ -248,7 +261,10 @@ class LegalForm(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": 'GET'}
+                structured_data={
+                    "endpoint": {LegalForm.ENDPOINT_PATHS[0]},
+                    "verb": "GET",
+                },
             )
 
             # Return the result

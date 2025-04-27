@@ -510,7 +510,7 @@ def jwt_required_endpoint(func: callable) -> callable:
         def get_bearer_token():
             auth_header = request.headers.get("Authorization", "")
             if auth_header.startswith("Bearer "):
-                return auth_header[len("Bearer "):]
+                return auth_header[len("Bearer ") :]
             return None
 
         token = get_bearer_token()
@@ -532,7 +532,7 @@ def jwt_required_endpoint(func: callable) -> callable:
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
                 }
- 
+
                 # Send a POST request to the auth server to validate the token
                 response = requests_post(
                     url=AUTH_SERVER_VALIDATE_URL,
@@ -541,7 +541,9 @@ def jwt_required_endpoint(func: callable) -> callable:
                 )
                 response.raise_for_status()  # Raise exception for HTTP errors
 
-                if response.status_code != STATUS_CODES["ok"] or not response.json().get("valid"):
+                if response.status_code != STATUS_CODES[
+                    "ok"
+                ] or not response.json().get("valid"):
                     return create_response(
                         message={"error": "Invalid or expired token"},
                         status_code=STATUS_CODES["unauthorized"],
