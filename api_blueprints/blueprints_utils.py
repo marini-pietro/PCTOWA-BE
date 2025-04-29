@@ -33,6 +33,7 @@ from config import (
     STATUS_CODES,
     ROLES,
     VALIDATION_REQUEST_TIMEOUT,
+    SYSLOG_SEVERITY_MAP
 )
 
 # Data validation related
@@ -441,19 +442,23 @@ def log_worker():
             break
 
         # Extract log details
-        type_, message, origin_name, origin_host, structured_data = log_data
+        type_, message, origin_name, origin_host, message_id, structured_data = log_data
 
-        # Format the log message in RFC 5424 format
+        # Get the severity code for the log_type
+        severity = SYSLOG_SEVERITY_MAP.get(type_, 6)  # Default to 'info' if not found
+
+        # Format the syslog message with the correct priority
+        priority = (1 * 8) + severity  # Assuming facility=1 (user-level messages)
         syslog_message = (
-            f"<14>1 "
+            f"<{priority}>1 "
             f"{datetime.now(timezone.utc).isoformat()} "  # Timestamp in ISO 8601 format with timezone
             f"{origin_host} "  # Hostname
             f"{origin_name} "  # App name
             f"{getpid()} "  # Process ID
-            f"{structured_data} "  # Message ID and Structured Data
-            f"{type_.upper()}: {message}"  # Log type and message
+            f"{message_id} "  # Message ID
+            f"{structured_data} "  # Structured Data
+            f"{message}"  # Log message
         )
-
         try:
             # Create a UDP socket and send the log message
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -477,12 +482,15 @@ def log(
     message: str,
     origin_name: str,
     origin_host: str,
+    message_id: str,
     structured_data: str = "- -",
 ) -> None:
     """
     Add a log message to the queue for the background thread to process.
     """
-    log_queue.put((log_type, message, origin_name, origin_host, structured_data))
+    log_queue.put(
+        (log_type, message, origin_name, origin_host, message_id, structured_data)
+    )
 
 
 # Graceful shutdown function to stop the log thread
