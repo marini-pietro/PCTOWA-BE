@@ -12,7 +12,7 @@ from typing import Dict
 
 # Define authentication server data
 AUTH_SERVER_HOST: str = "localhost"  # The host of the authentication server
-AUTH_SERVER_PORT: int = 5002  # The port of the authentication server
+AUTH_SERVER_PORT: int = 6002  # The port of the authentication server
 AUTH_SERVER_VALIDATE_URL: str = (
     f"http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate"  # The URL to validate a token
 )
@@ -25,7 +25,7 @@ VALIDATION_REQUEST_TIMEOUT: int = 3  # In seconds
 # Define log server host, port and server name in log files
 LOG_SERVER_HOST: str = "localhost"  # The host of the log server
 LOG_SERVER_PORT: int = (
-    514  # The port of the log server (default syslog port, can modified to open port for testing)
+    6014  # The port of the log server (default syslog port, can modified to open port for testing)
 )
 LOG_FILE_NAME: str = "pctowa_log.txt"
 LOGGER_NAME: str = "pctowa_logger"  # The name of the logger
@@ -33,12 +33,23 @@ LOG_SERVER_NAME_IN_LOG: str = "log-server"  # The name of the server in the log 
 RATE_LIMIT = 100  # Maximum messages per source
 TIME_WINDOW = 1  # Time window in seconds
 DELAYED_LOGS_QUEUE_SIZE = 100  # The size of the delayed logs queue (if the queue is full, the oldest logs will be removed to make space for new ones)
+# Define a severity map for the syslog server
+SYSLOG_SEVERITY_MAP: Dict[str, int] = {
+    "emergency": 0,  # System is unusable
+    "alert": 1,      # Action must be taken immediately
+    "critical": 2,   # Critical conditions
+    "error": 3,      # Error conditions
+    "warning": 4,    # Warning conditions
+    "notice": 5,     # Normal but significant condition
+    "info": 6,  # Informational messages
+    "debug": 7       # Debug-level messages
+}
 
 # Define host and port of the API server
 API_SERVER_HOST: str = (
     "172.16.1.98"  # The host of the API server (should be only server open to the rest of the network)
 )
-API_SERVER_PORT: int = 5000  # The port of the API server
+API_SERVER_PORT: int = 6000  # The port of the API server
 API_SERVER_NAME_IN_LOG: str = "api-server"  # The name of the server in the log messages
 API_VERSION: str = "v1"  # The version of the API
 URL_PREFIX: str = f"/api/{API_VERSION}/"

@@ -83,7 +83,7 @@ class User(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": User.ENDPOINT_PATHS[0], "verb": "POST"},
+                structured_data=f"[endpoint={User.ENDPOINT_PATHS[0]} verb='POST']",
             )
 
             # Return success message
@@ -285,17 +285,7 @@ class UserLogin(Resource):
             response.status_code == STATUS_CODES["ok"]
         ):  # If the login is successful, send the token back to the user
 
-            log(
-                log_type="info",
-                message=f"User {email} logged in successfully",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
-                structured_data={
-                    "endpoint": UserLogin.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
-            )
+            # Logging login is already handled by auth server
 
             return create_response(
                 message=response.json(), status_code=STATUS_CODES["ok"]
@@ -359,10 +349,7 @@ class UserLogin(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": UserLogin.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{UserLogin.ENDPOINT_PATHS[0]} verb='POST']"
             )
             return create_response(
                 message={"error": "Unexpected error during login"},

@@ -61,7 +61,8 @@ def login():
         message=f"Login attempt for {email}",
         origin_name=AUTH_SERVER_NAME_IN_LOG,
         origin_host=AUTH_SERVER_HOST,
-        structured_data=f"[{request.path} Verb {request.method}]",
+        message_id="UserAction",
+        structured_data=f"[endpoint='{request.path}' verb='POST']",
     )
 
     # Validate the request data
@@ -101,7 +102,8 @@ def login():
                 message=f"User {email} logged in",
                 origin_name=AUTH_SERVER_NAME_IN_LOG,
                 origin_host=AUTH_SERVER_HOST,
-                structured_data=f"[{request.path} Verb {request.method}]",
+                message_id="UserAction",
+                structured_data=f"[endpoint='{request.path}' verb='POST']",
             )
 
             return jsonify({"access_token": access_token}), STATUS_CODES["ok"]
@@ -112,7 +114,8 @@ def login():
                 message=f"Failed login attempt for {email} with password {password}",
                 origin_name=AUTH_SERVER_NAME_IN_LOG,
                 origin_host=AUTH_SERVER_HOST,
-                structured_data=f"[{request.path} Verb {request.method}]",
+                message_id="UserAction",
+                structured_data=f"[endpoint='{request.path}' verb='POST']",
             )
 
             # Return unauthorized status
@@ -123,13 +126,14 @@ def login():
 
     except (
         ValueError
-    ) as ex:  # Replace with specific exceptions like DatabaseError or ValueError
+    ) as ex:
         log(
             log_type="error",
             message=f"Error during login: {ex}",
             origin_name=AUTH_SERVER_NAME_IN_LOG,
             origin_host=AUTH_SERVER_HOST,
-            structured_data=f"[{request.path} Verb {request.method}]",
+            message_id="UserAction",
+            structured_data=f"[endpoint='{request.path}' verb='POST']",
         )
         return (
             jsonify({"error": "An error occurred during login"}),
@@ -143,11 +147,7 @@ def validate():
     """
     Validate the JWT token and return the user's identity.
     """
-
-    # Write the request headers to a file
-    with open("request_headers.log", "a") as file:
-        file.write(f"Headers: {dict(request.headers)}\n")
-
+    
     try:
         # Get the JWT identity
         identity = get_jwt_identity()
@@ -159,7 +159,7 @@ def validate():
                 message="Invalid token validation attempt",
                 origin_name=AUTH_SERVER_NAME_IN_LOG,
                 origin_host=AUTH_SERVER_HOST,
-                structured_data=f"[{request.path} Verb {request.method}]",
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return jsonify({"error": "Invalid token"}), STATUS_CODES["unauthorized"]
 
@@ -169,7 +169,7 @@ def validate():
             message=f"Token validation successful for identity: {identity}",
             origin_name=AUTH_SERVER_NAME_IN_LOG,
             origin_host=AUTH_SERVER_HOST,
-            structured_data=f"[{request.path} Verb {request.method}]",
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return the identity of the user
@@ -185,7 +185,7 @@ def validate():
             message=f"Error during token validation: {str(e)}",
             origin_name=AUTH_SERVER_NAME_IN_LOG,
             origin_host=AUTH_SERVER_HOST,
-            structured_data=f"[{request.path} Verb {request.method}]",
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
         return (
             jsonify({"error": "Token validation failed"}),

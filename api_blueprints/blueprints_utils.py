@@ -483,11 +483,15 @@ def log(
     origin_name: str,
     origin_host: str,
     message_id: str,
-    structured_data: str = "- -",
+    structured_data: Union[str, Dict[str, Any]]= "- -",
 ) -> None:
     """
     Add a log message to the queue for the background thread to process.
     """
+
+    if isinstance(structured_data, Dict):
+        structured_data = "[" + " ".join([f'{key}="{value}"' for key, value in structured_data.items()]) + "]"
+
     log_queue.put(
         (log_type, message, origin_name, origin_host, message_id, structured_data)
     )
