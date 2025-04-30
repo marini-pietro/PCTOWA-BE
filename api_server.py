@@ -12,7 +12,6 @@ from importlib import import_module
 from flask import Flask, jsonify
 from api_blueprints import __all__  # Import all the blueprints
 from api_blueprints.blueprints_utils import log
-import subprocess
 from config import (
     API_SERVER_HOST,
     API_SERVER_PORT,
@@ -71,54 +70,6 @@ def list_endpoints():
                 }
             )
         return jsonify({"endpoints": endpoints}), STATUS_CODES["ok"]
-    else:
-        return (
-            jsonify(
-                {"error": "Feature not available while server is in production mode"}
-            ),
-            STATUS_CODES["forbidden"],
-        )
-
-
-@app.route(f"/api/{API_VERSION}/shutdown", methods=["GET"])
-def shutdown_endpoint():
-    """
-    Endpoint to shut down the server.
-    Only available in debug mode.
-    """
-    if API_SERVER_DEBUG_MODE is True:
-
-        # Close the API server
-        log(
-            log_type="info",
-            message="API server shutting down",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
-            structured_data=f"[host: {API_SERVER_HOST}, port: {API_SERVER_PORT}]",
-        )
-
-        # Execute the shell script during shutdown
-        try:
-            result = subprocess.run(
-                [
-                    "bash",
-                    os_path_join(
-                        os_path_dirname(os_path_abspath(__file__)),
-                        "scripts",
-                        "kill_quick.sh",
-                    ),
-                ],  # Replace with the actual script path
-                check=True,
-                text=True,
-                capture_output=True,
-            )
-            print(f"Script executed successfully: {result.stdout}")
-        except subprocess.CalledProcessError as e:
-            print(f"Script execution failed: {e.stderr}")
-
-        return jsonify({"message": "Server shut down"}), STATUS_CODES["ok"]
-
     else:
         return (
             jsonify(

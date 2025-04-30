@@ -1,7 +1,6 @@
 # Webapp-PCTO API
 
-Questo progetto è un'API RESTful basata su Flask per la gestione di dati relativi a una piattaforma di collaborazione scuola-azienda.  
-L'API fornisce endpoint per gestire tutte le risorse relative alla attività PCTO.
+Questo progetto è un'API RESTful basata su Flask per la gestione di dati relativi alla collaborazione scuola-azienda.
 
 ## Documentazione  
 

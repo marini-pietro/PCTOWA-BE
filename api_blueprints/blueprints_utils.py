@@ -33,7 +33,7 @@ from config import (
     STATUS_CODES,
     ROLES,
     VALIDATION_REQUEST_TIMEOUT,
-    SYSLOG_SEVERITY_MAP
+    SYSLOG_SEVERITY_MAP,
 )
 
 # Data validation related
