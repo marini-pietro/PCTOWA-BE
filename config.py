@@ -20,7 +20,7 @@ AUTH_SERVER_NAME_IN_LOG: str = "auth-server"
 AUTH_SERVER_DEBUG_MODE: bool = True
 JWT_TOKEN_DURATION: int = 3  # In hours
 JWT_SECRET_KEY: str = "Lorem ipsum dolor sit amet eget."
-VALIDATION_REQUEST_TIMEOUT: int = 3  # In seconds
+JWT_ALGORITHM: str = "HS256"  # The algorithm used to sign the JWT token
 
 # Define log server host, port and server name in log files
 LOG_SERVER_HOST: str = "localhost"  # The host of the log server
@@ -33,16 +33,15 @@ LOG_SERVER_NAME_IN_LOG: str = "log-server"  # The name of the server in the log 
 RATE_LIMIT = 100  # Maximum messages per source
 TIME_WINDOW = 1  # Time window in seconds
 DELAYED_LOGS_QUEUE_SIZE = 100  # The size of the delayed logs queue (if the queue is full, the oldest logs will be removed to make space for new ones)
-# Define a severity map for the syslog server
-SYSLOG_SEVERITY_MAP: Dict[str, int] = {
+SYSLOG_SEVERITY_MAP: Dict[str, int] = {  # Define a severity map for the syslog server
     "emergency": 0,  # System is unusable
-    "alert": 1,      # Action must be taken immediately
-    "critical": 2,   # Critical conditions
-    "error": 3,      # Error conditions
-    "warning": 4,    # Warning conditions
-    "notice": 5,     # Normal but significant condition
+    "alert": 1,  # Action must be taken immediately
+    "critical": 2,  # Critical conditions
+    "error": 3,  # Error conditions
+    "warning": 4,  # Warning conditions
+    "notice": 5,  # Normal but significant condition
     "info": 6,  # Informational messages
-    "debug": 7       # Debug-level messages
+    "debug": 7,  # Debug-level messages
 }
 
 # Define host and port of the API server

@@ -1,14 +1,13 @@
 from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity
-from typing import List, Dict, Union, Any
+from flask_jwt_extended import get_jwt_identity, jwt_required
+from typing import List, Dict, Any
 from .blueprints_utils import (
     check_authorization,
     fetchone_query,
     execute_query,
     log,
-    jwt_required_endpoint,
     create_response,
     build_update_query_from_filters,
     fetchall_query,
@@ -37,7 +36,7 @@ class Contact(Resource):
 
     ENDPOINTS_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def post(self) -> Response:
         """
@@ -109,7 +108,7 @@ class Contact(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def delete(self, id_) -> Response:
         """
@@ -146,7 +145,7 @@ class Contact(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def patch(self, id_) -> Response:
         """
@@ -216,7 +215,7 @@ class Contact(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, company_id) -> Response:
         """
@@ -259,7 +258,7 @@ class Contact(Resource):
         # Return the contact data
         return create_response(message=contact, status_code=STATUS_CODES["ok"])
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

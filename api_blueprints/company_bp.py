@@ -1,21 +1,18 @@
 from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from re import match as re_match
-from typing import List, Dict, Union, Any
+from typing import List, Dict, Any
 from .blueprints_utils import (
     check_authorization,
-    has_valid_json,
     fetchone_query,
     fetchall_query,
     execute_query,
     log,
-    jwt_required_endpoint,
     create_response,
     build_update_query_from_filters,
     parse_date_string,
-    is_input_safe,
     get_class_http_verbs,
     validate_json_request,
 )
@@ -47,7 +44,7 @@ class Company(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def post(self) -> Response:
         """
@@ -117,7 +114,7 @@ class Company(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def delete(self, id_) -> Response:
         """
@@ -154,7 +151,7 @@ class Company(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def patch(self, id_) -> Response:
         """
@@ -240,7 +237,7 @@ class Company(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, id_) -> Response:
         """
@@ -302,7 +299,7 @@ class Company(Resource):
                 message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
             )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -329,7 +326,7 @@ class CompanyList(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/list"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self) -> Response:
 
@@ -420,7 +417,7 @@ class CompanyList(Resource):
         # Return data
         return create_response(message=companies, status_code=STATUS_CODES["ok"])
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

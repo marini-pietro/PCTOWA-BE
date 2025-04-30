@@ -1,7 +1,7 @@
 from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from requests import post as requests_post
 from requests.exceptions import RequestException
 from mysql.connector import IntegrityError
@@ -12,7 +12,6 @@ from .blueprints_utils import (
     fetchall_query,
     execute_query,
     log,
-    jwt_required_endpoint,
     create_response,
     build_update_query_from_filters,
     get_class_http_verbs,
@@ -48,7 +47,7 @@ class User(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<string:email>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def post(self) -> Response:
         """
@@ -102,7 +101,7 @@ class User(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def delete(self, email) -> Response:
         """
@@ -139,7 +138,7 @@ class User(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def patch(self, email) -> Response:
         """
@@ -210,7 +209,7 @@ class User(Resource):
 
     # TODO GET method to get all user for an admin page???
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -349,7 +348,7 @@ class UserLogin(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data=f"[endpoint='{UserLogin.ENDPOINT_PATHS[0]} verb='POST']"
+                structured_data=f"[endpoint='{UserLogin.ENDPOINT_PATHS[0]} verb='POST']",
             )
             return create_response(
                 message={"error": "Unexpected error during login"},
@@ -386,7 +385,7 @@ class BindUserToCompany(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/bind/<string:email>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def post(self, email) -> Response:
         """
@@ -496,7 +495,7 @@ class BindUserToCompany(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -527,7 +526,7 @@ class ReadBindedUser(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/bind/<string:id_>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, id_) -> Response:
         """
@@ -606,7 +605,7 @@ class ReadBindedUser(Resource):
         # Return the list of users
         return create_response(message=resources, status_code=STATUS_CODES["ok"])
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

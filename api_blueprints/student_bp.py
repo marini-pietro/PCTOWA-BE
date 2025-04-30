@@ -8,7 +8,7 @@ from config import (
 )
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from mysql.connector import IntegrityError
 from .blueprints_utils import (
     check_authorization,
@@ -16,11 +16,8 @@ from .blueprints_utils import (
     fetchall_query,
     execute_query,
     log,
-    jwt_required_endpoint,
     create_response,
     build_update_query_from_filters,
-    has_valid_json,
-    is_input_safe,
     get_class_http_verbs,
     validate_json_request,
 )
@@ -44,7 +41,7 @@ class Student(Resource):
         f"/{BP_NAME}/<int:class_id>",
     ]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def post(self) -> Response:
         """
@@ -141,7 +138,7 @@ class Student(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def delete(self, matricola) -> Response:
         """
@@ -178,7 +175,7 @@ class Student(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def patch(self, matricola) -> Response:
         """
@@ -241,7 +238,7 @@ class Student(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, class_id) -> Response:
         """
@@ -317,7 +314,7 @@ class Student(Resource):
         # Return the response
         return create_response(message=out_json, status_code=STATUS_CODES["ok"])
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -346,7 +343,7 @@ class BindStudentToTurn(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/bind/<int:matricola>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def post(self, matricola) -> Response:
         """
@@ -453,7 +450,7 @@ class BindStudentToTurn(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -481,7 +478,7 @@ class StudentList(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/list/<int:turn_id>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, turn_id) -> Response:
         """
@@ -519,7 +516,7 @@ class StudentList(Resource):
         # Return the response
         return create_response(message=students, status_code=STATUS_CODES["ok"])
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

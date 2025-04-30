@@ -10,7 +10,7 @@ from typing import List, Union, Dict, Any
 
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from config import (
     API_SERVER_HOST,
@@ -20,12 +20,10 @@ from config import (
 )
 from .blueprints_utils import (
     check_authorization,
-    has_valid_json,
     fetchone_query,
     fetchall_query,
     execute_query,
     log,
-    jwt_required_endpoint,
     create_response,
     build_update_query_from_filters,
     is_input_safe,
@@ -53,7 +51,7 @@ class Class(Resource):
         f"/{BP_NAME}/<string:email>",
     ]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def post(self) -> Response:
         """
@@ -144,7 +142,7 @@ class Class(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def delete(self, id_) -> Response:
         """
@@ -181,7 +179,7 @@ class Class(Resource):
             message={"outcome": "class deleted"}, status_code=STATUS_CODES["no_content"]
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def patch(self, id_) -> Response:
         """
@@ -243,7 +241,7 @@ class Class(Resource):
             message={"outcome": "class updated"}, status_code=STATUS_CODES["ok"]
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, email_responsabile) -> Response:
         """
@@ -279,7 +277,7 @@ class Class(Resource):
         # Return the data
         return create_response(message=classes_data, status_code=STATUS_CODES["ok"])
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -308,7 +306,7 @@ class ClassFuzzySearch(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/fsearch"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self) -> Response:
         """
@@ -361,7 +359,7 @@ class ClassFuzzySearch(Resource):
         # Return the data
         return create_response(message=data, status_code=STATUS_CODES["ok"])
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -390,7 +388,7 @@ class ClassList(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/list"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self) -> Response:
         """
@@ -414,7 +412,7 @@ class ClassList(Resource):
 
         return create_response(message=class_names, status_code=STATUS_CODES["ok"])
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

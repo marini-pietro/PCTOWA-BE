@@ -14,7 +14,7 @@ from config import (
 
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from mysql.connector import IntegrityError
 
 from .blueprints_utils import (
@@ -23,7 +23,6 @@ from .blueprints_utils import (
     fetchall_query,
     execute_query,
     log,
-    jwt_required_endpoint,
     create_response,
     get_class_http_verbs,
     validate_json_request,
@@ -45,7 +44,7 @@ class LegalForm(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"{BP_NAME}/<string:forma>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def post(self) -> Response:
         """
@@ -125,7 +124,7 @@ class LegalForm(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def delete(self, forma) -> Response:
         """
@@ -165,7 +164,7 @@ class LegalForm(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def patch(self, forma) -> Response:
         """
@@ -224,7 +223,7 @@ class LegalForm(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self) -> Response:
         """
@@ -274,7 +273,7 @@ class LegalForm(Resource):
                 message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
             )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

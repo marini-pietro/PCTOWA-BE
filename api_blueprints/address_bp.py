@@ -6,7 +6,7 @@ from os.path import basename as os_path_basename
 from typing import Any, Dict
 
 from flask import Blueprint, Response, request
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Api, Resource
 
 from config import (
@@ -24,7 +24,6 @@ from .blueprints_utils import (
     fetchall_query,
     fetchone_query,
     get_class_http_verbs,
-    jwt_required_endpoint,
     log,
     validate_json_request,
 )
@@ -46,7 +45,7 @@ class Address(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def post(self) -> Response:
         """
@@ -114,7 +113,7 @@ class Address(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def delete(self, id_) -> Response:
         """
@@ -151,7 +150,7 @@ class Address(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def patch(self, id_) -> Response:
         """
@@ -222,7 +221,7 @@ class Address(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, id_) -> Response:
         """
@@ -299,7 +298,7 @@ class Address(Resource):
                 message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
             )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         # Define allowed methods

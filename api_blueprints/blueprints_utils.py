@@ -15,12 +15,9 @@ from os import getpid
 from typing import Dict, List, Tuple, Any, Union
 from functools import wraps
 from contextlib import contextmanager
-from flask import jsonify, make_response, request, Response, Request
+from flask import jsonify, make_response, Response, Request
 from flask_jwt_extended import get_jwt_identity
 from mysql.connector import pooling as mysql_pooling
-from requests import post as requests_post
-from requests.exceptions import RequestException
-from cachetools import TTLCache
 from config import (
     DB_HOST,
     REDACTED_USER,
@@ -29,10 +26,8 @@ from config import (
     CONNECTION_POOL_SIZE,
     LOG_SERVER_HOST,
     LOG_SERVER_PORT,
-    AUTH_SERVER_VALIDATE_URL,
     STATUS_CODES,
     ROLES,
-    VALIDATION_REQUEST_TIMEOUT,
     SYSLOG_SEVERITY_MAP,
 )
 
@@ -483,14 +478,18 @@ def log(
     origin_name: str,
     origin_host: str,
     message_id: str,
-    structured_data: Union[str, Dict[str, Any]]= "- -",
+    structured_data: Union[str, Dict[str, Any]] = "- -",
 ) -> None:
     """
     Add a log message to the queue for the background thread to process.
     """
 
     if isinstance(structured_data, Dict):
-        structured_data = "[" + " ".join([f'{key}="{value}"' for key, value in structured_data.items()]) + "]"
+        structured_data = (
+            "["
+            + " ".join([f'{key}="{value}"' for key, value in structured_data.items()])
+            + "]"
+        )
 
     log_queue.put(
         (log_type, message, origin_name, origin_host, message_id, structured_data)
@@ -504,74 +503,3 @@ def shutdown_logging():
     """
     log_queue.put(None)  # Send exit signal
     log_thread.join()  # Wait for the thread to finish (even if it is a daemon thread so no logs are lost)
-
-
-# Token validation related
-# | Create a cache for token validation results with a time-to-live (TTL) of 600 seconds (10 minutes)
-token_cache = TTLCache(maxsize=5000, ttl=600)
-
-
-def jwt_required_endpoint(func: callable) -> callable:
-    """
-    Decorator to check if the JWT token is valid and cache the result.
-    """
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        # Extract the token from the Authorization header
-        def get_bearer_token():
-            auth_header = request.headers.get("Authorization", "")
-            if auth_header.startswith("Bearer "):
-                return auth_header[len("Bearer ") :]
-            return None
-
-        token = get_bearer_token()
-        if not token:
-            return create_response(
-                message={"error": "missing token"},
-                status_code=STATUS_CODES["unauthorized"],
-            )
-
-        # Check token cache
-        cached_result = token_cache.get(token)
-        if cached_result:
-            is_valid, identity = cached_result
-        else:
-            try:
-
-                # Headers (e.g., Authorization token)
-                headers = {
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                }
-
-                # Send a POST request to the auth server to validate the token
-                response = requests_post(
-                    url=AUTH_SERVER_VALIDATE_URL,
-                    headers=headers,
-                    timeout=VALIDATION_REQUEST_TIMEOUT,
-                )
-                response.raise_for_status()  # Raise exception for HTTP errors
-
-                if response.status_code != STATUS_CODES[
-                    "ok"
-                ] or not response.json().get("valid"):
-                    return create_response(
-                        message={"error": "Invalid or expired token"},
-                        status_code=STATUS_CODES["unauthorized"],
-                    )
-
-                is_valid = response.json().get("valid")
-                identity = response.json().get("identity")
-                token_cache[token] = (is_valid, identity)
-
-            except RequestException as e:
-                return create_response(
-                    message={"error": f"Authentication server error: {str(e)}"},
-                    status_code=STATUS_CODES["service_unavailable"],
-                )
-
-        # Pass the identity to the wrapped function
-        return func(*args, **kwargs, identity=identity)
-
-    return wrapper

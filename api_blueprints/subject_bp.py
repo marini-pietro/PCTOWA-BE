@@ -1,7 +1,7 @@
 from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from typing import List, Dict, Any
 from re import match as re_match
 from mysql.connector import IntegrityError
@@ -11,7 +11,6 @@ from .blueprints_utils import (
     fetchall_query,
     execute_query,
     log,
-    jwt_required_endpoint,
     create_response,
     build_update_query_from_filters,
     build_select_query_from_filters,
@@ -46,7 +45,7 @@ class Subject(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/<string:materia>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def post(self, materia) -> Response:
         """
@@ -150,7 +149,7 @@ class Subject(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def delete(self, materia) -> Response:
         """
@@ -197,7 +196,7 @@ class Subject(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def patch(self, materia) -> Response:
         """
@@ -260,7 +259,7 @@ class Subject(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, materia) -> Response:  # TODO rework this endpoint
         """
@@ -324,7 +323,7 @@ class Subject(Resource):
                 message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
             )
 
-    @jwt_required_endpoint
+    @jwt_required
     def options(self) -> Response:
         """
         Handle OPTIONS requests to provide allowed methods for the endpoint.

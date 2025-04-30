@@ -1,19 +1,16 @@
 from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from mysql.connector import IntegrityError
-from typing import Dict, Union, List, Any
+from typing import Dict, List, Any
 from .blueprints_utils import (
     check_authorization,
     fetchone_query,
     fetchall_query,
     execute_query,
     log,
-    jwt_required_endpoint,
     create_response,
-    has_valid_json,
-    is_input_safe,
     get_class_http_verbs,
     validate_json_request,
 )
@@ -45,7 +42,7 @@ class Sector(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"{BP_NAME}/<string:settore>"]
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def post(self) -> Response:
         """
@@ -131,7 +128,7 @@ class Sector(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def delete(self, settore) -> Response:
         """
@@ -167,7 +164,7 @@ class Sector(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin"])
     def patch(self, settore) -> Response:
         """
@@ -223,7 +220,7 @@ class Sector(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self) -> Response:
         """
@@ -270,7 +267,7 @@ class Sector(Resource):
                 message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
             )
 
-    @jwt_required_endpoint
+    @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

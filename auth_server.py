@@ -124,9 +124,7 @@ def login():
                 STATUS_CODES["unauthorized"],
             )
 
-    except (
-        ValueError
-    ) as ex:
+    except ValueError as ex:
         log(
             log_type="error",
             message=f"Error during login: {ex}",
@@ -147,7 +145,7 @@ def validate():
     """
     Validate the JWT token and return the user's identity.
     """
-    
+
     try:
         # Get the JWT identity
         identity = get_jwt_identity()
