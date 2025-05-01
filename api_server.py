@@ -70,13 +70,13 @@ def list_endpoints():
                 }
             )
         return jsonify({"endpoints": endpoints}), STATUS_CODES["ok"]
-    else:
-        return (
-            jsonify(
-                {"error": "Feature not available while server is in production mode"}
-            ),
-            STATUS_CODES["forbidden"],
-        )
+
+    return (
+        jsonify(
+            {"error": "Feature not available while server is in production mode"}
+        ),
+        STATUS_CODES["forbidden"],
+    )
 
 
 if __name__ == "__main__":

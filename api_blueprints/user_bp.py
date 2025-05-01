@@ -1,11 +1,33 @@
+"""
+User management module for the API.
+This module provides endpoints for user registration, login, and management.
+It includes the following functionalities:
+- User registration
+- User login
+- User deletion
+- User update
+- User binding to a company
+- Fetching the list of reference teachers associated with a given company or class
+- Fetching the list of users associated with a given company or class
+"""
+
 from os.path import basename as os_path_basename
+from typing import List, Dict, Any, Union
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from requests import post as requests_post
 from requests.exceptions import RequestException
 from mysql.connector import IntegrityError
-from typing import List, Dict, Any, Union
+
+from config import (
+    API_SERVER_HOST,
+    API_SERVER_NAME_IN_LOG,
+    AUTH_SERVER_HOST,
+    AUTH_SERVER_PORT,
+    STATUS_CODES,
+)
+
 from .blueprints_utils import (
     check_authorization,
     fetchone_query,
@@ -16,14 +38,7 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     get_class_http_verbs,
     validate_json_request,
-)
-from config import (
-    API_SERVER_HOST,
-    API_SERVER_PORT,
-    API_SERVER_NAME_IN_LOG,
-    AUTH_SERVER_HOST,
-    AUTH_SERVER_PORT,
-    STATUS_CODES,
+    get_hateos_location_string,
 )
 
 # Define constants
@@ -71,7 +86,8 @@ class User(Resource):
 
         try:
             lastrowid: int = execute_query(
-                "INSERT INTO utenti (email_utente, password, nome, cognome, tipo) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO utenti (email_utente, password, nome, cognome, tipo) "
+                "VALUES (%s, %s, %s, %s, %s)",
                 (email, password, name, surname, int(user_type)),
             )
 
@@ -89,11 +105,31 @@ class User(Resource):
             return create_response(
                 message={
                     "outcome": "user successfully created",
-                    "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}",
+                    "location": get_hateos_location_string(
+                        bp_name=BP_NAME, id_=lastrowid
+                    ),
                 },
                 status_code=STATUS_CODES["created"],
             )
         except IntegrityError as ex:
+
+            # Log the error
+            log(
+                log_type="error",
+                message=(
+                    f"User {get_jwt_identity().get("email")} tried to "
+                    f"register user {email} but it already generated {ex}"
+                ),
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                message_id="UserAction",
+                structured_data={
+                    "endpoint": User.ENDPOINT_PATHS[0],
+                    "verb": "POST",
+                },
+            )
+
+            # Return error message
             return create_response(
                 message={
                     "outcome": "error, user with provided credentials already exists"
@@ -273,7 +309,22 @@ class UserLogin(Resource):
                 json={"email": email, "password": password},
                 timeout=5,
             )
-        except RequestException as e:
+        except RequestException as ex:
+
+            # Log the error
+            log(
+                log_type="error",
+                message=f"Authentication service unavailable: {str(ex)}",
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                message_id="UserAction",
+                structured_data={
+                    "endpoint": UserLogin.ENDPOINT_PATHS[0],
+                    "verb": "POST",
+                },
+            )
+
+            # Return error response
             return create_response(
                 message={"error": "Authentication service unavailable"},
                 status_code=STATUS_CODES["internal_error"],
@@ -290,7 +341,7 @@ class UserLogin(Resource):
                 message=response.json(), status_code=STATUS_CODES["ok"]
             )
 
-        elif response.status_code == STATUS_CODES["unauthorized"]:
+        if response.status_code == STATUS_CODES["unauthorized"]:
             log(
                 log_type="warning",
                 message=f"Failed login attempt for email: {email}",
@@ -344,7 +395,10 @@ class UserLogin(Resource):
         else:
             log(
                 log_type="error",
-                message=f"Unexpected error during login for email: {email} with status code: {response.status_code}",
+                message=(
+                    f"Unexpected error during login for email: {email} "
+                    f"with status code: {response.status_code}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -446,7 +500,10 @@ class BindUserToCompany(Resource):
         except IntegrityError as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} tried to bind user {email} to company {company_id} but it already generated {ex}',
+                message=(
+                    f"User {get_jwt_identity().get('email')} tried to bind user {email} "
+                    f"to company {company_id} but it already generated {ex}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -462,7 +519,10 @@ class BindUserToCompany(Resource):
         except Exception as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} failed to bind user {email} to company {company_id} with error: {str(ex)}',
+                message=(
+                    f'User {get_jwt_identity().get("email")} failed to bind user {email} '
+                    f"to company {company_id} with error: {str(ex)}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -479,7 +539,10 @@ class BindUserToCompany(Resource):
         # Log the binding
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} bound user {email} to company {company_id}',
+            message=(
+                f"User {get_jwt_identity().get("email")} bound "
+                f"user {email} to company {company_id}"
+            ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -542,7 +605,10 @@ class ReadBindedUser(Resource):
         # Log the read
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} requested reference teacher list with {id_type} and id_ {id_}',
+            message=(
+                f"User {get_jwt_identity().get("email")} requested reference "
+                f"teacher list with {id_type} and id_ {id_}"
+            ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -578,7 +644,8 @@ class ReadBindedUser(Resource):
             # Build query
             query: str = (
                 "SELECT U.email_utente, U.nome, U.cognome, RT.anno "
-                "FROM docenteReferente AS RT JOIN utenti AS U ON U.email_utente = RT.docenteReferente "
+                "FROM docente_referente AS RT JOIN utenti AS U "
+                "ON U.email_utente = RT.docente_referente "
                 "WHERE RT.id_azienda = %s"
             )
 

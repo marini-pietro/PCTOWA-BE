@@ -29,6 +29,10 @@ from config import (
     STATUS_CODES,
     ROLES,
     SYSLOG_SEVERITY_MAP,
+    API_SERVER_HOST,
+    API_SERVER_PORT,
+    URL_PREFIX,
+    API_SERVER_SSL,
 )
 
 # Data validation related
@@ -75,12 +79,12 @@ def is_input_safe(data: Union[str, List[str], Dict[Any, str]]) -> bool:
     """
     if isinstance(data, str):
         return not bool(SQL_PATTERN.search(data))
-    elif isinstance(data, list):
+    if isinstance(data, list):
         return all(
             isinstance(item, str) and not bool(SQL_PATTERN.search(item))
             for item in data
         )
-    elif isinstance(data, dict):
+    if isinstance(data, dict):
         return all(
             isinstance(value, str) and not bool(SQL_PATTERN.search(value))
             for value in data.values()
@@ -223,6 +227,20 @@ def get_class_http_verbs(class_: type) -> List[str]:
 
     # Get all methods of the class and filter by HTTP verbs
     return [verb for verb in http_verbs if hasattr(class_, verb.lower())]
+
+
+def get_hateos_location_string(bp_name: str, id_: Union[str, int]) -> str:
+    """
+    Get the location string for HATEOAS links.
+
+    Returns:
+        str: The location string for HATEOAS links.
+    """
+
+    protocol = "https" if API_SERVER_SSL else "http"
+    return (
+        f"{protocol}://{API_SERVER_HOST}:{API_SERVER_PORT}{URL_PREFIX}{bp_name}/{id_}"
+    )
 
 
 # Data handling related
@@ -477,7 +495,7 @@ def log(
     message: str,
     origin_name: str,
     origin_host: str,
-    message_id: str,
+    message_id: str = "UserAction",
     structured_data: Union[str, Dict[str, Any]] = "- -",
 ) -> None:
     """

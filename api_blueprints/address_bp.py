@@ -11,7 +11,6 @@ from flask_restful import Api, Resource
 
 from config import (
     API_SERVER_HOST,
-    API_SERVER_PORT,
     API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
@@ -26,6 +25,7 @@ from .blueprints_utils import (
     get_class_http_verbs,
     log,
     validate_json_request,
+    get_hateos_location_string,
 )
 
 # Define constants
@@ -91,7 +91,8 @@ class Address(Resource):
 
         # Insert the address
         lastrowid = execute_query(
-            "INSERT INTO indirizzi (stato, provincia, comune, cap, indirizzo, id_azienda) VALUES (%s, %s, %s, %s, %s, %s)",
+            "INSERT INTO indirizzi (stato, provincia, comune, cap, indirizzo, id_azienda) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
             (stato, provincia, comune, cap, indirizzo, id_azienda),
         )
 
@@ -108,7 +109,7 @@ class Address(Resource):
         return create_response(
             message={
                 "outcome": "address successfully created",
-                "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}",
+                "location": get_hateos_location_string(bp_name=BP_NAME, id_=lastrowid),
             },
             status_code=STATUS_CODES["created"],
         )
@@ -293,14 +294,39 @@ class Address(Resource):
 
             # Return the results
             return create_response(message=addresses, status_code=STATUS_CODES["ok"])
-        except Exception as err:
+        except (
+            ValueError,
+            KeyError,
+            RuntimeError,
+        ) as err:  # Replace with specific exceptions
+
+            # Log the error
+            log(
+                log_type="error",
+                message=f"Error in Address GET: {err}",
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                message_id="UserAction",
+                structured_data={
+                    "endpoint": Address.ENDPOINT_PATHS[1],
+                    "verb": "GET",
+                },
+            )
+
+            # Return a 500 error response
             return create_response(
-                message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
+                message={"error": "interal server error"},
+                status_code=STATUS_CODES["internal_error"],
             )
 
     @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
+        """
+        Handles OPTIONS requests for the Address resource.
+        This method is used to determine the allowed HTTP methods for this resource.
+        It returns a 200 OK response with the allowed methods in the Allow header.
+        """
         # Define allowed methods
         allowed_methods = get_class_http_verbs(type(self))
 

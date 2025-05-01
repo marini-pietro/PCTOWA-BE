@@ -21,8 +21,8 @@ from config import (
     LOG_SERVER_PORT,
     LOG_FILE_NAME,
     LOGGER_NAME,
-    RATE_LIMIT,
-    TIME_WINDOW,
+    RATE_LIMIT_AMOUNT,
+    RATE_LIMIT_AMOUNT_TIME_WINDOW,
     DELAYED_LOGS_QUEUE_SIZE,
 )
 
@@ -59,7 +59,8 @@ class Logger:
 
     # Function to log messages with different levels
     # (automatically retrieves the right function based on the log type parameter)
-    # The log_type parameter should be one of the logging levels: debug, info, warning, error, critical
+    # The log_type parameter should be one of the logging levels:
+    # debug, info, warning, error, critical
     def log(self, log_type, message, origin):
         """
         Log a message with the specified type, message and origin
@@ -150,14 +151,17 @@ def process_syslog_message(message, addr):
     current_time = time.time()
 
     # Check and reset the count if the time window has passed
-    if current_time - message_counts[source_ip]["timestamp"] > TIME_WINDOW:
+    if (
+        current_time - message_counts[source_ip]["timestamp"]
+        > RATE_LIMIT_AMOUNT_TIME_WINDOW
+    ):
         message_counts[source_ip] = {"count": 0, "timestamp": current_time}
 
     # Increment the message count for the source
     message_counts[source_ip]["count"] += 1
 
     # Enforce rate limit
-    if message_counts[source_ip]["count"] > RATE_LIMIT:
+    if message_counts[source_ip]["count"] > RATE_LIMIT_AMOUNT:
         # Add the log to the delayed queue instead of dropping it
         with queue_lock:
             delayed_logs.append((message, addr))
@@ -206,7 +210,10 @@ def _process_message(message, addr):
         # Log the message with detailed information
         logger.log(
             log_type=log_level,
-            message=f"{timestamp} {hostname} {app_name} {proc_id} {msg_id} {structured_data} {msg_content}",
+            message=(
+                f"{timestamp} {hostname} {app_name} {proc_id} "
+                f"{msg_id} {structured_data} {msg_content}"
+            ),
             origin=f"sourceIP-{addr[0]}",
         )
     else:

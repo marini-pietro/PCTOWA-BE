@@ -5,17 +5,16 @@ This module defines a Flask blueprint for handling legal form related operations
 
 from os.path import basename as os_path_basename
 from typing import Any, Dict, List
-from config import (
-    API_SERVER_HOST,
-    API_SERVER_PORT,
-    API_SERVER_NAME_IN_LOG,
-    STATUS_CODES,
-)
-
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from mysql.connector import IntegrityError
+
+from config import (
+    API_SERVER_HOST,
+    API_SERVER_NAME_IN_LOG,
+    STATUS_CODES,
+)
 
 from .blueprints_utils import (
     check_authorization,
@@ -26,6 +25,7 @@ from .blueprints_utils import (
     create_response,
     get_class_http_verbs,
     validate_json_request,
+    get_hateos_location_string,
 )
 
 # Define constants
@@ -39,7 +39,8 @@ api = Api(legalform_bp)
 class LegalForm(Resource):
     """
     LegalForm class to handle legal form related operations.
-    This class is a Flask-RESTful resource that provides endpoints to create, read, update, and delete legal forms.
+    This class is a Flask-RESTful resource that provides endpoints
+    to create, read, update, and delete legal forms.
     """
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"{BP_NAME}/<string:forma>"]
@@ -75,7 +76,10 @@ class LegalForm(Resource):
         except IntegrityError as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} tried to create legal form {forma} but it generated {ex}',
+                message=(
+                    f"User {get_jwt_identity().get("email")} tried to "
+                    f"create legal form {forma} but it generated {ex}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -88,10 +92,13 @@ class LegalForm(Resource):
                 message={"error": "conflict error"},
                 status_code=STATUS_CODES["conflict"],
             )
-        except Exception as ex:
+        except (ValueError, TypeError) as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} failed to create legal form {forma} with error: {str(ex)}',
+                message=(
+                    f"User {get_jwt_identity().get("email")} failed to "
+                    f"create legal form {forma} with error: {str(ex)}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -119,7 +126,7 @@ class LegalForm(Resource):
         return create_response(
             message={
                 "outcome": "legal form successfully created",
-                "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{forma}",
+                "location": get_hateos_location_string(bp_name=BP_NAME, id_=forma),
             },
             status_code=STATUS_CODES["created"],
         )
@@ -207,7 +214,10 @@ class LegalForm(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated legal form {forma} to {new_value}',
+            message=(
+                f"User {get_jwt_identity().get("email")} updated "
+                f"legal form {forma} to {new_value}"
+            ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -268,9 +278,28 @@ class LegalForm(Resource):
 
             # Return the result
             return create_response(message=forms, status_code=STATUS_CODES["ok"])
-        except Exception as err:
+        except (ValueError, TypeError, RuntimeError) as err:
+
+            # Log the error
+            log(
+                log_type="error",
+                message=(
+                    f"User {get_jwt_identity().get("email")} failed "
+                    f"to read legal forms with error: {str(err)}"
+                ),
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                message_id="UserAction",
+                structured_data={
+                    "endpoint": {LegalForm.ENDPOINT_PATHS[0]},
+                    "verb": "GET",
+                },
+            )
+
+            # Return an error response
             return create_response(
-                message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
+                message={"error": "internal server error"},
+                status_code=STATUS_CODES["internal_error"],
             )
 
     @jwt_required

@@ -11,7 +11,6 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from config import (
     API_SERVER_HOST,
-    API_SERVER_PORT,
     API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
@@ -28,6 +27,7 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     get_class_http_verbs,
     validate_json_request,
+    get_hateos_location_string,
 )
 
 # Define constants
@@ -140,7 +140,9 @@ class Turn(Resource):
 
         # Insert the turn
         lastrowid: int = execute_query(
-            "INSERT INTO turni (data_inizio, data_fine, settore, posti, ore, id_azienda, id_indirizzo, id_tutor, ora_inizio, ora_fine) "
+            "INSERT INTO turni (data_inizio, data_fine, settore, "
+            "posti, ore, id_azienda, "
+            "id_indirizzo, id_tutor, ora_inizio, ora_fine) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 data_inizio,
@@ -184,7 +186,7 @@ class Turn(Resource):
         return create_response(
             message={
                 "outcome": "turn successfully created",
-                "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}",
+                "location": get_hateos_location_string(bp_name=BP_NAME, id_=lastrowid),
             },
             status_code=STATUS_CODES["created"],
         )
@@ -313,7 +315,10 @@ class Turn(Resource):
         # Log the read
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} requested turn list with company id {company_id}',
+            message=(
+                f"User {get_jwt_identity().get("email")} requested "
+                f"turn list with company id {company_id}"
+            ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -332,7 +337,11 @@ class Turn(Resource):
 
         # Get the data
         turns: List[Dict[str, Any]] = fetchall_query(
-            "SELECT data_inizio, data_fine, posti, posti_occupati, ore, id_azienda, id_tutor, indirizzo, ora_inizio, ora_fine, giorno_inizio, giorno_fine FROM turni WHERE id_azienda = %s",
+            "SELECT data_inizio, data_fine, posti, "
+            "posti_occupati, ore, id_azienda, "
+            "id_tutor, indirizzo, ora_inizio, "
+            "ora_fine, giorno_inizio, giorno_fine "
+            "FROM turni WHERE id_azienda = %s",
             (company_id,),
         )
 

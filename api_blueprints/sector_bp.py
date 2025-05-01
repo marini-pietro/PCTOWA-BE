@@ -1,9 +1,22 @@
+"""
+Blueprint for managing sectors in the database.
+This module provides a RESTful API for creating, deleting, updating, and retrieving sectors.
+It also includes authorization checks and logging for each operation.
+"""
+
 from os.path import basename as os_path_basename
+from typing import Dict, List, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from mysql.connector import IntegrityError
-from typing import Dict, List, Any
+
+from config import (
+    API_SERVER_HOST,
+    API_SERVER_NAME_IN_LOG,
+    STATUS_CODES,
+)
+
 from .blueprints_utils import (
     check_authorization,
     fetchone_query,
@@ -13,12 +26,7 @@ from .blueprints_utils import (
     create_response,
     get_class_http_verbs,
     validate_json_request,
-)
-from config import (
-    API_SERVER_HOST,
-    API_SERVER_PORT,
-    API_SERVER_NAME_IN_LOG,
-    STATUS_CODES,
+    get_hateos_location_string,
 )
 
 # Define constants
@@ -66,12 +74,12 @@ class Sector(Resource):
                 message={"error": "settore parameter is required"},
                 status_code=STATUS_CODES["bad_request"],
             )
-        elif len(settore) > 255:
+        if len(settore) > 255:
             return create_response(
                 message={"error": "settore parameter is too long"},
                 status_code=STATUS_CODES["bad_request"],
             )
-        elif not isinstance(settore, str):
+        if not isinstance(settore, str):
             return create_response(
                 message={"error": "settore parameter must be a string"},
                 status_code=STATUS_CODES["bad_request"],
@@ -85,7 +93,10 @@ class Sector(Resource):
         except IntegrityError as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} tried to create sector {settore} but it generated {ex}',
+                message=(
+                    f"User {get_jwt_identity().get("email")} tried "
+                    f"to create sector {settore} but it generated {ex}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -95,10 +106,13 @@ class Sector(Resource):
                 message={"error": "conflict error"},
                 status_code=STATUS_CODES["conflict"],
             )
-        except Exception as ex:
+        except (ValueError, TypeError) as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} failed to create sector {settore} with error: {str(ex)}',
+                message=(
+                    f"User {get_jwt_identity().get("email")} failed to "
+                    f"create sector {settore} with error: {str(ex)}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -123,7 +137,7 @@ class Sector(Resource):
         return create_response(
             message={
                 "outcome": "sector successfully created",
-                "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}",
+                "location": get_hateos_location_string(bp_name=BP_NAME, id_=lastrowid),
             },
             status_code=STATUS_CODES["created"],
         )
@@ -262,9 +276,25 @@ class Sector(Resource):
 
             # Return result
             return create_response(message=sectors, status_code=STATUS_CODES["ok"])
-        except Exception as err:
+        except (ValueError, TypeError, IntegrityError) as err:
+
+            # Log the error
+            log(
+                log_type="error",
+                message=(
+                    f"User {get_jwt_identity().get("email")} failed to "
+                    f"read sectors with error: {str(err)}"
+                ),
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                message_id="UserAction",
+                structured_data={"endpoint": Sector.ENDPOINT_PATHS[0], "verb": "GET"},
+            )
+
+            # Return error response
             return create_response(
-                message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
+                message={"error": "internal server error"},
+                status_code=STATUS_CODES["internal_error"],
             )
 
     @jwt_required

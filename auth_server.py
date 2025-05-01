@@ -107,19 +107,19 @@ def login():
             )
 
             return jsonify({"access_token": access_token}), STATUS_CODES["ok"]
-        else:
-            # Log the failed login attempt
-            log(
-                log_type="warning",
-                message=f"Failed login attempt for {email} with password {password}",
-                origin_name=AUTH_SERVER_NAME_IN_LOG,
-                origin_host=AUTH_SERVER_HOST,
-                message_id="UserAction",
-                structured_data=f"[endpoint='{request.path}' verb='POST']",
-            )
+ 
+        # Log the failed login attempt
+        log(
+            log_type="warning",
+            message=f"Failed login attempt for {email} with password {password}",
+            origin_name=AUTH_SERVER_NAME_IN_LOG,
+            origin_host=AUTH_SERVER_HOST,
+            message_id="UserAction",
+            structured_data=f"[endpoint='{request.path}' verb='POST']",
+        )
 
-            # Return unauthorized status
-            return (
+        # Return unauthorized status
+        return (
                 jsonify({"error": "Invalid credentials"}),
                 STATUS_CODES["unauthorized"],
             )
@@ -157,6 +157,7 @@ def validate():
                 message="Invalid token validation attempt",
                 origin_name=AUTH_SERVER_NAME_IN_LOG,
                 origin_host=AUTH_SERVER_HOST,
+                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return jsonify({"error": "Invalid token"}), STATUS_CODES["unauthorized"]
@@ -167,6 +168,7 @@ def validate():
             message=f"Token validation successful for identity: {identity}",
             origin_name=AUTH_SERVER_NAME_IN_LOG,
             origin_host=AUTH_SERVER_HOST,
+            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -183,6 +185,7 @@ def validate():
             message=f"Error during token validation: {str(e)}",
             origin_name=AUTH_SERVER_NAME_IN_LOG,
             origin_host=AUTH_SERVER_HOST,
+            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
         return (

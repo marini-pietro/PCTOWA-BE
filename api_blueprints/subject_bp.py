@@ -1,10 +1,22 @@
+"""
+Blueprint for managing subjects in the database.
+This module provides a RESTful API for creating, deleting, updating, and retrieving subjects.
+"""
+
 from os.path import basename as os_path_basename
+from typing import List, Dict, Any
+from re import match as re_match
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from typing import List, Dict, Any
-from re import match as re_match
 from mysql.connector import IntegrityError
+
+from config import (
+    API_SERVER_HOST,
+    API_SERVER_NAME_IN_LOG,
+    STATUS_CODES,
+)
+
 from .blueprints_utils import (
     check_authorization,
     fetchone_query,
@@ -16,12 +28,7 @@ from .blueprints_utils import (
     build_select_query_from_filters,
     get_class_http_verbs,
     validate_json_request,
-)
-from config import (
-    API_SERVER_HOST,
-    API_SERVER_PORT,
-    API_SERVER_NAME_IN_LOG,
-    STATUS_CODES,
+    get_hateos_location_string,
 )
 
 # Define constants
@@ -117,7 +124,9 @@ class Subject(Resource):
             return create_response(
                 message={
                     "outcome": "subject successfully created",
-                    "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}",
+                    "location": get_hateos_location_string(
+                        bp_name=BP_NAME, id_=lastrowid
+                    ),
                 },
                 status_code=STATUS_CODES["created"],
             )
@@ -125,7 +134,10 @@ class Subject(Resource):
         except IntegrityError as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} tried to create subject {materia} but it already generated {ex}',
+                message=(
+                    f"User {get_jwt_identity().get("email")} tried to "
+                    f"create subject {materia} but it already generated {ex}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -135,18 +147,21 @@ class Subject(Resource):
                 message={"error": "conflict error"},
                 status_code=STATUS_CODES["conflict"],
             )
-        except Exception as ex:
+        except (ValueError, RuntimeError) as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} failed to create subject {materia} with error: {str(ex)}',
+                message=(
+                    f"User {get_jwt_identity().get('email')} encountered an error "
+                    f"while creating subject {materia}: {str(ex)}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
                 structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "POST"},
             )
             return create_response(
-                message={"error": "internal server error"},
-                status_code=STATUS_CODES["internal_error"],
+                message={"error": "internal error"},
+                status_code=STATUS_CODES["bad_request"],
             )
 
     @jwt_required
@@ -318,9 +333,25 @@ class Subject(Resource):
 
             # Return the subjects
             return create_response(message=subjects, status_code=STATUS_CODES["ok"])
-        except Exception as err:
+        except (ValueError, RuntimeError, KeyError) as err:
+
+            # Log the error
+            log(
+                log_type="error",
+                message=(
+                    f"User {get_jwt_identity().get('email')} encountered an error "
+                    f"while reading subjects: {str(err)}"
+                ),
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                message_id="UserAction",
+                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "GET"},
+            )
+
+            # Return an error response
             return create_response(
-                message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
+                message={"error": "internal server error"},
+                status_code=STATUS_CODES["internal_error"],
             )
 
     @jwt_required

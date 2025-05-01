@@ -6,7 +6,7 @@ It also includes a fuzzy search endpoint for class names and one list endpoint.
 
 from re import match as re_match
 from os.path import basename as os_path_basename
-from typing import List, Union, Dict, Any
+from typing import List, Dict, Any
 
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
@@ -14,7 +14,6 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from config import (
     API_SERVER_HOST,
-    API_SERVER_PORT,
     API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
@@ -29,6 +28,7 @@ from .blueprints_utils import (
     is_input_safe,
     get_class_http_verbs,
     validate_json_request,
+    get_hateos_location_string,
 )
 
 # Define constants
@@ -84,7 +84,10 @@ class Class(Resource):
         if missing_fields:
             return create_response(
                 message={
-                    "error": f'missing required fields: {", ".join(missing_fields)}, check documentation'
+                    "error": (
+                        f'missing required fields: {", ".join(missing_fields)}, '
+                        "check documentation for details"
+                    )
                 },
                 status_code=STATUS_CODES["bad_request"],
             )
@@ -137,7 +140,7 @@ class Class(Resource):
         return create_response(
             message={
                 "outcome": "class created",
-                "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}",
+                "location": get_hateos_location_string(bp_name=BP_NAME, id_=lastrowid),
             },
             status_code=STATUS_CODES["created"],
         )
@@ -251,7 +254,10 @@ class Class(Resource):
         # Log the read
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} requested to read class with email {email_responsabile}',
+            message=(
+                f'User {get_jwt_identity().get("email")} requested '
+                f"to read class with email {email_responsabile}"
+            ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -341,7 +347,10 @@ class ClassFuzzySearch(Resource):
         # Log the operation
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} requested fuzzy search in classes with string {input_str}',
+            message=(
+                f'User {get_jwt_identity().get("email")} requested fuzzy '
+                f"search in classes with string {input_str}"
+            ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -353,7 +362,8 @@ class ClassFuzzySearch(Resource):
 
         # Get the data
         data: List[Dict[str, Any]] = fetchall_query(
-            "SELECT sigla " "FROM classi " "WHERE sigla LIKE %s", (f"%{input_str}%",)
+            query="SELECT sigla FROM classi WHERE sigla LIKE %s",
+            params=(f"%{input_str}%",),
         )
 
         # Return the data

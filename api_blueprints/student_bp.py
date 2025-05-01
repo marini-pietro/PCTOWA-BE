@@ -1,15 +1,20 @@
+"""
+Student API Blueprint
+"""
+
 from os.path import basename as os_path_basename
 from typing import List, Dict, Union, Any
-from config import (
-    API_SERVER_HOST,
-    API_SERVER_PORT,
-    API_SERVER_NAME_IN_LOG,
-    STATUS_CODES,
-)
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from mysql.connector import IntegrityError
+
+from config import (
+    API_SERVER_HOST,
+    API_SERVER_NAME_IN_LOG,
+    STATUS_CODES,
+)
+
 from .blueprints_utils import (
     check_authorization,
     fetchone_query,
@@ -20,6 +25,7 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     get_class_http_verbs,
     validate_json_request,
+    get_hateos_location_string,
 )
 
 # Define constants
@@ -96,7 +102,10 @@ class Student(Resource):
         except IntegrityError as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} tried to create student {matricola} but it already generated {ex}',
+                message=(
+                    f'User {get_jwt_identity().get("email")} tried to create student {matricola} '
+                    f"but it already generated {ex}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -106,10 +115,13 @@ class Student(Resource):
                 message={"error": "conflict error"},
                 status_code=STATUS_CODES["conflict"],
             )
-        except Exception as ex:
+        except (ValueError, TypeError) as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} failed to create student {matricola} with error: {str(ex)}',
+                message=(
+                    f'User {get_jwt_identity().get("email")} failed to create student {matricola} '
+                    f"with error: {str(ex)}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -133,7 +145,7 @@ class Student(Resource):
         return create_response(
             message={
                 "outcome": "student successfully created",
-                "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}",
+                "location": get_hateos_location_string(bp_name=BP_NAME, id_=lastrowid),
             },
             status_code=STATUS_CODES["created"],
         )
@@ -242,12 +254,16 @@ class Student(Resource):
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, class_id) -> Response:
         """
-        Get students list of a given class, including turn and address data if they are bound to a turn.
+        Get students list of a given class,
+        including turn and address data if they are bound to a turn.
         """
         # Log the request
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} requested student list for class {class_id}',
+            message=(
+                f'User {get_jwt_identity().get("email")} requested student list '
+                f"for class {class_id}"
+            ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -267,9 +283,12 @@ class Student(Resource):
         # Get student data
         student_data: List[Dict[str, Any]] = fetchall_query(
             """
-            SELECT S.matricola, S.nome, S.cognome, S.comune, T.idTurno, T.data_inizio, T.data_fine,
-                   T.giorno_inizio, T.giorno_fine, T.ora_inizio, T.ora_fine, T.ore,
-                   A.ragioneSociale, A.indirizzo, A.cap, A.comune AS comuneAzienda, A.provincia, A.stato
+            SELECT S.matricola, S.nome, S.cognome, 
+                  S.comune, T.idTurno, T.data_inizio, 
+                  T.data_fine, T.giorno_inizio, T.giorno_fine, 
+                  T.ora_inizio, T.ora_fine, T.ore,
+                  A.ragioneSociale, A.indirizzo, A.cap, 
+                  A.comune AS comuneAzienda, A.provincia, A.stato
             FROM studenti AS S
             LEFT JOIN studenteTurno AS ST ON S.matricola = ST.matricola
             LEFT JOIN turni AS T ON ST.idTurno = T.idTurno
@@ -358,16 +377,16 @@ class BindStudentToTurn(Resource):
             )
 
         # Gather parameters
-        idTurno: Union[str, int] = data.get("idTurno")
+        id_turno: Union[str, int] = data.get("idTurno")
 
         # Validate parameters
-        if idTurno is None:
+        if id_turno is None:
             return create_response(
                 message={"error": "idTurno parameter is required"},
                 status_code=STATUS_CODES["bad_request"],
             )
         try:
-            idTurno = int(idTurno)
+            id_turno = int(id_turno)
         except (ValueError, TypeError):
             return create_response(
                 message={"error": "invalid idTurno parameter"},
@@ -386,7 +405,7 @@ class BindStudentToTurn(Resource):
 
         # Check that the turn exists
         turn: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM turni WHERE idTurno = %s", (idTurno,)
+            "SELECT * FROM turni WHERE idTurno = %s", (id_turno,)
         )
         if turn is None:
             return create_response(
@@ -398,13 +417,16 @@ class BindStudentToTurn(Resource):
         try:
             execute_query(
                 "INSERT INTO studenteTurno (matricola, idTurno) VALUES (%s, %s)",
-                (matricola, idTurno),
+                (matricola, id_turno),
             )
 
             # Log the binding
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} bound student {matricola} to turn {idTurno}',
+                message=(
+                    f'User {get_jwt_identity().get("email")} bound student {matricola} '
+                    f"to turn {id_turno}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -420,7 +442,10 @@ class BindStudentToTurn(Resource):
         except IntegrityError as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} tried to bind student {matricola} to turn {idTurno} but it already generated {ex}',
+                message=(
+                    f'User {get_jwt_identity().get("email")} tried to bind student {matricola} '
+                    f"to turn {id_turno} but it already generated {ex}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -433,10 +458,13 @@ class BindStudentToTurn(Resource):
                 message={"error": "conflict error"},
                 status_code=STATUS_CODES["conflict"],
             )
-        except Exception as ex:
+        except (ValueError, TypeError) as ex:
             log(
                 log_type="error",
-                message=f'User {get_jwt_identity().get("email")} failed to bind student {matricola} to turn {idTurno} with error: {str(ex)}',
+                message=(
+                    f'User {get_jwt_identity().get("email")} failed to bind student {matricola} '
+                    f"to turn {id_turno} with error: {str(ex)}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -482,12 +510,16 @@ class StudentList(Resource):
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, turn_id) -> Response:
         """
-        Get a list of all students that are associated to a turn passed by its id_ as a path variable.
+        Get a list of all students that are associated
+        to a turn passed by its id_ as a path variable.
         """
         # Log the request
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} requested student list that are associated to turn {turn_id}',
+            message=(
+                f'User {get_jwt_identity().get("email")} requested student list '
+                f"that are associated to turn {turn_id}"
+            ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -506,11 +538,12 @@ class StudentList(Resource):
 
         # Get all students
         students: List[Dict[str, Any]] = fetchall_query(
-            "SELECT S.matricola, S.nome, S.cognome, S.comune"
+            query="SELECT S.matricola, S.nome, S.cognome, S.comune"
             "FROM studenti AS S "
-            "JOIN studenteTurno AS ST ON S.matricola = ST.matricola JOIN turni AS T ON ST.idTurno = T.idTurno "
+            "JOIN studenteTurno AS ST ON S.matricola = ST.matricola "
+            "JOIN turni AS T ON ST.idTurno = T.idTurno "
             "WHERE T.idTurno = %s",
-            (turn_id,),
+            params=(turn_id,),
         )
 
         # Return the response

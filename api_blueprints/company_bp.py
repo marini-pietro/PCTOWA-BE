@@ -1,9 +1,20 @@
+"""
+Company Blueprint for managing companies in the database.
+"""
+
 from os.path import basename as os_path_basename
+from re import match as re_match
+from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from re import match as re_match
-from typing import List, Dict, Any
+
+from config import (
+    API_SERVER_HOST,
+    API_SERVER_NAME_IN_LOG,
+    STATUS_CODES,
+)
+
 from .blueprints_utils import (
     check_authorization,
     fetchone_query,
@@ -15,12 +26,7 @@ from .blueprints_utils import (
     parse_date_string,
     get_class_http_verbs,
     validate_json_request,
-)
-from config import (
-    API_SERVER_HOST,
-    API_SERVER_PORT,
-    API_SERVER_NAME_IN_LOG,
-    STATUS_CODES,
+    get_hateos_location_string,
 )
 
 # Define constants
@@ -49,7 +55,7 @@ class Company(Resource):
     def post(self) -> Response:
         """
         Create a new company in the database.
-        The request body must be a JSON object with application/json content type.
+        The request body must be a JSON object with application/json content log_type.
         """
 
         # Validate request
@@ -59,7 +65,8 @@ class Company(Resource):
                 message={"error": data}, status_code=STATUS_CODES["bad_request"]
             )
 
-        # Gather parameters from the request body (new dictionary is necessary so that user can provide JSON with fields in any order)
+        # Gather parameters from the request body
+        # (new dictionary is necessary so that user can provide JSON with fields in any order)
         params: Dict[str, str] = {
             "ragioneSociale": data.get("ragioneSociale"),
             "nome": data.get("nome"),
@@ -84,6 +91,7 @@ class Company(Resource):
                 message={"error": "invalid phone number format"},
                 status_code=STATUS_CODES["bad_request"],
             )
+
         # TODO: add regex check to all the other fields
 
         lastrowid: int = execute_query(
@@ -97,7 +105,7 @@ class Company(Resource):
 
         # Log the creation of the company
         log(
-            type="info",
+            log_type="info",
             message=f'User {get_jwt_identity().get("email")} created company {lastrowid}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
@@ -109,7 +117,7 @@ class Company(Resource):
         return create_response(
             message={
                 "outcome": "company successfully created",
-                "location": f"http://{API_SERVER_HOST}:{API_SERVER_PORT}/api/{BP_NAME}/{lastrowid}",
+                "location": get_hateos_location_string(bp_name=BP_NAME, id_=lastrowid),
             },
             status_code=STATUS_CODES["created"],
         )
@@ -137,7 +145,7 @@ class Company(Resource):
 
         # Log the deletion of the company
         log(
-            type="info",
+            log_type="info",
             message=f'User {get_jwt_identity().get("email")} deleted company {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
@@ -166,6 +174,9 @@ class Company(Resource):
                 message={"error": data}, status_code=STATUS_CODES["bad_request"]
             )
 
+        # Gather data
+        to_modify: List[str] = list(data.keys())
+
         # Check if the company exists
         company: Dict[str, Any] = fetchone_query(
             "SELECT * FROM aziende WHERE id_azienda = %s", (id_,)
@@ -176,32 +187,22 @@ class Company(Resource):
                 status_code=STATUS_CODES["not_found"],
             )
 
-        # Check that the specified fields can be modified
-        not_allowed_fields: List[str] = ["id_azienda"]
-        for field in to_modify:
-            if field in not_allowed_fields:
-                return create_response(
-                    message={"outcome": f'error, field "{field}" cannot be modified'},
-                    status_code=STATUS_CODES["bad_request"],
-                )
-
         # Check that the specified fields actually exist in the database
         modifiable_columns: List[str] = [
-            "ragioneSociale",
-            "codiceAteco",
-            "partitaIVA",
+            "ragione_sociale",
+            "codice_ateco",
+            "partita_iva",
             "fax",
             "pec",
-            "telefonoAzienda",
-            "emailAzienda",
-            "dataConvenzione",
-            "scadenzaConvenzione",
+            "telefono_azienda",
+            "email_azienda",
+            "data_convenzione",
+            "scadenza_convenzione",
             "categoria",
-            "indirizzoLogo",
-            "sitoWeb",
-            "formaGiuridica",
+            "indirizzo_logo",
+            "sito_web",
+            "forma_giuridica",
         ]
-        to_modify: List[str] = list(data.keys())
         error_columns: List[str] = [
             field for field in to_modify if field not in modifiable_columns
         ]
@@ -223,7 +224,7 @@ class Company(Resource):
 
         # Log the update of the company
         log(
-            type="info",
+            log_type="info",
             message=f'User {get_jwt_identity().get("email")} updated company {id_}',
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
@@ -272,7 +273,7 @@ class Company(Resource):
 
             # Gather address data
             addresses: List[Dict[str, Any]] = fetchall_query(
-                "SELECT stato, provincia, comune, cap, indirizzo FROM indirizzi WHERE id_azienda = %s",
+                "SELECT stato,provincia,comune,cap,indirizzo FROM indirizzi WHERE id_azienda = %s",
                 (id_,),
             )
 
@@ -281,7 +282,7 @@ class Company(Resource):
 
             # Log the read operation
             log(
-                type="info",
+                log_type="info",
                 message=f'User {get_jwt_identity().get("email")} read company {id_}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
@@ -294,9 +295,29 @@ class Company(Resource):
 
             # Return the companies
             return create_response(message=company, status_code=STATUS_CODES["ok"])
-        except Exception as err:
+        except (
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as err:  # Replace with specific exceptions
+
+            # Log the error
+            log(
+                log_type="error",
+                message=f"Error while reading company {id_}: {str(err)}",
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                message_id="UserAction",
+                structured_data={
+                    "endpoint": {Company.ENDPOINT_PATHS[1]},
+                    "verb": "GET",
+                },
+            )
+
+            # Return an error response
             return create_response(
-                message={"error": str(err)}, status_code=STATUS_CODES["internal_error"]
+                message={"error": "interal server error"},
+                status_code=STATUS_CODES["internal_error"],
             )
 
     @jwt_required
@@ -317,18 +338,35 @@ class Company(Resource):
             "*"  # Adjust as needed for CORS
         )
         response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-log_type, Authorization"
+        )
 
         return response
 
 
 class CompanyList(Resource):
+    """
+    CompanyList resource for retrieving a list of companies from the database.
+    This class handles the following HTTP methods:
+    - GET: Retrieve a list of companies with optional filters
+    - OPTIONS: Get allowed methods for the resource
+    """
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/list"]
 
     @jwt_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self) -> Response:
+        """
+        Retrieve a list of companies from the database.
+        The request can include filters for the following fields:
+        - anno: Year of the start date of the shifts
+        - comune: Municipality of the address
+        - settore: Sector of the shifts
+        - mese: Month of the start date of the shifts
+        - materia: Subject of the shifts
+        """
 
         # Gather parameters
         anno: str = request.args.get("anno")
@@ -341,7 +379,8 @@ class CompanyList(Resource):
         ids_batch: List[int] = []  # List of ids to be used in the query
         if anno:
             ids = fetchall_query(
-                f"SELECT id_azienda FROM turni WHERE data_inizio Like '%/{anno}'"
+                query="SELECT id_azienda FROM turni WHERE data_inizio Like '%/%s'",
+                params=(anno,),
             )
             ids_batch.extend(ids)
 
@@ -385,8 +424,11 @@ class CompanyList(Resource):
 
         # Log the read operation
         log(
-            type="info",
-            message=f'User {get_jwt_identity().get("email")} read companies with filters: {anno}, {comune}, {settore}, {mese}, {materia}',
+            log_type="info",
+            message=(
+                f"User {get_jwt_identity().get("email")} read companies with filters:"
+                f"{anno}, {comune}, {settore}, {mese}, {materia}"
+            ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -435,7 +477,9 @@ class CompanyList(Resource):
             "*"  # Adjust as needed for CORS
         )
         response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-log_type, Authorization"
+        )
 
         return response
 
