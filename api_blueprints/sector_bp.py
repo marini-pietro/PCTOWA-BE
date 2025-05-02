@@ -205,7 +205,7 @@ class Sector(Resource):
 
         # Check if sector exists
         sector: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM settori WHERE settore = %s", (settore,)
+            "SELECT settore FROM settori WHERE settore = %s", (settore,)
         )
         if sector is None:
             return create_response(

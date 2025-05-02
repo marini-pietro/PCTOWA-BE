@@ -80,7 +80,8 @@ class Address(Resource):
 
         # Check if id_azienda exists
         company = fetchone_query(
-            "SELECT * FROM aziende WHERE id_azienda = %s", (id_azienda,)
+            "SELECT fax FROM aziende WHERE id_azienda = %s",
+            (id_azienda,),  # Only fetch the fax to check existence (could be any field)
         )
         if company is None:
             return create_response(

@@ -184,7 +184,10 @@ class Subject(Resource):
 
         # Check if subject exists
         subject: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM materie WHERE materia = %s", (materia,)
+            "SELECT descrizione FROM materie WHERE materia = %s",
+            (
+                materia,
+            ),  # Only fetch the description to check existence (could be any field)
         )
         if subject is None:
             return create_response(
@@ -228,7 +231,10 @@ class Subject(Resource):
 
         # Check that specified subject exists
         subject: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM materie WHERE materia = %s", (materia,)
+            "SELECT descrizione FROM materie WHERE materia = %s",
+            (
+                materia,
+            ),  # Only fetch the description to check existence (could be any field)
         )
         if subject is None:
             return create_response(

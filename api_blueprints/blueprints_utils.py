@@ -185,7 +185,9 @@ def create_response(message: Dict, status_code: int) -> Response:
         TypeError - If the message is not a dictionary or the status code is not an integer
     """
 
-    if not isinstance(message, dict) and not (isinstance(message, list) and all(isinstance(item, dict) for item in message)):
+    if not isinstance(message, dict) and not (
+        isinstance(message, list) and all(isinstance(item, dict) for item in message)
+    ):
         raise TypeError("Message must be a dictionary or a list of dictionaries")
     if not isinstance(status_code, int):
         raise TypeError("Status code must be an integer")

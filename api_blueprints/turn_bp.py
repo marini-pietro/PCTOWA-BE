@@ -162,14 +162,14 @@ class Turn(Resource):
         # Insert row into turnoSettore table
         if settore is not None:
             execute_query(
-                "INSERT INTO turnoSettore (idTurno, settore) VALUES (%s, %s)",
+                "INSERT INTO turnoSettore (id_turno, settore) VALUES (%s, %s)",
                 (lastrowid, settore),
             )
 
         # Insert row into turnoMateria table
         if materia is not None:
             execute_query(
-                "INSERT INTO turnoMateria (idTurno, materia) VALUES (%s, %s)",
+                "INSERT INTO turnoMateria (id_turno, materia) VALUES (%s, %s)",
                 (lastrowid, materia),
             )
 
@@ -202,7 +202,7 @@ class Turn(Resource):
 
         # Check that the specified turn exists
         turn: Dict[str, Any] = fetchone_query(
-            "SELECT posti_occupati FROM turni WHERE idTurno = %s", (id_,)
+            "SELECT posti_occupati FROM turni WHERE id_turno = %s", (id_,)
         )  # Only fetch the province to check existence (could be any field)
         if turn is None:
             return create_response(
@@ -211,7 +211,7 @@ class Turn(Resource):
             )
 
         # Delete the turn
-        execute_query("DELETE FROM turni WHERE idTurno = %s", (id_,))
+        execute_query("DELETE FROM turni WHERE id_turno = %s", (id_,))
 
         # Log the deletion
         log(
@@ -246,7 +246,8 @@ class Turn(Resource):
 
         # Check that the specified class exists
         turn: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM turni WHERE idTurno = %s", (id_,)
+            "SELECT ore FROM turni WHERE id_turno = %s",
+            (id_,),  # Only fetch the ore to check existence (could be any field)
         )
         if turn is None:
             return create_response(
@@ -279,7 +280,7 @@ class Turn(Resource):
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="turni", pk_column="idTurno", pk_value=id_
+            data=data, table_name="turni", pk_column="id_turno", pk_value=id_
         )
 
         # Execute the update query
@@ -324,7 +325,8 @@ class Turn(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s", (id_,) # Only check existence (SELECT field could be any)
+            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s",
+            (id_,),  # Only check existence (SELECT field could be any)
         )
         if not company:
             return create_response(

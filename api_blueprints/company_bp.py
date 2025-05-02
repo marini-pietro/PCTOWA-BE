@@ -69,7 +69,7 @@ class Company(Resource):
         # Gather parameters from the request body
         # (new dictionary is necessary so that user can provide JSON with fields in any order)
         params: Dict[str, str] = {
-            "ragioneSociale": data.get("ragioneSociale"),
+            "ragione_sociale": data.get("ragione_sociale"),
             "nome": data.get("nome"),
             "sitoWeb": data.get("sitoWeb"),
             "indirizzoLogo": data.get("indirizzoLogo"),
@@ -97,7 +97,7 @@ class Company(Resource):
 
         lastrowid: int = execute_query(
             """INSERT INTO aziende 
-            (ragioneSociale, nome, sitoWeb, indirizzoLogo, codiceAteco, 
+            (ragione_sociale, nome, sitoWeb, indirizzoLogo, codiceAteco, 
              partitaIVA, telefonoAzienda, fax, emailAzienda, pec, 
              formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) 
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
@@ -133,7 +133,7 @@ class Company(Resource):
 
         # Check if specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT ragioneSociale FROM aziende WHERE id_azienda = %s", (id_,)
+            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s", (id_,)
         )  # Only fetch the province to check existence (could be any field)
         if not company:
             return create_response(
@@ -245,10 +245,11 @@ class Company(Resource):
         try:
             # Execute the query
             company: Dict[str, Any] = fetchone_query(
-                "SELECT ragione_sociale, codice_ateco, partita_iva, " \
-                "fax, pec, telefono_azienda, email_azienda, data_convenzione, " \
-                "scadenza_convenzione, categoria, indirizzo_logo, sito_web, forma_giuridica " \
-                "FROM aziende WHERE id_azienda = %s", (id_,)
+                "SELECT ragione_sociale, codice_ateco, partita_iva, "
+                "fax, pec, telefono_azienda, email_azienda, data_convenzione, "
+                "scadenza_convenzione, categoria, indirizzo_logo, sito_web, forma_giuridica "
+                "FROM aziende WHERE id_azienda = %s",
+                (id_,),
             )
 
             # Check if the company exists
@@ -393,7 +394,7 @@ class CompanyList(Resource):
             ids = fetchall_query(
                 "SELECT A.id_azienda "
                 "FROM aziende AS A JOIN turni AS T ON A.id_azienda = T.id_azienda "
-                "JOIN turnoSettore AS TS ON TS.idTurno = T.idTurno "
+                "JOIN turnoSettore AS TS ON TS.id_turno = T.id_turno "
                 "WHERE TS.settore = %s",
                 (settore,),
             )
@@ -412,7 +413,7 @@ class CompanyList(Resource):
             ids = fetchall_query(
                 "SELECT A.id_azienda "
                 "FROM aziende AS A JOIN turni AS T ON A.id_azienda = T.id_azienda "
-                "JOIN turnoMateria AS TM ON TM.idTurno = T.idTurno "
+                "JOIN turnoMateria AS TM ON TM.id_turno = T.id_turno "
                 "WHERE TM.materia = %s",
                 (materia,),
             )
@@ -441,7 +442,7 @@ class CompanyList(Resource):
         if ids_batch:
             placeholders: str = ", ".join(["%s"] * len(ids_batch))
             query = (
-                "SELECT A.ragioneSociale, A.codiceAteco, A.partitaIva, A.fax, A.pec, "
+                "SELECT A.ragione_sociale, A.codiceAteco, A.partitaIva, A.fax, A.pec, "
                 "A.telefonoAzienda, A.emailAzienda, A.dataConvenzione, A.scadenzaConvenzione, "
                 "A.categoria, A.indirizzoLogo, A.sitoWeb, A.formaGiuridica, I.stato, "
                 "I.provincia, I.comune, I.cap, I.indirizzo "

@@ -471,7 +471,8 @@ class BindUserToCompany(Resource):
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM utenti WHERE email_utente = %s", (email,)
+            "SELECT nome FROM utenti WHERE email_utente = %s",
+            (email,),  # Only check for existence (SELECT column could be any field)
         )
         if user is None:
             return create_response(
@@ -481,7 +482,10 @@ class BindUserToCompany(Resource):
 
         # Check if company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE id_azienda = %s", (company_id,)
+            "SELECT fax FROM aziende WHERE id_azienda = %s",
+            (
+                company_id,
+            ),  # Only check for existence (SELECT column could be any field)
         )
         if company is None:
             return create_response(
@@ -631,7 +635,8 @@ class ReadBindedUser(Resource):
         # Check that the specified resource exist
         if id_type == "company":
             company: Dict[str, Any] = fetchone_query(
-                "SELECT * FROM aziende WHERE id_azienda = %s", (id_,)
+                "SELECT fax FROM aziende WHERE id_azienda = %s",
+                (id_,),  # Only check for existence (SELECT column could be any field)
             )
             if not company:
                 return create_response(
@@ -650,7 +655,8 @@ class ReadBindedUser(Resource):
         # Check that the specified resource exist
         elif id_type == "class":
             class_: Dict[str, Any] = fetchone_query(
-                "SELECT * FROM classi WHERE id_classe = %s", (id_,)
+                "SELECT sigla FROM classi WHERE id_classe = %s",
+                (id_,),  # Only check for existence (SELECT column could be any field)
             )
             if not class_:
                 return create_response(
@@ -660,7 +666,7 @@ class ReadBindedUser(Resource):
 
             query: str = (
                 "SELECT U.email_utente, U.nome, U.cognome, C.anno "
-                "FROM classi AS C JOIN utenti AS U ON U.email_utente = C.emailResponsabile "
+                "FROM classi AS C JOIN utenti AS U ON U.email_utente = C.email_responsabile "
                 "WHERE C.id_classe = %s"
             )
 

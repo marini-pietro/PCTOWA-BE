@@ -81,7 +81,10 @@ class Contact(Resource):
 
         # Check if azienda exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE id_azienda = %s", (params["id_azienda"],)
+            "SELECT fax FROM aziende WHERE id_azienda = %s",
+            (
+                params["id_azienda"],
+            ),  # only check existence (select column could be any)
         )
         if not company:
             return create_response(
@@ -243,7 +246,8 @@ class Contact(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE id_azienda = %s", (id_,)
+            "SELECT nome FROM aziende WHERE id_azienda = %s",
+            (id_,),  # Only fetch the name to check existence (could be any field)
         )
         if not company:
             return create_response(
@@ -253,7 +257,8 @@ class Contact(Resource):
 
         # Get the data
         contact: List[Dict[str, Any]] = fetchall_query(
-            "SELECT * FROM contatti WHERE id_azienda = %s", (id_,)
+            "SELECT nome FROM contatti WHERE id_azienda = %s",
+            (id_,),  # Only fetch the name (select column could be any field)
         )
 
         # Check if query returned any results

@@ -210,8 +210,7 @@ class Tutor(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested "
-                f"tutor list with turn id {id_}"
+                f"User {get_jwt_identity()} requested " f"tutor list with turn id {id_}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
@@ -221,7 +220,8 @@ class Tutor(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE id_azienda = %s", (id_,)
+            "SELECT nome FROM aziende WHERE id_azienda = %s",
+            (id_,),  # only check for existence (select column could be any field)
         )
         if not company:
             return create_response(
@@ -231,10 +231,10 @@ class Tutor(Resource):
 
         # Get the data
         tutors: List[Dict[str, Any]] = fetchall_query(
-            "SELECT TU.nome, TU.cognome, TU.emailTutor, TU.telefonoTutor "
-            "FROM turni AS T JOIN turnoTutor AS TT ON T.idTurno = TT.idTurno "
+            "SELECT TU.nome, TU.cognome, TU.email_tutor, TU.telefono_tutor "
+            "FROM turni AS T JOIN turno_tutor AS TT ON T.id_turno = TT.id_turno "
             "JOIN tutor AS TU ON TU.id_tutor = TT.id_tutor "
-            "WHERE T.idTurno = %s",
+            "WHERE T.id_turno = %s",
             (id_,),
         )
 

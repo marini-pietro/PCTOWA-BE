@@ -70,7 +70,7 @@ class Class(Resource):
         # Gather parameters
         sigla: str = data.get("sigla")
         anno: str = data.get("anno")
-        email_responsabile: str = data.get("emailResponsabile")
+        email_responsabile: str = data.get("email_responsabile")
 
         # Validate parameters
         missing_fields = [
@@ -78,7 +78,7 @@ class Class(Resource):
             for key, value in {
                 "sigla": sigla,
                 "anno": anno,
-                "emailResponsabile": email_responsabile,
+                "email_responsabile": email_responsabile,
             }.items()
             if value is None
         ]
@@ -123,7 +123,7 @@ class Class(Resource):
 
         # Execute query to insert the class
         lastrowid: int = execute_query(
-            "INSERT INTO classi (sigla, anno, emailResponsabile) VALUES (%s, %s, %s)",
+            "INSERT INTO classi (sigla, anno, email_responsabile) VALUES (%s, %s, %s)",
             (sigla, anno, email_responsabile),
         )
 
@@ -200,7 +200,8 @@ class Class(Resource):
 
         # Check that class exists
         class_: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM classi WHERE id_classe = %s", (id_,)
+            "SELECT sigla FROM classi WHERE id_classe = %s",
+            (id_,),  # Only fetch the sigla to check existence (could be any field)
         )
         if class_ is None:
             return create_response(
@@ -210,7 +211,7 @@ class Class(Resource):
 
         # Check that the specified fields actually exist in the database
         temp = check_column_existence(
-            modifiable_columns=["sigla", "emailResponsabile", "anno"],
+            modifiable_columns=["sigla", "email_responsabile", "anno"],
             to_modify=list(data.keys()),
         )
         if isinstance(temp, str):
@@ -265,7 +266,10 @@ class Class(Resource):
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM utenti WHERE email_utente = %s", (email_responsabile)
+            "SELECT nome FROM utenti WHERE email_utente = %s",
+            (
+                email_responsabile
+            ),  # Only fetch the name to check existence (could be any field)
         )
         if not user:
             return create_response(
@@ -275,7 +279,7 @@ class Class(Resource):
 
         # Get class data
         classes_data: List[Dict[str, Any]] = fetchall_query(
-            "SELECT sigla, emailResponsabile, anno FROM classi WHERE emailResponsabile = %s",
+            "SELECT sigla, email_responsabile, anno FROM classi WHERE email_responsabile = %s",
             (email_responsabile),
         )
 

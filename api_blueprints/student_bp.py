@@ -267,12 +267,13 @@ class Student(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Student.ENDPOINT_PATHS[2], "verb": "GET"},
+            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": "GET"},
         )
 
         # Check if the class exists
         class_: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM classi WHERE id_classe = %s", (class_id,)
+            "SELECT sigla FROM classi WHERE id_classe = %s",
+            (class_id,),  # Only check for existence (select column could be any field)
         )
         if not class_:
             return create_response(
@@ -284,14 +285,14 @@ class Student(Resource):
         student_data: List[Dict[str, Any]] = fetchall_query(
             """
             SELECT S.matricola, S.nome, S.cognome, 
-                  S.comune, T.idTurno, T.data_inizio, 
+                  S.comune, T.id_turno, T.data_inizio, 
                   T.data_fine, T.giorno_inizio, T.giorno_fine, 
                   T.ora_inizio, T.ora_fine, T.ore,
-                  A.ragioneSociale, A.indirizzo, A.cap, 
+                  A.ragione_sociale, A.indirizzo, A.cap, 
                   A.comune AS comuneAzienda, A.provincia, A.stato
             FROM studenti AS S
-            LEFT JOIN studenteTurno AS ST ON S.matricola = ST.matricola
-            LEFT JOIN turni AS T ON ST.idTurno = T.idTurno
+            LEFT JOIN studente_turno AS ST ON S.matricola = ST.matricola
+            LEFT JOIN turni AS T ON ST.id_turno = T.id_turno
             LEFT JOIN aziende AS A ON T.id_azienda = A.id_azienda
             WHERE S.id_classe = %s
             """,
@@ -308,7 +309,7 @@ class Student(Resource):
                 "comune": row.get("comune"),
                 "turno": (
                     {
-                        "ragioneSociale": row.get("ragioneSociale"),
+                        "ragione_sociale": row.get("ragione_sociale"),
                         "data_inizio": row.get("data_inizio"),
                         "data_fine": row.get("data_fine"),
                         "giorno_inizio": row.get("giorno_inizio"),
@@ -316,7 +317,7 @@ class Student(Resource):
                         "ora_inizio": row.get("ora_inizio"),
                         "ora_fine": row.get("ora_fine"),
                         "ore": row.get("ore"),
-                        "turnoPK": row.get("idTurno"),
+                        "turnoPK": row.get("id_turno"),
                         "indirizzo": {
                             "stato": row.get("stato"),
                             "provincia": row.get("provincia"),
@@ -325,7 +326,7 @@ class Student(Resource):
                             "indirizzo": row.get("indirizzo"),
                         },
                     }
-                    if row.get("idTurno")
+                    if row.get("id_turno")
                     else None
                 ),
             }
@@ -377,25 +378,26 @@ class BindStudentToTurn(Resource):
             )
 
         # Gather parameters
-        id_turno: Union[str, int] = data.get("idTurno")
+        id_turno: Union[str, int] = data.get("id_turno")
 
         # Validate parameters
         if id_turno is None:
             return create_response(
-                message={"error": "idTurno parameter is required"},
+                message={"error": "id_turno parameter is required"},
                 status_code=STATUS_CODES["bad_request"],
             )
         try:
             id_turno = int(id_turno)
         except (ValueError, TypeError):
             return create_response(
-                message={"error": "invalid idTurno parameter"},
+                message={"error": "invalid id_turno parameter"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
         # Check that the student exists
         student: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM studenti WHERE matricola = %s", (matricola,)
+            "SELECT nome FROM studenti WHERE matricola = %s",
+            (matricola,),  # Only check for existence (select column could be any field)
         )
         if student is None:
             return create_response(
@@ -405,7 +407,8 @@ class BindStudentToTurn(Resource):
 
         # Check that the turn exists
         turn: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM turni WHERE idTurno = %s", (id_turno,)
+            "SELECT ore FROM turni WHERE id_turno = %s",
+            (id_turno,),  # Only check for existence (select column could be any field)
         )
         if turn is None:
             return create_response(
@@ -416,8 +419,8 @@ class BindStudentToTurn(Resource):
         # Bind the student to the turn
         try:
             execute_query(
-                "INSERT INTO studenteTurno (matricola, idTurno) VALUES (%s, %s)",
-                (matricola, id_turno),
+                query="INSERT INTO studenteTurno (matricola, id_turno) VALUES (%s, %s)",
+                params=(matricola, id_turno),
             )
 
             # Log the binding
@@ -528,7 +531,8 @@ class StudentList(Resource):
 
         # Check if the turn exists
         turn: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM turni WHERE idTurno = %s", (turn_id,)
+            "SELECT ore FROM turni WHERE id_turno = %s",
+            (turn_id,),  # Only check for existence (select column could be any field)
         )
         if not turn:
             return create_response(
@@ -541,8 +545,8 @@ class StudentList(Resource):
             query="SELECT S.matricola, S.nome, S.cognome, S.comune"
             "FROM studenti AS S "
             "JOIN studenteTurno AS ST ON S.matricola = ST.matricola "
-            "JOIN turni AS T ON ST.idTurno = T.idTurno "
-            "WHERE T.idTurno = %s",
+            "JOIN turni AS T ON ST.id_turno = T.id_turno "
+            "WHERE T.id_turno = %s",
             params=(turn_id,),
         )
 
