@@ -48,7 +48,7 @@ class Tutor(Resource):
     - OPTIONS: Get allowed HTTP methods for this endpoint
     """
 
-    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
+    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
@@ -80,7 +80,7 @@ class Tutor(Resource):
         # Log the tutor creation
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} created tutor {lastrowid}',
+            message=f"User {get_jwt_identity()} created tutor {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -120,7 +120,7 @@ class Tutor(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted tutor {id_}',
+            message=f"User {get_jwt_identity()} deleted tutor {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -145,13 +145,13 @@ class Tutor(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, 
-                status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Check if tutor exists
         tutor: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM tutor WHERE id_tutor = %s", (id_,) # Only check for existence (select column could be any field)
+            "SELECT nome FROM tutor WHERE id_tutor = %s",
+            (id_,),  # Only check for existence (select column could be any field)
         )
         if tutor is None:
             return create_response(
@@ -160,13 +160,15 @@ class Tutor(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        temp = check_column_existence(modifiable_columns=[
-            "nome",
-            "cognome",
-            "emailTutor",
-            "telefonoTutor",
-        ], 
-        to_modify=list(data.keys()))
+        temp = check_column_existence(
+            modifiable_columns=[
+                "nome",
+                "cognome",
+                "emailTutor",
+                "telefonoTutor",
+            ],
+            to_modify=list(data.keys()),
+        )
         if isinstance(temp, str):
             return create_response(
                 message={"error": temp}, status_code=STATUS_CODES["bad_request"]
@@ -183,7 +185,7 @@ class Tutor(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated tutor {id_}',
+            message=f"User {get_jwt_identity()} updated tutor {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -198,7 +200,7 @@ class Tutor(Resource):
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, turn_id) -> Response:
+    def get(self, id_) -> Response:
         """
         Get a tutor by ID of its relative turn.
         The id must be provided as a path variable.
@@ -208,8 +210,8 @@ class Tutor(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity().get("email")} requested "
-                f"tutor list with turn id {turn_id}"
+                f"User {get_jwt_identity()} requested "
+                f"tutor list with turn id {id_}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
@@ -219,7 +221,7 @@ class Tutor(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE id_azienda = %s", (turn_id,)
+            "SELECT * FROM aziende WHERE id_azienda = %s", (id_,)
         )
         if not company:
             return create_response(
@@ -233,7 +235,7 @@ class Tutor(Resource):
             "FROM turni AS T JOIN turnoTutor AS TT ON T.idTurno = TT.idTurno "
             "JOIN tutor AS TU ON TU.id_tutor = TT.id_tutor "
             "WHERE T.idTurno = %s",
-            (turn_id,),
+            (id_,),
         )
 
         # Check if query returned any results

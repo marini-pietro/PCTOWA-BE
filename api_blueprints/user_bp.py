@@ -95,7 +95,7 @@ class User(Resource):
             # Log the register
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} registered user {email}',
+                message=f"User {get_jwt_identity()} registered user {email}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -118,7 +118,7 @@ class User(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get("email")} tried to "
+                    f"User {get_jwt_identity()} tried to "
                     f"register user {email} but it already generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -162,7 +162,7 @@ class User(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted user {email}',
+            message=f"User {get_jwt_identity()} deleted user {email}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -187,13 +187,13 @@ class User(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, 
-                status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM utente WHERE email_utente = %s", (email,) # Only check for existence (SELECT column could be any field)
+            "SELECT nome FROM utente WHERE email_utente = %s",
+            (email,),  # Only check for existence (SELECT column could be any field)
         )
         if user is None:
             return create_response(
@@ -202,13 +202,16 @@ class User(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        temp = check_column_existence(modifiable_columns=[
-            "email_utente",
-            "password",
-            "nome",
-            "cognome",
-            "tipo",
-        ], to_modify=list(data.keys()))
+        temp = check_column_existence(
+            modifiable_columns=[
+                "email_utente",
+                "password",
+                "nome",
+                "cognome",
+                "tipo",
+            ],
+            to_modify=list(data.keys()),
+        )
         if isinstance(temp, str):
             return create_response(
                 message={"error": temp}, status_code=STATUS_CODES["bad_request"]
@@ -225,7 +228,7 @@ class User(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated user {email}',
+            message=f"User {get_jwt_identity()} updated user {email}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -515,7 +518,7 @@ class BindUserToCompany(Resource):
             log(
                 log_type="error",
                 message=(
-                    f'User {get_jwt_identity().get("email")} failed to bind user {email} '
+                    f"User {get_jwt_identity()} failed to bind user {email} "
                     f"to company {company_id} with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -535,7 +538,7 @@ class BindUserToCompany(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity().get("email")} bound "
+                f"User {get_jwt_identity()} bound "
                 f"user {email} to company {company_id}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -601,7 +604,7 @@ class ReadBindedUser(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity().get("email")} requested reference "
+                f"User {get_jwt_identity()} requested reference "
                 f"teacher list with {id_type} and id_ {id_}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,

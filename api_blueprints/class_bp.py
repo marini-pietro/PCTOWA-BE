@@ -48,8 +48,8 @@ class Class(Resource):
 
     ENDPOINT_PATHS = [
         f"/{BP_NAME}",
-        f"/{BP_NAME}/<int:id>",
-        f"/{BP_NAME}/<string:email>",
+        f"/{BP_NAME}/<int:id_>",
+        f"/{BP_NAME}/<string:email_responsabile>",
     ]
 
     @jwt_required()
@@ -130,7 +130,7 @@ class Class(Resource):
         # Log the creation of the class
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} created class {lastrowid}',
+            message=f"User {get_jwt_identity()} created class {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -171,7 +171,7 @@ class Class(Resource):
         # Log the deletion of the class
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted class {id_}',
+            message=f"User {get_jwt_identity()} deleted class {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -209,11 +209,9 @@ class Class(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        temp = check_column_existence(modifiable_columns=
-                                         ["sigla", 
-                                         "emailResponsabile", 
-                                         "anno"],
-                                         to_modify=list(data.keys()),
+        temp = check_column_existence(
+            modifiable_columns=["sigla", "emailResponsabile", "anno"],
+            to_modify=list(data.keys()),
         )
         if isinstance(temp, str):
             return create_response(
@@ -232,17 +230,17 @@ class Class(Resource):
         # Log the update of the class
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated class {id_}',
+            message=f"User {get_jwt_identity()} updated class {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, 
-                             "verb": "PATCH"},
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": "PATCH"},
         )
 
         # Return a success message
         return create_response(
-            message={"outcome": "class successfully updated"}, status_code=STATUS_CODES["ok"]
+            message={"outcome": "class successfully updated"},
+            status_code=STATUS_CODES["ok"],
         )
 
     @jwt_required()
@@ -256,7 +254,7 @@ class Class(Resource):
         log(
             log_type="info",
             message=(
-                f'User {get_jwt_identity().get("email")} requested '
+                f"User {get_jwt_identity()} requested "
                 f"to read class with email {email_responsabile}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -349,7 +347,7 @@ class ClassFuzzySearch(Resource):
         log(
             log_type="info",
             message=(
-                f'User {get_jwt_identity().get("email")} requested fuzzy '
+                f"User {get_jwt_identity()} requested fuzzy "
                 f"search in classes with string {input_str}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -409,7 +407,7 @@ class ClassList(Resource):
         # Log the read operation
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} read class list',
+            message=f"User {get_jwt_identity()} read class list",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",

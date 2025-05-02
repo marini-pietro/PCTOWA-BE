@@ -94,7 +94,7 @@ class Sector(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get("email")} tried "
+                    f"User {get_jwt_identity()} tried "
                     f"to create sector {settore} but it generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -110,7 +110,7 @@ class Sector(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get("email")} failed to "
+                    f"User {get_jwt_identity()} failed to "
                     f"create sector {settore} with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -126,7 +126,7 @@ class Sector(Resource):
         # Log the sector creation
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} created sector {settore}',
+            message=f"User {get_jwt_identity()} created sector {settore}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -165,7 +165,7 @@ class Sector(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted sector {settore}',
+            message=f"User {get_jwt_identity()} deleted sector {settore}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -190,8 +190,7 @@ class Sector(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, 
-                status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Gather JSON data
@@ -222,7 +221,7 @@ class Sector(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated sector {settore}',
+            message=f"User {get_jwt_identity()} updated sector {settore}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -268,7 +267,7 @@ class Sector(Resource):
             # Log the read
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} read all sectors',
+                message=f"User {get_jwt_identity()} read all sectors",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -283,7 +282,7 @@ class Sector(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get("email")} failed to "
+                    f"User {get_jwt_identity()} failed to "
                     f"read sectors with error: {str(err)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,

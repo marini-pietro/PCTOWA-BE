@@ -77,7 +77,7 @@ class LegalForm(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get("email")} tried to "
+                    f"User {get_jwt_identity()} tried to "
                     f"create legal form {forma} but it generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -96,7 +96,7 @@ class LegalForm(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get("email")} failed to "
+                    f"User {get_jwt_identity()} failed to "
                     f"create legal form {forma} with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -115,7 +115,7 @@ class LegalForm(Resource):
         # Log the legal form creation
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} created legal form {forma}',
+            message=f"User {get_jwt_identity()} created legal form {forma}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -155,7 +155,7 @@ class LegalForm(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted legal form {forma}',
+            message=f"User {get_jwt_identity()} deleted legal form {forma}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -183,8 +183,7 @@ class LegalForm(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, 
-                status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Gather JSON data
@@ -216,7 +215,7 @@ class LegalForm(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity().get("email")} updated "
+                f"User {get_jwt_identity()} updated "
                 f"legal form {forma} to {new_value}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -267,7 +266,7 @@ class LegalForm(Resource):
             # Log the read
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} read all legal forms',
+                message=f"User {get_jwt_identity()} read all legal forms",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -285,7 +284,7 @@ class LegalForm(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get("email")} failed "
+                    f"User {get_jwt_identity()} failed "
                     f"to read legal forms with error: {str(err)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,

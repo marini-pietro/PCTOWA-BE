@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple, Any, Union
 from functools import wraps
 from contextlib import contextmanager
 from flask import jsonify, make_response, Response, Request
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt
 from mysql.connector import pooling as mysql_pooling
 from config import (
     DB_HOST,
@@ -143,29 +143,25 @@ def check_authorization(allowed_roles: List[str]):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # Extract the user's role from the JWT
-            identity = get_jwt_identity()
-            if not identity or "role" not in identity:
+            # Extract the role from the additional claims
+            claims = get_jwt()
+            user_role = claims.get("role")
+
+            # Check if the user role is present in the token
+            # If not, return an error response
+            if user_role is None:
                 return create_response(
-                    message={
-                        "outcome": "not permitted: missing role or missing identity from jwt"
-                    },
-                    status_code=STATUS_CODES["forbidden"],
+                    {"error": "user role not present in token"},
+                    STATUS_CODES["bad_request"],
                 )
 
-            user_role: int = identity["role"]
-            user_string: str = ROLES.get(
-                user_role
-            )  # Get corresponding natural language name of roles
-            if (
-                user_string not in allowed_roles
-            ):  # (to allow for allowed_roles list to be the names of the roles and not their corresponding number)
+            # Check if the user's role is allowed
+            if ROLES.get(user_role) not in allowed_roles:
                 return create_response(
-                    message={"outcome": "not permitted"},
-                    status_code=STATUS_CODES["forbidden"],
+                    {"outcome": "not permitted"},
+                    STATUS_CODES["forbidden"],
                 )
 
-            # Proceed with the original function
             return func(*args, **kwargs)
 
         return wrapper
@@ -189,8 +185,10 @@ def create_response(message: Dict, status_code: int) -> Response:
         TypeError - If the message is not a dictionary or the status code is not an integer
     """
 
-    if not isinstance(message, Dict):
-        raise TypeError("Message must be a dictionary")
+    if not isinstance(message, dict) and not (isinstance(message, list) and all(isinstance(item, dict) for item in message)):
+        raise TypeError("Message must be a dictionary or a list of dictionaries")
+    if not isinstance(status_code, int):
+        raise TypeError("Status code must be an integer")
 
     # message = f"{message}\n{STATUS_CODES_EXPLANATIONS.get(status_code, 'Unknown status code')}"
 
@@ -330,6 +328,7 @@ def clear_db_connection_pool():
         connection.close()
     _DB_POOL._cnx_queue.clear()
 
+
 # Endpoint utility functions
 def build_update_query_from_filters(
     data, table_name, pk_column, pk_value
@@ -354,10 +353,13 @@ def build_update_query_from_filters(
     query = f"UPDATE {table_name} SET {filters} WHERE {pk_column} = %s"
     return query, params
 
-def check_column_existence(modifiable_columns: List[str], to_modify: List[str]) -> Union[Response, bool]:
+
+def check_column_existence(
+    modifiable_columns: List[str], to_modify: List[str]
+) -> Union[Response, bool]:
     """
-    Check if the columns to modify exist in the modifiable columns.  
-    If not, return an error response.  
+    Check if the columns to modify exist in the modifiable columns.
+    If not, return an error response.
     If all columns are valid, return True.
 
     Params:
@@ -368,16 +370,15 @@ def check_column_existence(modifiable_columns: List[str], to_modify: List[str]) 
         Response or bool - An error response if there are invalid columns, or True if all columns are valid
     """
 
-    error_columns = [
-        field for field in to_modify if field not in modifiable_columns
-        ]
-    
+    error_columns = [field for field in to_modify if field not in modifiable_columns]
+
     # If there are any error columns, return an error response
     if error_columns:
         return f"error, field(s) {error_columns} do not exist or cannot be modified"
-    
+
     # If all columns are valid, return True
     return True
+
 
 # Graceful shutdown handler
 def shutdown_handler():
