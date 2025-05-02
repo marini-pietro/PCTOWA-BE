@@ -190,14 +190,15 @@ class Sector(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, 
+                status_code=STATUS_CODES["bad_request"]
             )
 
         # Gather JSON data
         new_value: str = data.get("new_value")
 
         # Validate parameters
-        if new_value is None or len(new_value) == 0:
+        if new_value is None or len(new_value) == 0 or not isinstance(new_value, str):
             return create_response(
                 message={"error": "new_value parameter is required"},
                 status_code=STATUS_CODES["bad_request"],

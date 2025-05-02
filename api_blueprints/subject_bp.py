@@ -25,9 +25,9 @@ from .blueprints_utils import (
     log,
     create_response,
     build_update_query_from_filters,
-    build_select_query_from_filters,
     get_class_http_verbs,
     validate_json_request,
+    check_column_existence,
     get_hateos_location_string,
 )
 
@@ -237,22 +237,19 @@ class Subject(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = ["materia", "descrizione", "hex_color"]
-        to_modify: List[str] = list(data.keys())
-        error_columns: List[str] = [
-            field for field in to_modify if field not in modifiable_columns
-        ]
-        if error_columns:
+        temp = check_column_existence(modifiable_columns=["materia", 
+                                         "descrizione", 
+                                         "hex_color"], 
+                                         to_modify=list(data.keys()))
+        if isinstance(temp, str):
             return create_response(
-                message={
-                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
-                },
+                message={"outcome": temp},
                 status_code=STATUS_CODES["bad_request"],
             )
 
         # Build the query
         query, params = build_update_query_from_filters(
-            data=data, table_name="materie", id_column="materia", id_value=materia
+            data=data, table_name="materie", pk_column="materia", pk_value=materia
         )
 
         # Update the subject
@@ -276,55 +273,31 @@ class Subject(Resource):
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, materia) -> Response:  # TODO rework this endpoint
+    def get(self) -> Response:
         """
         Get all subjects with pagination.
         The request can include limit and offset as query parameters.
         """
 
         # Gather parameters
-        descrizione = request.args.get("descrizione")
-        hex_color = request.args.get("hex_color")
-        try:
-            limit = int(
-                request.args.get("limit", 10)
-            )  # Default limit to 10 if not provided
-            offset = int(
-                request.args.get("offset", 0)
-            )  # Default offset to 0 if not provided
-        except (ValueError, TypeError):
+        limit: int = request.args.get("limit", default=10, type=int)
+        offset: int = request.args.get("offset", default=0, type=int)
+        
+        # Validate parameters
+        if limit < 0 or offset < 0:
             return create_response(
-                message={"error": "invalid limit or offset parameter"},
+                message={"error": "limit and offset must be non-negative integers"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Build the filters dictionary (only include non-null values)
-        data = {
-            key: value
-            for key, value in {
-                "materia": materia,  # Use the path variable 'materia'
-                "descrizione": descrizione,
-                "hex_color": hex_color,
-            }.items()
-            if value
-        }
-
         try:
-            # Build the query
-            query, params = build_select_query_from_filters(
-                data=data, table_name="materie", limit=limit, offset=offset
-            )
-
             # Execute query
-            subjects = fetchall_query(query, params)
-
-            # Get the ids to log
-            ids = [subject["materia"] for subject in subjects]
+            subjects = fetchall_query("SELECT materia, descrizione, hex_color FROM materie LIMIT %s OFFSET %s", params=(limit, offset))
 
             # Log the read
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} read subjects {ids}',
+                message=f'User {get_jwt_identity().get("email")} read all subjects',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",

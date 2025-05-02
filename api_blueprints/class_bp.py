@@ -28,6 +28,7 @@ from .blueprints_utils import (
     is_input_safe,
     get_class_http_verbs,
     validate_json_request,
+    check_column_existence,
     get_hateos_location_string,
 )
 
@@ -208,22 +209,21 @@ class Class(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = ["sigla", "emailResponsabile", "anno"]
-        to_modify: List[str] = list(data.keys())
-        error_columns: List[str] = [
-            field for field in to_modify if field not in modifiable_columns
-        ]
-        if error_columns:
+        temp = check_column_existence(modifiable_columns=
+                                         ["sigla", 
+                                         "emailResponsabile", 
+                                         "anno"],
+                                         to_modify=list(data.keys()),
+        )
+        if isinstance(temp, str):
             return create_response(
-                message={
-                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
-                },
+                message={"outcome": temp},
                 status_code=STATUS_CODES["bad_request"],
             )
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="classi", id_column="id_classe", id_value=id_
+            data=data, table_name="classi", pk_column="id_classe", pk_value=id_
         )
 
         # Execute the update query
@@ -236,12 +236,13 @@ class Class(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": "PATCH"},
+            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, 
+                             "verb": "PATCH"},
         )
 
         # Return a success message
         return create_response(
-            message={"outcome": "class updated"}, status_code=STATUS_CODES["ok"]
+            message={"outcome": "class successfully updated"}, status_code=STATUS_CODES["ok"]
         )
 
     @jwt_required()

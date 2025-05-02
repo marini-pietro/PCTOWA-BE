@@ -25,6 +25,7 @@ from .blueprints_utils import (
     fetchall_query,
     get_class_http_verbs,
     validate_json_request,
+    check_column_existence,
     get_hateos_location_string,
 )
 
@@ -169,38 +170,31 @@ class Contact(Resource):
 
         # Check that the specified contact exists
         contact: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM contatti WHERE idContatto = %s", (id_,)
+            "SELECT nome FROM contatti WHERE idContatto = %s", (id_,) # Only fetch the province to check existence (could be any field)
         )
-        if not contact:
+        if contact is None:
             return create_response(
                 message={"outcome": "specified contact not_found"},
                 status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = [
+        temp = check_column_existence(modifiable_columns=[
             "nome",
             "cognome",
             "telefono",
             "email",
             "ruolo",
             "id_azienda",
-        ]
-        to_modify: List[str] = list(data.keys())
-        error_columns: List[str] = [
-            field for field in to_modify if field not in modifiable_columns
-        ]
-        if error_columns:
+        ], to_modify=list(data.keys()))
+        if isinstance(temp, str):
             return create_response(
-                message={
-                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
-                },
-                status_code=STATUS_CODES["bad_request"],
+                message={"error": temp}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="contatti", id_column="idContatto", id_value=id_
+            data=data, table_name="contatti", pk_column="idContatto", pk_value=id_
         )
 
         # Execute the update query

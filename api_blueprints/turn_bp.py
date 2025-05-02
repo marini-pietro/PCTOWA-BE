@@ -27,6 +27,7 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     get_class_http_verbs,
     validate_json_request,
+    check_column_existence,
     get_hateos_location_string,
 )
 
@@ -240,21 +241,22 @@ class Turn(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, 
+                status_code=STATUS_CODES["bad_request"]
             )
 
         # Check that the specified class exists
         turn: Dict[str, Any] = fetchone_query(
             "SELECT * FROM turni WHERE idTurno = %s", (id_,)
         )
-        if not turn:
+        if turn is None:
             return create_response(
                 message={"outcome": "specified turn does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = [
+        temp = check_column_existence(modifiable_columns=[
             "data_inizio",
             "data_fine",
             "posti",
@@ -267,22 +269,16 @@ class Turn(Resource):
             "ora_fine",
             "giorno_inizio",
             "giorno_fine",
-        ]
-        to_modify: List[str] = list(data.keys())
-        error_columns: List[str] = [
-            field for field in to_modify if field not in modifiable_columns
-        ]
-        if error_columns:
+        ], 
+        to_modify=list(data.keys()))
+        if isinstance(temp, str):
             return create_response(
-                message={
-                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
-                },
-                status_code=STATUS_CODES["bad_request"],
+                message={"error": temp}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="turni", id_column="idTurno", id_value=id_
+            data=data, table_name="turni", pk_column="idTurno", pk_value=id_
         )
 
         # Execute the update query

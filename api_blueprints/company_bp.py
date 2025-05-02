@@ -26,6 +26,7 @@ from .blueprints_utils import (
     parse_date_string,
     get_class_http_verbs,
     validate_json_request,
+    check_column_existence,
     get_hateos_location_string,
 )
 
@@ -174,21 +175,18 @@ class Company(Resource):
                 message={"error": data}, status_code=STATUS_CODES["bad_request"]
             )
 
-        # Gather data
-        to_modify: List[str] = list(data.keys())
-
         # Check if the company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE id_azienda = %s", (id_,)
+            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s", (id_,) # Only fetch the province to check existence (could be any field)
         )
-        if not company:
+        if company is None:
             return create_response(
                 message={"outcome": "error, company does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = [
+        temp = check_column_existence(modifiable_columns=[
             "ragione_sociale",
             "codice_ateco",
             "partita_iva",
@@ -202,21 +200,15 @@ class Company(Resource):
             "indirizzo_logo",
             "sito_web",
             "forma_giuridica",
-        ]
-        error_columns: List[str] = [
-            field for field in to_modify if field not in modifiable_columns
-        ]
-        if error_columns:
+        ], to_modify=list(data.keys()))
+        if isinstance(temp, str):
             return create_response(
-                message={
-                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
-                },
-                status_code=STATUS_CODES["bad_request"],
+                message={"error": temp}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="aziende", id_column="id_azienda", id_value=id_
+            data=data, table_name="aziende", pk_column="id_azienda", pk_value=id_
         )
 
         # Execute the update query

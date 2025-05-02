@@ -38,6 +38,7 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     get_class_http_verbs,
     validate_json_request,
+    check_column_existence,
     get_hateos_location_string,
 )
 
@@ -186,12 +187,13 @@ class User(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, 
+                status_code=STATUS_CODES["bad_request"]
             )
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM utente WHERE email_utente = %s", (email,)
+            "SELECT nome FROM utente WHERE email_utente = %s", (email,) # Only check for existence (SELECT column could be any field)
         )
         if user is None:
             return create_response(
@@ -200,28 +202,21 @@ class User(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = [
+        temp = check_column_existence(modifiable_columns=[
             "email_utente",
             "password",
             "nome",
             "cognome",
             "tipo",
-        ]
-        to_modify: List[str] = list(data.keys())
-        error_columns: List[str] = [
-            field for field in to_modify if field not in modifiable_columns
-        ]
-        if error_columns:
+        ], to_modify=list(data.keys()))
+        if isinstance(temp, str):
             return create_response(
-                message={
-                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
-                },
-                status_code=STATUS_CODES["bad_request"],
+                message={"error": temp}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="utenti", id_column="email_utente", id_value=email
+            data=data, table_name="utenti", pk_column="email_utente", pk_value=email
         )
 
         # Update the user
@@ -587,7 +582,7 @@ class ReadBindedUser(Resource):
     - OPTIONS: Get allowed HTTP methods for this endpoint
     """
 
-    ENDPOINT_PATHS = [f"/{BP_NAME}/bind/<string:id_>"]
+    ENDPOINT_PATHS = [f"/{BP_NAME}/binded/<string:id_>"]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])

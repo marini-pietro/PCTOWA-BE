@@ -183,7 +183,8 @@ class LegalForm(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, 
+                status_code=STATUS_CODES["bad_request"]
             )
 
         # Gather JSON data
@@ -192,13 +193,13 @@ class LegalForm(Resource):
         # Validate parameters
         if new_value is None or not isinstance(new_value, str) or len(new_value) == 0:
             return create_response(
-                message={"error": "Invalid legal form value"},
+                message={"error": "invalid new legal form value"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
         # Check if legal form exists
         form: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM formaGiuridica WHERE forma = %s", (forma,)
+            "SELECT forma FROM formaGiuridica WHERE forma = %s", (forma,)
         )
         if form is None:
             return create_response(

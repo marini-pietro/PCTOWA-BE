@@ -330,35 +330,9 @@ def clear_db_connection_pool():
         connection.close()
     _DB_POOL._cnx_queue.clear()
 
-
-def build_select_query_from_filters(
-    data, table_name, limit=1, offset=0
-):  # TODO check if this function is necessary
-    """
-    Build a SQL query from filters.
-    Does not support complex queries with joins or subqueries.
-
-    params:
-        data - The filters to apply to the query
-        table_name - The name of the table to query
-        limit - The maximum number of results to return
-        offset - The offset for pagination
-
-    returns:
-        A tuple containing the query and the parameters to pass to the query
-
-    raises:
-        None
-    """
-
-    filters = " AND ".join([f"{key} = %s" for key in data.keys()])
-    params = list(data.values()) + [limit, offset]
-    query = f"SELECT * FROM {table_name} WHERE {filters} LIMIT %s OFFSET %s"
-    return query, params
-
-
+# Endpoint utility functions
 def build_update_query_from_filters(
-    data, table_name, id_column, id_value
+    data, table_name, pk_column, pk_value
 ) -> Tuple[str, List[Any]]:
     """
     Build a SQL update query from filters.
@@ -366,7 +340,7 @@ def build_update_query_from_filters(
     params:
         data - The filters to apply to the query
         table_name - The name of the table to query
-        id_column - The name of the ID column to use for the update
+        pk_column - The name of the ID column to use for the update
 
     returns:
         A tuple containing the query and the parameters to pass to the query
@@ -376,10 +350,34 @@ def build_update_query_from_filters(
     """
 
     filters = ", ".join([f"{key} = %s" for key in data.keys()])
-    params = list(data.values()) + [id_value]
-    query = f"UPDATE {table_name} SET {filters} WHERE {id_column} = %s"
+    params = list(data.values()) + [pk_value]
+    query = f"UPDATE {table_name} SET {filters} WHERE {pk_column} = %s"
     return query, params
 
+def check_column_existence(modifiable_columns: List[str], to_modify: List[str]) -> Union[Response, bool]:
+    """
+    Check if the columns to modify exist in the modifiable columns.  
+    If not, return an error response.  
+    If all columns are valid, return True.
+
+    Params:
+        modifiable_columns - The list of columns that can be modified
+        to_modify - The list of columns to modify
+
+    Returns:
+        Response or bool - An error response if there are invalid columns, or True if all columns are valid
+    """
+
+    error_columns = [
+        field for field in to_modify if field not in modifiable_columns
+        ]
+    
+    # If there are any error columns, return an error response
+    if error_columns:
+        return f"error, field(s) {error_columns} do not exist or cannot be modified"
+    
+    # If all columns are valid, return True
+    return True
 
 # Graceful shutdown handler
 def shutdown_handler():

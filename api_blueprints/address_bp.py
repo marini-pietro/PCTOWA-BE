@@ -15,17 +15,16 @@ from config import (
     STATUS_CODES,
 )
 from .blueprints_utils import (
-    build_select_query_from_filters,
     build_update_query_from_filters,
     check_authorization,
     create_response,
     execute_query,
-    fetchall_query,
     fetchone_query,
     get_class_http_verbs,
     log,
     validate_json_request,
     get_hateos_location_string,
+    check_column_existence,
 )
 
 # Define constants
@@ -169,7 +168,7 @@ class Address(Resource):
 
         # Check if address exists
         address = fetchone_query(
-            "SELECT * FROM indirizzi WHERE id_indirizzo = %s", (id_,)
+            "SELECT stato FROM indirizzi WHERE id_indirizzo = %s", (id_,) # Only fetch the state to check existence (could be any field)
         )
         if address is None:
             return create_response(
@@ -178,29 +177,25 @@ class Address(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: set = {
+        temp = check_column_existence(
+            modifiable_columns=[
             "stato",
             "provincia",
             "comune",
             "cap",
             "indirizzo",
             "id_azienda",
-        }
-        to_modify: list[str] = list(data.keys())
-        error_columns = [
-            field for field in to_modify if field not in modifiable_columns
-        ]
-        if error_columns:
+            ], to_modify=list(data.keys())
+        )
+        if isinstance(temp, str):
             return create_response(
-                message={
-                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
-                },
-                status_code=STATUS_CODES["bad_request"],
+                message={"error": temp}, 
+                status_code=STATUS_CODES["bad_request"]
             )
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="indirizzi", id_column="id_indirizzo", id_value=id_
+            data=data, table_name="indirizzi", pk_column="id_indirizzo", pk_value=id_
         )
 
         # Update the address
@@ -213,7 +208,8 @@ class Address(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "PATCH"},
+            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], 
+                             "verb": "PATCH"},
         )
 
         # Return a success message
@@ -230,62 +226,25 @@ class Address(Resource):
         This endpoint requires authentication and authorization.
         The request must contain the id parameter in the URI as a path variable.
         """
-        # Gather parameters
-        try:
-            limit = int(
-                request.args.get("limit", 10)
-            )  # Default limit to 10 if not provided
-            offset = int(
-                request.args.get("offset", 0)
-            )  # Default offset to 0 if not provided
-        except ValueError:
+        
+        # Check if address exists
+        address = fetchone_query(
+            "SELECT stato FROM indirizzi WHERE id_indirizzo = %s", (id_,) # Only fetch the state to check existence (could be any field)
+        )
+        if address is None:
             return create_response(
-                message={"error": "limit and offset must be integers"},
-                status_code=STATUS_CODES["bad_request"],
+                message={"error": "specified address does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
-        try:
-            id_azienda = int(request.args.get("id_azienda"))
-        except ValueError:
-            return create_response(
-                message={"error": "invalid id_azienda parameter"},
-                status_code=STATUS_CODES["bad_request"],
-            )
-
-        # Build filter data dictionary
-        data = {
-            key: request.args.get(key)
-            for key in [
-                "id_indirizzo",
-                "stato",
-                "provincia",
-                "comune",
-                "cap",
-                "indirizzo",
-            ]
-        }
-        if id_azienda is not None:
-            data["id_azienda"] = id_azienda
-
-        # If 'id' is provided, add it to the filter
-        if id_ is not None:
-            data["id_indirizzo"] = id_
 
         try:
-            # Build the query
-            query, params = build_select_query_from_filters(
-                data=data, table_name="indirizzi", limit=limit, offset=offset
-            )
-
             # Execute query
-            addresses = fetchall_query(query, params)
-
-            # Get the ids to log
-            ids = [address["id_indirizzo"] for address in addresses]
+            address = fetchone_query("SELECT stato, provincia, comune, cap, indirizzo, id_azienda FROM indirizzi WHERE id_indirizzo = %s", params=(id_,))
 
             # Log the read
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} read address {ids}',
+                message=f'User {get_jwt_identity().get("email")} read addres {id_}',
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -293,7 +252,7 @@ class Address(Resource):
             )
 
             # Return the results
-            return create_response(message=addresses, status_code=STATUS_CODES["ok"])
+            return create_response(message=address, status_code=STATUS_CODES["ok"])
         except (
             ValueError,
             KeyError,
@@ -303,7 +262,7 @@ class Address(Resource):
             # Log the error
             log(
                 log_type="error",
-                message=f"Error in Address GET: {err}",
+                message=f"error while retrieving address data with id {id_}: {err}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",

@@ -25,6 +25,7 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     get_class_http_verbs,
     validate_json_request,
+    check_column_existence,
     get_hateos_location_string,
 )
 
@@ -199,12 +200,13 @@ class Student(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, 
+                status_code=STATUS_CODES["bad_request"]
             )
 
         # Check that the specified student exists
         student: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM studenti WHERE matricola = %s", (matricola,)
+            "SELECT nome FROM studenti WHERE matricola = %s", (matricola,) # Only fetch the province to check existence (could be any field)
         )
         if student is None:
             return create_response(
@@ -213,22 +215,20 @@ class Student(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = ["nome", "cognome", "id_classe", "comune"]
-        to_modify: List[str] = list(data.keys())
-        error_columns: List[str] = [
-            field for field in to_modify if field not in modifiable_columns
-        ]
-        if error_columns:
+        temp = check_column_existence(modifiable_columns=["nome", 
+                                         "cognome", 
+                                         "id_classe", 
+                                         "comune"], 
+                                         to_modify=list(data.keys()))
+        if isinstance(temp, str):
             return create_response(
-                message={
-                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
-                },
+                message={"outcome": temp},
                 status_code=STATUS_CODES["bad_request"],
             )
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="studenti", id_column="matricola", id_value=matricola
+            data=data, table_name="studenti", pk_column="matricola", pk_value=matricola
         )
 
         # Update the student

@@ -25,6 +25,7 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     get_class_http_verbs,
     validate_json_request,
+    check_column_existence,
     get_hateos_location_string,
 )
 
@@ -144,12 +145,13 @@ class Tutor(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, 
+                status_code=STATUS_CODES["bad_request"]
             )
 
         # Check if tutor exists
         tutor: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM tutor WHERE id_tutor = %s", (id_,)
+            "SELECT nome FROM tutor WHERE id_tutor = %s", (id_,) # Only check for existence (select column could be any field)
         )
         if tutor is None:
             return create_response(
@@ -158,27 +160,21 @@ class Tutor(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        modifiable_columns: List[str] = [
+        temp = check_column_existence(modifiable_columns=[
             "nome",
             "cognome",
             "emailTutor",
             "telefonoTutor",
-        ]
-        to_modify: List[str] = list(data.keys())
-        error_columns: List[str] = [
-            field for field in to_modify if field not in modifiable_columns
-        ]
-        if error_columns:
+        ], 
+        to_modify=list(data.keys()))
+        if isinstance(temp, str):
             return create_response(
-                message={
-                    "outcome": f"error, field(s) {error_columns} do not exist or cannot be modified"
-                },
-                status_code=STATUS_CODES["bad_request"],
+                message={"error": temp}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Build the update query
         query, params = build_update_query_from_filters(
-            data=data, table_name="tutor", id_column="id_tutor", id_value=id_
+            data=data, table_name="tutor", pk_column="id_tutor", pk_value=id_
         )
 
         # Update the tutor
