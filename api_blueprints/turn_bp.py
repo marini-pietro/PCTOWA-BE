@@ -45,7 +45,7 @@ class Turn(Resource):
     This class handles the CRUD operations for the Turn resource.
     """
 
-    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
+    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
@@ -176,7 +176,7 @@ class Turn(Resource):
         # Log the turn creation
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} created turn {lastrowid}',
+            message=f"User {get_jwt_identity()} created turn {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -216,7 +216,7 @@ class Turn(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted turn {id_}',
+            message=f"User {get_jwt_identity()} deleted turn {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -241,8 +241,7 @@ class Turn(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, 
-                status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Check that the specified class exists
@@ -256,21 +255,23 @@ class Turn(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        temp = check_column_existence(modifiable_columns=[
-            "data_inizio",
-            "data_fine",
-            "posti",
-            "posti_occupati",
-            "ore",
-            "id_azienda",
-            "id_tutor",
-            "id_indirizzo",
-            "ora_inizio",
-            "ora_fine",
-            "giorno_inizio",
-            "giorno_fine",
-        ], 
-        to_modify=list(data.keys()))
+        temp = check_column_existence(
+            modifiable_columns=[
+                "data_inizio",
+                "data_fine",
+                "posti",
+                "posti_occupati",
+                "ore",
+                "id_azienda",
+                "id_tutor",
+                "id_indirizzo",
+                "ora_inizio",
+                "ora_fine",
+                "giorno_inizio",
+                "giorno_fine",
+            ],
+            to_modify=list(data.keys()),
+        )
         if isinstance(temp, str):
             return create_response(
                 message={"error": temp}, status_code=STATUS_CODES["bad_request"]
@@ -287,7 +288,7 @@ class Turn(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated turn {id_}',
+            message=f"User {get_jwt_identity()} updated turn {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -302,7 +303,7 @@ class Turn(Resource):
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, company_id) -> Response:
+    def get(self, id_) -> Response:
         """
         Get a turn by ID of its relative company.
         The request must include the turn ID as a path variable.
@@ -312,8 +313,8 @@ class Turn(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity().get("email")} requested "
-                f"turn list with company id {company_id}"
+                f"User {get_jwt_identity()} requested "
+                f"turn list with company id {id_}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
@@ -323,7 +324,7 @@ class Turn(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE id_azienda = %s", (company_id,)
+            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s", (id_,) # Only check existence (SELECT field could be any)
         )
         if not company:
             return create_response(
@@ -335,10 +336,10 @@ class Turn(Resource):
         turns: List[Dict[str, Any]] = fetchall_query(
             "SELECT data_inizio, data_fine, posti, "
             "posti_occupati, ore, id_azienda, "
-            "id_tutor, indirizzo, ora_inizio, "
+            "ora_inizio, "
             "ora_fine, giorno_inizio, giorno_fine "
             "FROM turni WHERE id_azienda = %s",
-            (company_id,),
+            (id_,),
         )
 
         # Check if query returned any results

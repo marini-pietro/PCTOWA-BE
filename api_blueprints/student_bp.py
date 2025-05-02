@@ -43,9 +43,8 @@ class Student(Resource):
     """
 
     ENDPOINT_PATHS = [
-        f"/{BP_NAME}/<int:matricola>",
-        f"/{BP_NAME}/<int:matricola>",
-        f"/{BP_NAME}/<int:class_id>",
+        f"/{BP_NAME}/<int:matricola>",  # For endpoints like DELETE or PATCH
+        f"/{BP_NAME}/class/<int:class_id>",  # For endpoints like GET
     ]
 
     @jwt_required()
@@ -104,7 +103,7 @@ class Student(Resource):
             log(
                 log_type="error",
                 message=(
-                    f'User {get_jwt_identity().get("email")} tried to create student {matricola} '
+                    f"User {get_jwt_identity()} tried to create student {matricola} "
                     f"but it already generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -120,7 +119,7 @@ class Student(Resource):
             log(
                 log_type="error",
                 message=(
-                    f'User {get_jwt_identity().get("email")} failed to create student {matricola} '
+                    f"User {get_jwt_identity()} failed to create student {matricola} "
                     f"with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -136,7 +135,7 @@ class Student(Resource):
         # Log the student creation
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} created student {matricola}',
+            message=f"User {get_jwt_identity()} created student {matricola}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -175,7 +174,7 @@ class Student(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted student {matricola}',
+            message=f"User {get_jwt_identity()} deleted student {matricola}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -200,13 +199,15 @@ class Student(Resource):
         data = validate_json_request(request)
         if isinstance(data, str):
             return create_response(
-                message={"error": data}, 
-                status_code=STATUS_CODES["bad_request"]
+                message={"error": data}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Check that the specified student exists
         student: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM studenti WHERE matricola = %s", (matricola,) # Only fetch the province to check existence (could be any field)
+            "SELECT nome FROM studenti WHERE matricola = %s",
+            (
+                matricola,
+            ),  # Only fetch the province to check existence (could be any field)
         )
         if student is None:
             return create_response(
@@ -215,11 +216,10 @@ class Student(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        temp = check_column_existence(modifiable_columns=["nome", 
-                                         "cognome", 
-                                         "id_classe", 
-                                         "comune"], 
-                                         to_modify=list(data.keys()))
+        temp = check_column_existence(
+            modifiable_columns=["nome", "cognome", "id_classe", "comune"],
+            to_modify=list(data.keys()),
+        )
         if isinstance(temp, str):
             return create_response(
                 message={"outcome": temp},
@@ -237,7 +237,7 @@ class Student(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated student {matricola}',
+            message=f"User {get_jwt_identity()} updated student {matricola}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -261,7 +261,7 @@ class Student(Resource):
         log(
             log_type="info",
             message=(
-                f'User {get_jwt_identity().get("email")} requested student list '
+                f"User {get_jwt_identity()} requested student list "
                 f"for class {class_id}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -424,7 +424,7 @@ class BindStudentToTurn(Resource):
             log(
                 log_type="info",
                 message=(
-                    f'User {get_jwt_identity().get("email")} bound student {matricola} '
+                    f"User {get_jwt_identity()} bound student {matricola} "
                     f"to turn {id_turno}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -443,7 +443,7 @@ class BindStudentToTurn(Resource):
             log(
                 log_type="error",
                 message=(
-                    f'User {get_jwt_identity().get("email")} tried to bind student {matricola} '
+                    f"User {get_jwt_identity()} tried to bind student {matricola} "
                     f"to turn {id_turno} but it already generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -462,7 +462,7 @@ class BindStudentToTurn(Resource):
             log(
                 log_type="error",
                 message=(
-                    f'User {get_jwt_identity().get("email")} failed to bind student {matricola} '
+                    f"User {get_jwt_identity()} failed to bind student {matricola} "
                     f"to turn {id_turno} with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -517,7 +517,7 @@ class StudentList(Resource):
         log(
             log_type="info",
             message=(
-                f'User {get_jwt_identity().get("email")} requested student list '
+                f"User {get_jwt_identity()} requested student list "
                 f"that are associated to turn {turn_id}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,

@@ -42,7 +42,7 @@ class Contact(Resource):
     Contact resource for managing contacts in the database.
     """
 
-    ENDPOINTS_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
+    ENDPOINTS_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
@@ -100,7 +100,7 @@ class Contact(Resource):
         # Log the creation of the contact
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} created contact with id_ {lastrowid}',
+            message=f"User {get_jwt_identity()} created contact with id_ {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -140,7 +140,7 @@ class Contact(Resource):
         # Log the deletion of the contact
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted contact {id_}',
+            message=f"User {get_jwt_identity()} deleted contact {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -170,7 +170,8 @@ class Contact(Resource):
 
         # Check that the specified contact exists
         contact: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM contatti WHERE idContatto = %s", (id_,) # Only fetch the province to check existence (could be any field)
+            "SELECT nome FROM contatti WHERE idContatto = %s",
+            (id_,),  # Only fetch the province to check existence (could be any field)
         )
         if contact is None:
             return create_response(
@@ -179,14 +180,17 @@ class Contact(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        temp = check_column_existence(modifiable_columns=[
-            "nome",
-            "cognome",
-            "telefono",
-            "email",
-            "ruolo",
-            "id_azienda",
-        ], to_modify=list(data.keys()))
+        temp = check_column_existence(
+            modifiable_columns=[
+                "nome",
+                "cognome",
+                "telefono",
+                "email",
+                "ruolo",
+                "id_azienda",
+            ],
+            to_modify=list(data.keys()),
+        )
         if isinstance(temp, str):
             return create_response(
                 message={"error": temp}, status_code=STATUS_CODES["bad_request"]
@@ -203,7 +207,7 @@ class Contact(Resource):
         # Log the update of the contact
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated contact {id_}',
+            message=f"User {get_jwt_identity()} updated contact {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -218,7 +222,7 @@ class Contact(Resource):
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, company_id) -> Response:
+    def get(self, id_) -> Response:
         """
         Get a contact by the ID of its company.
         The id is passed as a path variable.
@@ -228,8 +232,8 @@ class Contact(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity().get("email")} requested "
-                f"contact list for company {company_id}"
+                f"User {get_jwt_identity()} requested "
+                f"contact list for company with id {id_}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
@@ -239,7 +243,7 @@ class Contact(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT * FROM aziende WHERE id_azienda = %s", (company_id,)
+            "SELECT * FROM aziende WHERE id_azienda = %s", (id_,)
         )
         if not company:
             return create_response(
@@ -249,7 +253,7 @@ class Contact(Resource):
 
         # Get the data
         contact: List[Dict[str, Any]] = fetchall_query(
-            "SELECT * FROM contatti WHERE id_azienda = %s", (company_id,)
+            "SELECT * FROM contatti WHERE id_azienda = %s", (id_,)
         )
 
         # Check if query returned any results

@@ -48,7 +48,7 @@ SYSLOG_SEVERITY_MAP: Dict[str, int] = {  # Define a severity map for the syslog 
 
 # API server related settings
 # | API server settings
-API_SERVER_HOST: str = "172.16.1.98"
+API_SERVER_HOST: str = "localhost"
 API_SERVER_PORT: int = 6000
 API_SERVER_NAME_IN_LOG: str = "api-server"  # The name of the server in the log messages
 API_VERSION: str = "v1"  # The version of the API

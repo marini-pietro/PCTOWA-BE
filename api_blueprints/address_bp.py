@@ -42,7 +42,7 @@ class Address(Resource):
     deleting, updating, and retrieving addresses.
     """
 
-    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
+    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
@@ -98,7 +98,7 @@ class Address(Resource):
         # Log the address creation
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} created address {lastrowid}',
+            message=f"User {get_jwt_identity()} created address {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -138,7 +138,7 @@ class Address(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted address {id_}',
+            message=f"User {get_jwt_identity()} deleted address {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -168,7 +168,8 @@ class Address(Resource):
 
         # Check if address exists
         address = fetchone_query(
-            "SELECT stato FROM indirizzi WHERE id_indirizzo = %s", (id_,) # Only fetch the state to check existence (could be any field)
+            "SELECT stato FROM indirizzi WHERE id_indirizzo = %s",
+            (id_,),  # Only fetch the state to check existence (could be any field)
         )
         if address is None:
             return create_response(
@@ -179,18 +180,18 @@ class Address(Resource):
         # Check that the specified fields actually exist in the database
         temp = check_column_existence(
             modifiable_columns=[
-            "stato",
-            "provincia",
-            "comune",
-            "cap",
-            "indirizzo",
-            "id_azienda",
-            ], to_modify=list(data.keys())
+                "stato",
+                "provincia",
+                "comune",
+                "cap",
+                "indirizzo",
+                "id_azienda",
+            ],
+            to_modify=list(data.keys()),
         )
         if isinstance(temp, str):
             return create_response(
-                message={"error": temp}, 
-                status_code=STATUS_CODES["bad_request"]
+                message={"error": temp}, status_code=STATUS_CODES["bad_request"]
             )
 
         # Build the update query
@@ -204,12 +205,11 @@ class Address(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated address {id_}',
+            message=f"User {get_jwt_identity()} updated address {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], 
-                             "verb": "PATCH"},
+            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "PATCH"},
         )
 
         # Return a success message
@@ -226,10 +226,11 @@ class Address(Resource):
         This endpoint requires authentication and authorization.
         The request must contain the id parameter in the URI as a path variable.
         """
-        
+
         # Check if address exists
         address = fetchone_query(
-            "SELECT stato FROM indirizzi WHERE id_indirizzo = %s", (id_,) # Only fetch the state to check existence (could be any field)
+            "SELECT stato FROM indirizzi WHERE id_indirizzo = %s",
+            (id_,),  # Only fetch the state to check existence (could be any field)
         )
         if address is None:
             return create_response(
@@ -239,12 +240,15 @@ class Address(Resource):
 
         try:
             # Execute query
-            address = fetchone_query("SELECT stato, provincia, comune, cap, indirizzo, id_azienda FROM indirizzi WHERE id_indirizzo = %s", params=(id_,))
+            address = fetchone_query(
+                "SELECT stato, provincia, comune, cap, indirizzo, id_azienda FROM indirizzi WHERE id_indirizzo = %s",
+                params=(id_,),
+            )
 
             # Log the read
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} read addres {id_}',
+                message=f"User {get_jwt_identity()} read addres {id_}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",

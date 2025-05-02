@@ -113,7 +113,7 @@ class Subject(Resource):
             # Log the subject creation
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} created subject {materia}',
+                message=f"User {get_jwt_identity()} created subject {materia}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -135,7 +135,7 @@ class Subject(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get("email")} tried to "
+                    f"User {get_jwt_identity()} tried to "
                     f"create subject {materia} but it already generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -198,7 +198,7 @@ class Subject(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted subject {materia}',
+            message=f"User {get_jwt_identity()} deleted subject {materia}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -237,10 +237,10 @@ class Subject(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        temp = check_column_existence(modifiable_columns=["materia", 
-                                         "descrizione", 
-                                         "hex_color"], 
-                                         to_modify=list(data.keys()))
+        temp = check_column_existence(
+            modifiable_columns=["materia", "descrizione", "hex_color"],
+            to_modify=list(data.keys()),
+        )
         if isinstance(temp, str):
             return create_response(
                 message={"outcome": temp},
@@ -258,7 +258,7 @@ class Subject(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated subject {materia}',
+            message=f"User {get_jwt_identity()} updated subject {materia}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -282,7 +282,7 @@ class Subject(Resource):
         # Gather parameters
         limit: int = request.args.get("limit", default=10, type=int)
         offset: int = request.args.get("offset", default=0, type=int)
-        
+
         # Validate parameters
         if limit < 0 or offset < 0:
             return create_response(
@@ -292,12 +292,15 @@ class Subject(Resource):
 
         try:
             # Execute query
-            subjects = fetchall_query("SELECT materia, descrizione, hex_color FROM materie LIMIT %s OFFSET %s", params=(limit, offset))
+            subjects = fetchall_query(
+                "SELECT materia, descrizione, hex_color FROM materie LIMIT %s OFFSET %s",
+                params=(limit, offset),
+            )
 
             # Log the read
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} read all subjects',
+                message=f"User {get_jwt_identity()} read all subjects",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",

@@ -21,6 +21,8 @@ from config import (
     JWT_ACCESS_TOKEN_EXPIRES,
     JWT_SECRET_KEY,
     STATUS_CODES,
+    JWT_REFRESH_TOKEN_EXPIRES,
+    JWT_ALGORITHM,
 )
 
 # Initialize Flask app
@@ -36,6 +38,9 @@ app.config["JWT_SECRET_KEY"] = (
     JWT_SECRET_KEY  # Use a secure key (ideally at least 256 bits)
 )
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = JWT_ACCESS_TOKEN_EXPIRES
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = JWT_REFRESH_TOKEN_EXPIRES
+app.config["JWT_ALGORITHM"] = JWT_ALGORITHM
+
 jwt = JWTManager(app)
 
 
@@ -61,12 +66,20 @@ def login():
     )
 
     if user:
-        # Generate access and refresh tokens
+        # Use a string for the identity (sub claim)
+        identity = user["email_utente"]  # Use the email as the identity
+
+        # Add additional claims (e.g., ruolo) as custom claims
+        additional_claims = {"role": user["ruolo"]}
+
+        # Generate the access token
         access_token: str = create_access_token(
-            identity={"email": email, "role": user["ruolo"]}
+            identity=identity, additional_claims=additional_claims
         )
+
+        # Generate the refresh token
         refresh_token: str = create_refresh_token(
-            identity={"email": email, "role": user["ruolo"]}
+            identity=identity, additional_claims=additional_claims
         )
 
         # Log the login operation

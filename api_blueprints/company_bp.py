@@ -49,7 +49,7 @@ class Company(Resource):
     - OPTIONS: Get allowed methods for the resource
     """
 
-    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
+    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
@@ -107,7 +107,7 @@ class Company(Resource):
         # Log the creation of the company
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} created company {lastrowid}',
+            message=f"User {get_jwt_identity()} created company {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -147,7 +147,7 @@ class Company(Resource):
         # Log the deletion of the company
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} deleted company {id_}',
+            message=f"User {get_jwt_identity()} deleted company {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -177,7 +177,8 @@ class Company(Resource):
 
         # Check if the company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s", (id_,) # Only fetch the province to check existence (could be any field)
+            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s",
+            (id_,),  # Only fetch the province to check existence (could be any field)
         )
         if company is None:
             return create_response(
@@ -186,21 +187,24 @@ class Company(Resource):
             )
 
         # Check that the specified fields actually exist in the database
-        temp = check_column_existence(modifiable_columns=[
-            "ragione_sociale",
-            "codice_ateco",
-            "partita_iva",
-            "fax",
-            "pec",
-            "telefono_azienda",
-            "email_azienda",
-            "data_convenzione",
-            "scadenza_convenzione",
-            "categoria",
-            "indirizzo_logo",
-            "sito_web",
-            "forma_giuridica",
-        ], to_modify=list(data.keys()))
+        temp = check_column_existence(
+            modifiable_columns=[
+                "ragione_sociale",
+                "codice_ateco",
+                "partita_iva",
+                "fax",
+                "pec",
+                "telefono_azienda",
+                "email_azienda",
+                "data_convenzione",
+                "scadenza_convenzione",
+                "categoria",
+                "indirizzo_logo",
+                "sito_web",
+                "forma_giuridica",
+            ],
+            to_modify=list(data.keys()),
+        )
         if isinstance(temp, str):
             return create_response(
                 message={"error": temp}, status_code=STATUS_CODES["bad_request"]
@@ -217,7 +221,7 @@ class Company(Resource):
         # Log the update of the company
         log(
             log_type="info",
-            message=f'User {get_jwt_identity().get("email")} updated company {id_}',
+            message=f"User {get_jwt_identity()} updated company {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -241,7 +245,10 @@ class Company(Resource):
         try:
             # Execute the query
             company: Dict[str, Any] = fetchone_query(
-                "SELECT * FROM aziende WHERE = %s", (id_,)
+                "SELECT ragione_sociale, codice_ateco, partita_iva, " \
+                "fax, pec, telefono_azienda, email_azienda, data_convenzione, " \
+                "scadenza_convenzione, categoria, indirizzo_logo, sito_web, forma_giuridica " \
+                "FROM aziende WHERE id_azienda = %s", (id_,)
             )
 
             # Check if the company exists
@@ -275,7 +282,7 @@ class Company(Resource):
             # Log the read operation
             log(
                 log_type="info",
-                message=f'User {get_jwt_identity().get("email")} read company {id_}',
+                message=f"User {get_jwt_identity()} read company with id {id_}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -418,7 +425,7 @@ class CompanyList(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity().get("email")} read companies with filters:"
+                f"User {get_jwt_identity()} read companies with filters:"
                 f"{anno}, {comune}, {settore}, {mese}, {materia}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
