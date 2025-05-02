@@ -47,7 +47,7 @@ class Student(Resource):
         f"/{BP_NAME}/<int:class_id>",
     ]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def post(self) -> Response:
         """
@@ -150,7 +150,7 @@ class Student(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def delete(self, matricola) -> Response:
         """
@@ -187,7 +187,7 @@ class Student(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def patch(self, matricola) -> Response:
         """
@@ -250,7 +250,7 @@ class Student(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, class_id) -> Response:
         """
@@ -333,7 +333,7 @@ class Student(Resource):
         # Return the response
         return create_response(message=out_json, status_code=STATUS_CODES["ok"])
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -362,7 +362,7 @@ class BindStudentToTurn(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/bind/<int:matricola>"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def post(self, matricola) -> Response:
         """
@@ -478,7 +478,7 @@ class BindStudentToTurn(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -506,7 +506,7 @@ class StudentList(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/list/<int:turn_id>"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, turn_id) -> Response:
         """
@@ -549,7 +549,7 @@ class StudentList(Resource):
         # Return the response
         return create_response(message=students, status_code=STATUS_CODES["ok"])
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

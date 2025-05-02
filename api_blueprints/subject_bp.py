@@ -52,7 +52,7 @@ class Subject(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/<string:materia>"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin"])
     def post(self, materia) -> Response:
         """
@@ -164,7 +164,7 @@ class Subject(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin"])
     def delete(self, materia) -> Response:
         """
@@ -211,7 +211,7 @@ class Subject(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin"])
     def patch(self, materia) -> Response:
         """
@@ -274,7 +274,7 @@ class Subject(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, materia) -> Response:  # TODO rework this endpoint
         """
@@ -354,7 +354,7 @@ class Subject(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required
+    @jwt_required()
     def options(self) -> Response:
         """
         Handle OPTIONS requests to provide allowed methods for the endpoint.

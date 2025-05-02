@@ -51,7 +51,7 @@ class Class(Resource):
         f"/{BP_NAME}/<string:email>",
     ]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def post(self) -> Response:
         """
@@ -145,7 +145,7 @@ class Class(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def delete(self, id_) -> Response:
         """
@@ -182,7 +182,7 @@ class Class(Resource):
             message={"outcome": "class deleted"}, status_code=STATUS_CODES["no_content"]
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def patch(self, id_) -> Response:
         """
@@ -244,7 +244,7 @@ class Class(Resource):
             message={"outcome": "class updated"}, status_code=STATUS_CODES["ok"]
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, email_responsabile) -> Response:
         """
@@ -283,7 +283,7 @@ class Class(Resource):
         # Return the data
         return create_response(message=classes_data, status_code=STATUS_CODES["ok"])
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -312,7 +312,7 @@ class ClassFuzzySearch(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/fsearch"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self) -> Response:
         """
@@ -369,7 +369,7 @@ class ClassFuzzySearch(Resource):
         # Return the data
         return create_response(message=data, status_code=STATUS_CODES["ok"])
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -398,7 +398,7 @@ class ClassList(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/list"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self) -> Response:
         """
@@ -422,7 +422,7 @@ class ClassList(Resource):
 
         return create_response(message=class_names, status_code=STATUS_CODES["ok"])
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

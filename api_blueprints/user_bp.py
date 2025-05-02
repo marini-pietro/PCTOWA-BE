@@ -62,7 +62,7 @@ class User(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<string:email>"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin"])
     def post(self) -> Response:
         """
@@ -137,7 +137,7 @@ class User(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin"])
     def delete(self, email) -> Response:
         """
@@ -174,7 +174,7 @@ class User(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin"])
     def patch(self, email) -> Response:
         """
@@ -245,7 +245,7 @@ class User(Resource):
 
     # TODO GET method to get all user for an admin page???
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -439,7 +439,7 @@ class BindUserToCompany(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/bind/<string:email>"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin"])
     def post(self, email) -> Response:
         """
@@ -558,7 +558,7 @@ class BindUserToCompany(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -589,7 +589,7 @@ class ReadBindedUser(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/bind/<string:id_>"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, id_) -> Response:
         """
@@ -672,7 +672,7 @@ class ReadBindedUser(Resource):
         # Return the list of users
         return create_response(message=resources, status_code=STATUS_CODES["ok"])
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

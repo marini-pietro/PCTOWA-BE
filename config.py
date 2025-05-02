@@ -9,6 +9,7 @@ This module contains the configuration settings for the API server, including:
 """
 
 from typing import Dict
+from datetime import timedelta
 
 # Authentication server related settings
 AUTH_SERVER_HOST: str = "localhost"  # The host of the authentication server
@@ -20,10 +21,6 @@ AUTH_SERVER_SSL_CERT: str = (
     "/path/to/cert.pem"  # The path to the SSL/TLS certificate file
 )
 AUTH_SERVER_SSL_KEY: str = "/path/to/key.pem"  # The path to the SSL/TLS key file
-JWT_TOKEN_DURATION: int = 3  # In hours
-JWT_SECRET_KEY: str = "Lorem ipsum dolor sit amet eget."
-JWT_ALGORITHM: str = "HS256"  # The algorithm used to sign the JWT token
-
 
 # Log server related settings
 LOG_SERVER_HOST: str = "localhost"  # The host of the log server
@@ -62,6 +59,27 @@ API_SERVER_SSL_CERT: str = (
     "/path/to/cert.pem"  # The path to the SSL/TLS certificate file
 )
 API_SERVER_SSL_KEY: str = "/path/to/key.pem"  # The path to the SSL/TLS key file
+
+# JWT custom configuration
+JWT_SECRET_KEY: str = "Lorem ipsum dolor sit amet eget."
+JWT_ALGORITHM: str = "HS256"  # The algorithm used to sign the JWT token
+JWT_QUERY_STRING_NAME = "jwt_token"  # Custom name for the query string parameter
+JWT_ACCESS_COOKIE_NAME = "jwt_access_cookie"  # Custom name for the access token cookie
+JWT_REFRESH_COOKIE_NAME = (
+    "jwt_refresh_cookie"  # Custom name for the refresh token cookie
+)
+JWT_JSON_KEY = "jwt_token"  # Custom key for the access token in JSON payloads
+JWT_REFRESH_JSON_KEY = (
+    "jwt_refresh_token"  # Custom key for the refresh token in JSON payloads
+)
+JWT_TOKEN_LOCATION = [
+    "headers",
+    "cookies",
+    "query_string",
+    "json",
+]  # Where to look for the JWT token
+JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=10)  # Refresh token valid duration
+JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=3)  # Access token valid duration
 # | Database configuration
 DB_HOST: str = "localhost"
 DB_NAME: str = "pctowa"
@@ -77,6 +95,8 @@ STATUS_CODES: Dict[str, int] = {
     "unauthorized": 401,
     "forbidden": 403,
     "conflict": 409,
+    "precondition_failed": 412,
+    "unprocessable_entity": 422,
     "bad_request": 400,
     "created": 201,
     "ok": 200,

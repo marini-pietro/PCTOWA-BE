@@ -43,7 +43,7 @@ class Contact(Resource):
 
     ENDPOINTS_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def post(self) -> Response:
         """
@@ -115,7 +115,7 @@ class Contact(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def delete(self, id_) -> Response:
         """
@@ -152,7 +152,7 @@ class Contact(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
     def patch(self, id_) -> Response:
         """
@@ -222,7 +222,7 @@ class Contact(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, company_id) -> Response:
         """
@@ -268,7 +268,7 @@ class Contact(Resource):
         # Return the contact data
         return create_response(message=contact, status_code=STATUS_CODES["ok"])
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

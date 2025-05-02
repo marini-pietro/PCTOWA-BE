@@ -46,7 +46,7 @@ class Turn(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id>"]
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def post(self) -> Response:
         """
@@ -191,7 +191,7 @@ class Turn(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def delete(self, id_) -> Response:
         """
@@ -228,7 +228,7 @@ class Turn(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor"])
     def patch(self, id_) -> Response:
         """
@@ -304,7 +304,7 @@ class Turn(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, company_id) -> Response:
         """
@@ -355,7 +355,7 @@ class Turn(Resource):
         # Return the turn data
         return create_response(message=turns, status_code=STATUS_CODES["ok"])
 
-    @jwt_required
+    @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
