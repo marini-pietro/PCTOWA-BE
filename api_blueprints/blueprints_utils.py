@@ -246,6 +246,7 @@ def handle_options_request(resource_class) -> Response:
     response.headers["Access-Control-Allow-Origin"] = "*"  # Adjust as needed for CORS
     response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
 
     return response
 
