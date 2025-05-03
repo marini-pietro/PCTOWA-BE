@@ -17,7 +17,7 @@ from functools import wraps
 from contextlib import contextmanager
 from flask import jsonify, make_response, Response, Request
 from flask_jwt_extended import get_jwt
-from mysql.connector import pooling as mysql_pooling
+from mysql.connector.pooling import MySQLConnectionPool
 from config import (
     DB_HOST,
     DB_USER,
@@ -289,14 +289,17 @@ def parse_date_string(date_string: str) -> datetime:
 
 # Database related
 # Lazy initialization for the database connection pool
-_DB_POOL = None  # Private variable to hold the connection pool instance
+_DB_POOL: MySQLConnectionPool  = None  # Private variable to hold the connection pool instance
 
 
 def get_db_pool():
+    """
+    Get the database connection pool instance, initializing it if necessary.
+    """
     global _DB_POOL
     if _DB_POOL is None:  # Initialize only when accessed for the first time
         try:
-            _DB_POOL = mysql_pooling.MySQLConnectionPool(
+            _DB_POOL = MySQLConnectionPool(
                 pool_name="pctowa_connection_pool",
                 pool_size=max(1, CONNECTION_POOL_SIZE),
                 pool_reset_session=False,  # Session reset not needed for this application (no transactions)
@@ -307,7 +310,7 @@ def get_db_pool():
             )
         except socket.error as ex:
             print(
-                f"Couldn't access database, see next line for full exception.\n{ex}\n\n"
+                f"Couldn't access database, see next line for full exception.\n{ex}\n"
                 f"host: {DB_HOST}, dbname: {DB_NAME}, user: {DB_USER}, password: {DB_PASSWORD}"
             )
             sys.exit(1)
@@ -333,9 +336,14 @@ def clear_db_connection_pool():
     Clear the database connection pool by closing all connections.
     """
     global _DB_POOL
-    for connection in _DB_POOL._cnx_queue:
-        connection.close()
-    _DB_POOL._cnx_queue.clear()
+    if _DB_POOL is not None:
+        while True:
+            try:
+                connection = _DB_POOL.get_connection()
+                connection.close()
+            except Exception:
+                break
+        _DB_POOL = None
 
 
 # Endpoint utility functions
