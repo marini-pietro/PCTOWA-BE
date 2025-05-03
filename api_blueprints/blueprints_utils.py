@@ -446,6 +446,7 @@ def log_worker():
     """
     Background thread function to process log messages from the queue.
     """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     while True:
         # Get a log message from the queue
         log_data = log_queue.get()
@@ -471,11 +472,9 @@ def log_worker():
             f"{message}"  # Log message
         )
         try:
-            # Create a UDP socket and send the log message
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                sock.sendto(
-                    syslog_message.encode("utf-8"), (LOG_SERVER_HOST, LOG_SERVER_PORT)
-                )
+            sock.sendto(
+                syslog_message.encode("utf-8"), (LOG_SERVER_HOST, LOG_SERVER_PORT)
+            )
         except socket.error as ex:
             print(f"Failed to send log: {ex}")
 
