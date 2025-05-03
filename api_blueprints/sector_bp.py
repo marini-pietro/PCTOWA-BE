@@ -24,7 +24,7 @@ from .blueprints_utils import (
     execute_query,
     log,
     create_response,
-    get_class_http_verbs,
+    handle_options_request,
     validate_json_request,
     get_hateos_location_string,
 )
@@ -305,19 +305,7 @@ class Sector(Resource):
         This is useful for CORS preflight requests.
         """
 
-        # Define allowed methods
-        allowed_methods = get_class_http_verbs(type(self))
-
-        # Create the response
-        response = Response(status=STATUS_CODES["ok"])
-        response.headers["Allow"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Origin"] = (
-            "*"  # Adjust as needed for CORS
-        )
-        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-
-        return response
+        return handle_options_request(resource_class=self)
 
 
 api.add_resource(Sector, *Sector.ENDPOINT_PATHS)

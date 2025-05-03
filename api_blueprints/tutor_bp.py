@@ -23,7 +23,7 @@ from .blueprints_utils import (
     log,
     create_response,
     build_update_query_from_filters,
-    get_class_http_verbs,
+    handle_options_request,
     validate_json_request,
     check_column_existence,
     get_hateos_location_string,
@@ -255,19 +255,7 @@ class Tutor(Resource):
         This method returns the allowed HTTP methods for this endpoint.
         """
 
-        # Define allowed methods
-        allowed_methods = get_class_http_verbs(type(self))
-
-        # Create the response
-        response = Response(status=STATUS_CODES["ok"])
-        response.headers["Allow"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Origin"] = (
-            "*"  # Adjust as needed for CORS
-        )
-        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-
-        return response
+        return handle_options_request(resource_class=self)
 
 
 api.add_resource(Tutor, *Tutor.ENDPOINT_PATHS)

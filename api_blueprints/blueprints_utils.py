@@ -192,24 +192,34 @@ def create_response(message: Dict, status_code: int) -> Response:
     if not isinstance(status_code, int):
         raise TypeError("Status code must be an integer")
 
-    # message = f"{message}\n{STATUS_CODES_EXPLANATIONS.get(status_code, 'Unknown status code')}"
-
     return make_response(jsonify(message), status_code)
 
 
-def get_class_http_verbs(class_: type) -> List[str]:
+def get_hateos_location_string(bp_name: str, id_: Union[str, int]) -> str:
     """
-    Args:
-        class (type): The class to inspect. Must be a class object, not an instance.
+    Get the location string for HATEOAS links.
+
     Returns:
-        list[str]: A list of HTTP verbs (in uppercase) implemented as methods in the class.
-    Raises:
-        TypeError: If the provided argument is not a class.
+        str: The location string for HATEOAS links.
     """
+
+    protocol = "https" if API_SERVER_SSL else "http"
+    return (
+        f"{protocol}://{API_SERVER_HOST}:{API_SERVER_PORT}{URL_PREFIX}{bp_name}/{id_}"
+    )
+
+
+def handle_options_request(resource_class) -> Response:
+    """
+    Handles OPTIONS requests for the resources.
+    This method is used to determine the allowed HTTP methods for this resource.
+    It returns a 200 OK response with the allowed methods in the Allow header.
+    """
+
     # Ensure the input is a class
-    if not inspect.isclass(class_):
+    if not inspect.isclass(resource_class):
         raise TypeError(
-            f"class_ must be a class, not an instance. Got {class_} instead."
+            f"resource_class must be a class, not an instance. Got {resource_class} instead."
         )
 
     # List of HTTP verbs to filter
@@ -225,22 +235,19 @@ def get_class_http_verbs(class_: type) -> List[str]:
         "CONNECT",
     }
 
-    # Get all methods of the class and filter by HTTP verbs
-    return [verb for verb in http_verbs if hasattr(class_, verb.lower())]
+    # Define allowed methods
+    allowed_methods = [
+        verb for verb in http_verbs if hasattr(resource_class, verb.lower())
+    ]
 
+    # Create the response
+    response = Response(status=STATUS_CODES["ok"])
+    response.headers["Allow"] = ", ".join(allowed_methods)
+    response.headers["Access-Control-Allow-Origin"] = "*"  # Adjust as needed for CORS
+    response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
 
-def get_hateos_location_string(bp_name: str, id_: Union[str, int]) -> str:
-    """
-    Get the location string for HATEOAS links.
-
-    Returns:
-        str: The location string for HATEOAS links.
-    """
-
-    protocol = "https" if API_SERVER_SSL else "http"
-    return (
-        f"{protocol}://{API_SERVER_HOST}:{API_SERVER_PORT}{URL_PREFIX}{bp_name}/{id_}"
-    )
+    return response
 
 
 # Data handling related
@@ -381,17 +388,7 @@ def check_column_existence(
     # If all columns are valid, return True
     return True
 
-
-# Graceful shutdown handler
-def shutdown_handler():
-    """
-    Handle graceful shutdown of the application.
-    """
-    clear_db_connection_pool()
-    print("Database connection pool cleared. Exiting...")
-    sys.exit(0)
-
-
+# Database query related
 def fetchone_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:
     """
     Execute a query on the database and return the result.

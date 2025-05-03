@@ -20,7 +20,7 @@ from .blueprints_utils import (
     create_response,
     execute_query,
     fetchone_query,
-    get_class_http_verbs,
+    handle_options_request,
     log,
     validate_json_request,
     get_hateos_location_string,
@@ -291,19 +291,8 @@ class Address(Resource):
         This method is used to determine the allowed HTTP methods for this resource.
         It returns a 200 OK response with the allowed methods in the Allow header.
         """
-        # Define allowed methods
-        allowed_methods = get_class_http_verbs(type(self))
 
-        # Create the response
-        response = Response(status=STATUS_CODES["ok"])
-        response.headers["Allow"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Origin"] = (
-            "*"  # Adjust as needed for CORS
-        )
-        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-
-        return response
+        return handle_options_request(resource_class=self)
 
 
 api.add_resource(Address, *Address.ENDPOINT_PATHS)

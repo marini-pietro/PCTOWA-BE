@@ -26,7 +26,7 @@ from .blueprints_utils import (
     create_response,
     build_update_query_from_filters,
     is_input_safe,
-    get_class_http_verbs,
+    handle_options_request,
     validate_json_request,
     check_column_existence,
     get_hateos_location_string,
@@ -293,19 +293,7 @@ class Class(Resource):
         Handle OPTIONS request.
         This method is used to check which HTTP methods are allowed for this endpoint.
         """
-        # Define allowed methods
-        allowed_methods = get_class_http_verbs(type(self))
-
-        # Create the response
-        response = Response(status=STATUS_CODES["ok"])
-        response.headers["Allow"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Origin"] = (
-            "*"  # Adjust as needed for CORS
-        )
-        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-
-        return response
+        return handle_options_request(resource_class=self)
 
 
 class ClassFuzzySearch(Resource):
@@ -379,19 +367,7 @@ class ClassFuzzySearch(Resource):
         Handle OPTIONS request.
         This method is used to check which HTTP methods are allowed for this endpoint.
         """
-        # Define allowed methods
-        allowed_methods = get_class_http_verbs(type(self))
-
-        # Create the response
-        response = Response(status=STATUS_CODES["ok"])
-        response.headers["Allow"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Origin"] = (
-            "*"  # Adjust as needed for CORS
-        )
-        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-
-        return response
+        return handle_options_request(resource_class=self)
 
 
 class ClassList(Resource):
@@ -432,19 +408,7 @@ class ClassList(Resource):
         Handle OPTIONS request.
         This method is used to check which HTTP methods are allowed for this endpoint.
         """
-        # Define allowed methods
-        allowed_methods = get_class_http_verbs(type(self))
-
-        # Create the response
-        response = Response(status=STATUS_CODES["ok"])
-        response.headers["Allow"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Origin"] = (
-            "*"  # Adjust as needed for CORS
-        )
-        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-
-        return response
+        return handle_options_request(resource_class=self)
 
 
 api.add_resource(Class, *Class.ENDPOINT_PATHS)

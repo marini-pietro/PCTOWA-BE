@@ -24,7 +24,7 @@ from .blueprints_utils import (
     create_response,
     build_update_query_from_filters,
     parse_date_string,
-    get_class_http_verbs,
+    handle_options_request,
     validate_json_request,
     check_column_existence,
     get_hateos_location_string,
@@ -328,21 +328,7 @@ class Company(Resource):
         This method is used to define the allowed HTTP methods for the resource.
         """
 
-        # Define allowed methods
-        allowed_methods = get_class_http_verbs(type(self))
-
-        # Create the response
-        response = Response(status=STATUS_CODES["ok"])
-        response.headers["Allow"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Origin"] = (
-            "*"  # Adjust as needed for CORS
-        )
-        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = (
-            "Content-log_type, Authorization"
-        )
-
-        return response
+        return handle_options_request(resource_class=self)
 
 
 class CompanyList(Resource):
@@ -467,21 +453,7 @@ class CompanyList(Resource):
         This method is used to define the allowed HTTP methods for the resource.
         """
 
-        # Define allowed methods
-        allowed_methods = get_class_http_verbs(type(self))
-
-        # Create the response
-        response = Response(status=STATUS_CODES["ok"])
-        response.headers["Allow"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Origin"] = (
-            "*"  # Adjust as needed for CORS
-        )
-        response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-        response.headers["Access-Control-Allow-Headers"] = (
-            "Content-log_type, Authorization"
-        )
-
-        return response
+        return handle_options_request(resource_class=self)
 
 
 api.add_resource(Company, *Company.ENDPOINT_PATHS)
