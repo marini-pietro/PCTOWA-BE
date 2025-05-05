@@ -30,8 +30,6 @@ LOG_SERVER_PORT: int = (
 LOG_FILE_NAME: str = "pctowa_log.txt"
 LOGGER_NAME: str = "pctowa_logger"  # The name of the logger
 LOG_SERVER_NAME_IN_LOG: str = "log-server"  # The name of the server in the log messages
-RATE_LIMIT_AMOUNT: int = 100  # Maximum messages per source
-RATE_LIMIT_AMOUNT_TIME_WINDOW: int = 1  # Time window in seconds
 DELAYED_LOGS_QUEUE_SIZE: int = 100  # The size of the delayed logs queue
 # (if the queue is full, the oldest logs will
 #  be removed to make space for new ones)
@@ -89,6 +87,11 @@ CONNECTION_POOL_SIZE: int = 20  # The maximum number of connections in the pool
 
 
 # Miscellaneous settings
+
+# | Rate limiting settings
+RATE_LIMIT_MAX_REQUESTS: int = 50  # Maximum messages per source
+RATE_LIMIT_TIME_WINDOW: int = 1  # Time window in seconds
+RATE_LIMIT_FILE_NAME: str = "rate_limit.json"  # File name for rate limiting data
 # | HTTP status codes
 STATUS_CODES: Dict[str, int] = {
     "not_found": 404,
@@ -97,6 +100,7 @@ STATUS_CODES: Dict[str, int] = {
     "conflict": 409,
     "precondition_failed": 412,
     "unprocessable_entity": 422,
+    "too_many_requests": 429,
     "bad_request": 400,
     "created": 201,
     "ok": 200,
