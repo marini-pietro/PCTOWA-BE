@@ -126,31 +126,6 @@ def health_check():
     """
     return jsonify({"status": "ok"}), STATUS_CODES["ok"]
 
-
-@app.route(f"/api/{API_VERSION}/endpoints", methods=["GET"])
-def list_endpoints():
-    """
-    Endpoint to list all available endpoints in the API.
-    Only available in debug mode.
-    """
-    if API_SERVER_DEBUG_MODE is True:
-        endpoints = []
-        for rule in app.url_map.iter_rules():
-            endpoints.append(
-                {
-                    "endpoint": rule.endpoint,
-                    "methods": list(rule.methods),
-                    "url": rule.rule,
-                }
-            )
-        return jsonify({"endpoints": endpoints}), STATUS_CODES["ok"]
-
-    return (
-        jsonify({"error": "Feature not available while server is in production mode"}),
-        STATUS_CODES["forbidden"],
-    )
-
-
 if __name__ == "__main__":
     app.run(host=API_SERVER_HOST, port=API_SERVER_PORT, debug=API_SERVER_DEBUG_MODE)
     log(
