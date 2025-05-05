@@ -246,7 +246,7 @@ class Contact(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM aziende WHERE id_azienda = %s",
+            "SELECT fax FROM aziende WHERE id_azienda = %s",
             (id_,),  # Only fetch the name to check existence (could be any field)
         )
         if not company:

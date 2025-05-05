@@ -14,9 +14,9 @@ from flask_jwt_extended import (
 )
 from api_blueprints.blueprints_utils import (
     log, 
-    fetchone_query, 
-    has_valid_json, 
-    is_rate_limited
+    fetchone_query,
+    is_rate_limited,
+    validate_json_request,
     )
 from config import (
     AUTH_SERVER_HOST,
@@ -63,7 +63,7 @@ def login():
     Login endpoint to authenticate users and generate JWT tokens.
     """
     # Validate request
-    data: Union[str, Dict[str, Any]] = has_valid_json(request)
+    data: Union[str, Dict[str, Any]] = validate_json_request(request)
     if isinstance(data, str):
         return jsonify({"error": data}), STATUS_CODES["bad_request"]
 
