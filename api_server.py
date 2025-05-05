@@ -9,10 +9,10 @@ from os.path import join as os_path_join
 from os.path import dirname as os_path_dirname
 from os.path import abspath as os_path_abspath
 from importlib import import_module
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager
 from api_blueprints import __all__  # Import all the blueprints
-from api_blueprints.blueprints_utils import log
+from api_blueprints.blueprints_utils import log, is_rate_limited
 from config import (
     API_SERVER_HOST,
     API_SERVER_PORT,
@@ -78,6 +78,14 @@ for filename in os_listdir(blueprints_dir):
         )  # Remove '_bp' for the URL prefix
         print(f"Registered blueprint: {module_name} with prefix {URL_PREFIX}")
 
+@app.before_request
+def enforce_rate_limit():
+    """
+    Enforce rate limiting for all incoming requests.
+    """
+    client_ip = request.remote_addr
+    if is_rate_limited(client_ip):
+        return jsonify({"error": "Rate limit exceeded"}), STATUS_CODES["too_many_requests"]
 
 # Handle unauthorized access (missing token)
 @jwt.unauthorized_loader
