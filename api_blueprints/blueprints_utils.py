@@ -298,7 +298,7 @@ def get_db_pool():
     Get the database connection pool instance, initializing it if necessary.
     """
     global _DB_POOL
-    if _DB_POOL is None:  # Initialize only when accessed for the first time
+    if _DB_POOL is None:  # Initialize only when accessed for the first time (lazy initialization)
         try:
             _DB_POOL = MySQLConnectionPool(
                 pool_name="pctowa_connection_pool",
@@ -312,7 +312,8 @@ def get_db_pool():
         except socket.error as ex:
             print(
                 f"Couldn't access database, see next line for full exception.\n{ex}\n"
-                f"host: {DB_HOST}, dbname: {DB_NAME}, user: {DB_USER}, password: {DB_PASSWORD}"
+                f"host: {DB_HOST}, dbname: {DB_NAME}, user: {DB_USER}, password: {DB_PASSWORD}\n"
+                f"Make sure to shutdown all microservices with the provided kill_quick script, change the configuration and try again.\n"
             )
             sys.exit(1)
     return _DB_POOL
