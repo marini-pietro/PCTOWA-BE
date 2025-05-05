@@ -72,7 +72,7 @@ class LegalForm(Resource):
 
         try:
             # Insert the legal form
-            execute_query("INSERT INTO formaGiuridica (forma) VALUES (%s)", (forma,))
+            execute_query("INSERT INTO forma_giuridica (forma) VALUES (%s)", (forma,))
         except IntegrityError as ex:
             log(
                 log_type="error",
@@ -141,7 +141,7 @@ class LegalForm(Resource):
 
         # Check that the legal form exists
         form: Dict[str, Any] = fetchone_query(
-            "SELECT forma FROM formaGiuridica WHERE forma = %s", (forma,)
+            "SELECT forma FROM forma_giuridica WHERE forma = %s", (forma,)
         )
         if form is None:
             return create_response(
@@ -150,7 +150,7 @@ class LegalForm(Resource):
             )
 
         # Delete the legal form
-        execute_query("DELETE FROM formaGiuridica WHERE forma = %s", (forma,))
+        execute_query("DELETE FROM forma_giuridica WHERE forma = %s", (forma,))
 
         # Log the deletion
         log(
@@ -198,7 +198,7 @@ class LegalForm(Resource):
 
         # Check if legal form exists
         form: Dict[str, Any] = fetchone_query(
-            "SELECT forma FROM formaGiuridica WHERE forma = %s", (forma,)
+            "SELECT forma FROM forma_giuridica WHERE forma = %s", (forma,)
         )
         if form is None:
             return create_response(
@@ -208,7 +208,7 @@ class LegalForm(Resource):
 
         # Update the legal form
         execute_query(
-            "UPDATE formaGiuridica SET forma = %s WHERE forma = %s", (new_value, forma)
+            "UPDATE forma_giuridica SET forma = %s WHERE forma = %s", (new_value, forma)
         )
 
         # Log the update
@@ -259,7 +259,7 @@ class LegalForm(Resource):
         try:
             # Execute query
             forms: List[Dict[str, Any]] = fetchall_query(
-                "SELECT forma FROM formaGiuridica LIMIT %s OFFSET %s",
+                "SELECT forma FROM forma_giuridica LIMIT %s OFFSET %s",
                 params=(limit, offset),
             )
 

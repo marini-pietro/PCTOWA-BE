@@ -71,23 +71,23 @@ class Company(Resource):
         params: Dict[str, str] = {
             "ragione_sociale": data.get("ragione_sociale"),
             "nome": data.get("nome"),
-            "sitoWeb": data.get("sitoWeb"),
-            "indirizzoLogo": data.get("indirizzoLogo"),
+            "sito_web": data.get("sito_web"),
+            "indirizzo_logo": data.get("indirizzo_logo"),
             "codiceAteco": data.get("codiceAteco"),
             "partitaIVA": data.get("partitaIVA"),
-            "telefonoAzienda": data.get("telefonoAzienda"),
+            "telefono_azienda": data.get("telefono_azienda"),
             "fax": data.get("fax"),
-            "emailAzienda": data.get("emailAzienda"),
+            "email_azienda": data.get("email_azienda"),
             "pec": data.get("pec"),
-            "formaGiuridica": data.get("formaGiuridica"),
-            "dataConvenzione": parse_date_string(data.get("dataConvenzione")),
-            "scadenzaConvenzione": parse_date_string(data.get("scadenzaConvenzione")),
+            "forma_giuridica": data.get("forma_giuridica"),
+            "data_convenzione": parse_date_string(data.get("data_convenzione")),
+            "scadenza_convenzione": parse_date_string(data.get("scadenza_convenzione")),
             "settore": data.get("settore"),
             "categoria": data.get("categoria"),
         }
 
         # Validate parameters
-        if not re_match(r"^\+\d{1,3}\s?\d{4,14}$", params["telefonoAzienda"]):
+        if not re_match(r"^\+\d{1,3}\s?\d{4,14}$", params["telefono_azienda"]):
             return create_response(
                 message={"error": "invalid phone number format"},
                 status_code=STATUS_CODES["bad_request"],
@@ -97,9 +97,9 @@ class Company(Resource):
 
         lastrowid: int = execute_query(
             """INSERT INTO aziende 
-            (ragione_sociale, nome, sitoWeb, indirizzoLogo, codiceAteco, 
-             partitaIVA, telefonoAzienda, fax, emailAzienda, pec, 
-             formaGiuridica, dataConvenzione, scadenzaConvenzione, settore, categoria) 
+            (ragione_sociale, nome, sito_web, indirizzo_logo, codiceAteco, 
+             partitaIVA, telefono_azienda, fax, email_azienda, pec, 
+             forma_giuridica, data_convenzione, scadenza_convenzione, settore, categoria) 
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             params.values(),
         )
@@ -359,22 +359,76 @@ class CompanyList(Resource):
         comune: str = request.args.get("comune")
         settore: str = request.args.get("settore")
         mese: str = request.args.get("mese")
-        materia: str = request.args.get("materie")
+        materia: str = request.args.get("materia")
 
         # Gather data
+
+        # If all the filters are empty, return all companies
+        if not any([anno, comune, settore, mese, materia]):
+            companies: List[Dict[str, Any]] = fetchall_query(
+                "SELECT ragione_sociale, codice_ateco, partita_iva, id_azienda,"
+                "fax, pec, telefono_azienda, email_azienda, data_convenzione, "
+                "scadenza_convenzione, categoria, indirizzo_logo, sito_web, forma_giuridica "
+                "FROM aziende",
+                (),
+            )
+
+            # Gather turn data
+            for company in companies:
+                # Gather turn data
+                turns: List[Dict[str, Any]] = fetchall_query(
+                    "SELECT data_inizio, data_fine, posti, posti_occupati, "
+                    "ore, id_indirizzo, ora_inizio, ora_fine, giorno_inizio, giorno_fine, id_turno "
+                    "FROM turni "
+                    "WHERE id_azienda = %s",
+                    (company["id_azienda"],),
+                )
+
+                # Add address data to each turn
+                for turn in turns:
+                    turn["addresses"] = fetchall_query(
+                        "SELECT stato, provincia, comune, cap, indirizzo "
+                        "FROM indirizzi "
+                        "WHERE id_indirizzo = %s",
+                        (turn["id_indirizzo"],),
+                    )
+
+                # Add the turn data to the company dictionary
+                company["turns"] = turns
+
+            # Log the read operation
+            log(
+                log_type="info",
+                message=(
+                    f"User {get_jwt_identity()} read all companies"
+                ),
+                origin_name=API_SERVER_NAME_IN_LOG,
+                origin_host=API_SERVER_HOST,
+                message_id="UserAction",
+                structured_data={
+                    "endpoint": {CompanyList.ENDPOINT_PATHS[0]},
+                    "verb": "GET",
+                },
+            )
+
+            # Return the companies with the turn information
+            return create_response(message=companies, status_code=STATUS_CODES["ok"])
+
+        # If filters are provided, fetch the ids of the companies that match the filters
         ids_batch: List[int] = []  # List of ids to be used in the query
+
         if anno:
             ids = fetchall_query(
-                query="SELECT id_azienda FROM turni WHERE data_inizio Like '%/%s'",
-                params=(anno,),
+                query="SELECT id_azienda FROM turni WHERE data_inizio LIKE %s",
+                params=(f"{anno}%",),
             )
-            ids_batch.extend(ids)
+            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
 
         if comune:
             ids = fetchall_query(
                 "SELECT id_azienda FROM indirizzi WHERE comune = %s", (comune,)
             )
-            ids_batch.extend(ids)
+            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
 
         if settore:
             ids = fetchall_query(
@@ -384,7 +438,7 @@ class CompanyList(Resource):
                 "WHERE TS.settore = %s",
                 (settore,),
             )
-            ids_batch.extend(ids)
+            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
 
         if mese:
             ids = fetchall_query(
@@ -393,7 +447,7 @@ class CompanyList(Resource):
                 "WHERE MONTHNAME(T.data_inizio) = %s",
                 (mese,),
             )
-            ids_batch.extend(ids)
+            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
 
         if materia:
             ids = fetchall_query(
@@ -403,7 +457,7 @@ class CompanyList(Resource):
                 "WHERE TM.materia = %s",
                 (materia,),
             )
-            ids_batch.extend(ids)
+            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
 
         # Remove duplicates from ids_batch
         ids_batch: List[int] = list(set(ids_batch))
@@ -412,7 +466,7 @@ class CompanyList(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} read companies with filters:"
+                f"User {get_jwt_identity()} read all companies with filters:"
                 f"{anno}, {comune}, {settore}, {mese}, {materia}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -428,9 +482,9 @@ class CompanyList(Resource):
         if ids_batch:
             placeholders: str = ", ".join(["%s"] * len(ids_batch))
             query = (
-                "SELECT A.ragione_sociale, A.codiceAteco, A.partitaIva, A.fax, A.pec, "
-                "A.telefonoAzienda, A.emailAzienda, A.dataConvenzione, A.scadenzaConvenzione, "
-                "A.categoria, A.indirizzoLogo, A.sitoWeb, A.formaGiuridica, I.stato, "
+                "SELECT A.ragione_sociale, A.codice_ateco, A.partita_iva, A.fax, A.pec, "
+                "A.telefono_azienda, A.email_azienda, A.data_convenzione, A.scadenza_convenzione, "
+                "A.categoria, A.indirizzo_logo, A.sito_web, A.forma_giuridica, I.stato, "
                 "I.provincia, I.comune, I.cap, I.indirizzo "
                 "FROM aziende AS A JOIN indirizzi AS I ON A.id_azienda = I.id_azienda "
                 f"WHERE A.id_azienda IN ({placeholders})"
