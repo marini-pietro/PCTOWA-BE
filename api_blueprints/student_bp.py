@@ -44,7 +44,6 @@ class Student(Resource):
 
     ENDPOINT_PATHS = [
         f"/{BP_NAME}/<int:matricola>",  # For endpoints like DELETE or PATCH
-        f"/{BP_NAME}/class/<int:class_id>",  # For endpoints like GET
     ]
 
     @jwt_required()
@@ -252,87 +251,40 @@ class Student(Resource):
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, class_id) -> Response:
+    def get(self, matricola) -> Response:
         """
-        Get students list of a given class,
-        including turn and address data if they are bound to a turn.
+        Get students data by matricola.
+        The request must include the student matricola as a path variable.
         """
         # Log the request
         log(
             log_type="info",
-            message=(
-                f"User {get_jwt_identity()} requested student list "
-                f"for class {class_id}"
-            ),
+            message=(f"User {get_jwt_identity()} requested student {matricola}"),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
             structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": "GET"},
         )
 
-        # Check if the class exists
-        class_: Dict[str, Any] = fetchone_query(
-            "SELECT sigla FROM classi WHERE id_classe = %s",
-            (class_id,),  # Only check for existence (select column could be any field)
+        # Get student data
+        student: List[Dict[str, Any]] = fetchall_query(
+            """
+            SELECT matricola, nome, cognome, comune, id_classe
+            FROM studenti
+            WHERE matricola = %s
+            """,
+            (matricola,),
         )
-        if not class_:
+
+        # Check if the student exists
+        if student is None:
             return create_response(
-                message={"outcome": "no class found with the provided id_"},
+                message={"outcome": "no student found with the provided matricola"},
                 status_code=STATUS_CODES["not_found"],
             )
 
-        # Get student data
-        student_data: List[Dict[str, Any]] = fetchall_query(
-            """
-            SELECT S.matricola, S.nome, S.cognome, 
-                  S.comune, T.id_turno, T.data_inizio, 
-                  T.data_fine, T.giorno_inizio, T.giorno_fine, 
-                  T.ora_inizio, T.ora_fine, T.ore,
-                  A.ragione_sociale, A.indirizzo, A.cap, 
-                  A.comune AS comuneAzienda, A.provincia, A.stato
-            FROM studenti AS S
-            LEFT JOIN studente_turno AS ST ON S.matricola = ST.matricola
-            LEFT JOIN turni AS T ON ST.id_turno = T.id_turno
-            LEFT JOIN aziende AS A ON T.id_azienda = A.id_azienda
-            WHERE S.id_classe = %s
-            """,
-            (class_id,),
-        )
-
-        # Build the output JSON TODO check if the minimum necessary data is insterted in the JSON
-        out_json = {}
-        for row in student_data:
-            matricola = row.get("matricola")
-            out_json[matricola] = {
-                "nome": row.get("nome"),
-                "cognome": row.get("cognome"),
-                "comune": row.get("comune"),
-                "turno": (
-                    {
-                        "ragione_sociale": row.get("ragione_sociale"),
-                        "data_inizio": row.get("data_inizio"),
-                        "data_fine": row.get("data_fine"),
-                        "giorno_inizio": row.get("giorno_inizio"),
-                        "giorno_fine": row.get("giorno_fine"),
-                        "ora_inizio": row.get("ora_inizio"),
-                        "ora_fine": row.get("ora_fine"),
-                        "ore": row.get("ore"),
-                        "turnoPK": row.get("id_turno"),
-                        "indirizzo": {
-                            "stato": row.get("stato"),
-                            "provincia": row.get("provincia"),
-                            "comune": row.get("comuneAzienda"),
-                            "cap": row.get("cap"),
-                            "indirizzo": row.get("indirizzo"),
-                        },
-                    }
-                    if row.get("id_turno")
-                    else None
-                ),
-            }
-
         # Return the response
-        return create_response(message=out_json, status_code=STATUS_CODES["ok"])
+        return create_response(message=student, status_code=STATUS_CODES["ok"])
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
@@ -478,7 +430,119 @@ class BindStudentToTurn(Resource):
         return handle_options_request(resource_class=self)
 
 
-class StudentList(Resource):
+class StudentListFromClass(Resource):
+    """
+    Endpoint to get a list of all students associated with a specific class.
+    """
+
+    ENDPOINT_PATHS = [f"/{BP_NAME}/class_list/<int:class_id>"]
+
+    @jwt_required()
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
+    def get(self, class_id) -> Response:
+        """
+        Get a list of all students that are associated
+        to a class passed by its id_ as a path variable.
+        """
+        # Log the request
+        log(
+            log_type="info",
+            message=(
+                f"User {get_jwt_identity()} requested student list "
+                f"that are associated to class {class_id}"
+            ),
+            origin_name=API_SERVER_NAME_IN_LOG,
+            origin_host=API_SERVER_HOST,
+            message_id="UserAction",
+            structured_data={
+                "endpoint": StudentListFromClass.ENDPOINT_PATHS[0],
+                "verb": "GET",
+            },
+        )
+
+        # Check if the class exists
+        class_: Dict[str, Any] = fetchone_query(
+            "SELECT sigla FROM classi WHERE id_classe = %s",
+            (class_id,),  # Only check for existence (select column could be any field)
+        )
+        if class_ is None:
+            return create_response(
+                message={"outcome": "no class found with the provided id"},
+                status_code=STATUS_CODES["not_found"],
+            )
+
+        # Get student data
+        student_data: List[Dict[str, Any]] = fetchall_query(
+            """
+            SELECT S.matricola, S.nome, S.cognome, 
+                  S.comune, T.id_turno, T.data_inizio, 
+                  T.data_fine, T.giorno_inizio, T.giorno_fine, 
+                  T.ora_inizio, T.ora_fine, T.ore,
+                  A.ragione_sociale, A.indirizzo, A.cap, 
+                  A.comune AS comuneAzienda, A.provincia, A.stato
+            FROM studenti AS S
+            LEFT JOIN studente_turno AS ST ON S.matricola = ST.matricola
+            LEFT JOIN turni AS T ON ST.id_turno = T.id_turno
+            LEFT JOIN aziende AS A ON T.id_azienda = A.id_azienda
+            WHERE S.id_classe = %s
+            """,
+            (class_id,),
+        )
+
+        # Check if student_data is empty
+        if student_data is None:
+            return create_response(
+                message={"outcome": "no students found for the provided class_id"},
+                status_code=STATUS_CODES["not_found"],
+            )
+
+        # Build the output JSON
+        students = {}
+        for row in student_data:
+            matricola = row.get("matricola")
+            if matricola not in students:
+                students[matricola] = {
+                    "nome": row.get("nome"),
+                    "cognome": row.get("cognome"),
+                    "comune": row.get("comune"),
+                    "turni": [],
+                }
+            if row.get("id_turno"):
+                students[matricola]["turni"].append(
+                    {
+                        "ragione_sociale": row.get("ragione_sociale"),
+                        "data_inizio": row.get("data_inizio"),
+                        "data_fine": row.get("data_fine"),
+                        "giorno_inizio": row.get("giorno_inizio"),
+                        "giorno_fine": row.get("giorno_fine"),
+                        "ora_inizio": row.get("ora_inizio"),
+                        "ora_fine": row.get("ora_fine"),
+                        "ore": row.get("ore"),
+                        "turnoPK": row.get("id_turno"),
+                        "indirizzo": {
+                            "stato": row.get("stato"),
+                            "provincia": row.get("provincia"),
+                            "comune": row.get("comuneAzienda"),
+                            "cap": row.get("cap"),
+                            "indirizzo": row.get("indirizzo"),
+                        },
+                    }
+                )
+
+        # Return the response
+        return create_response(message=students, status_code=STATUS_CODES["ok"])
+
+    @jwt_required()
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
+    def options(self) -> Response:
+        """
+        Handle OPTIONS request for the StudentListFromClass resource.
+        """
+
+        return handle_options_request(resource_class=self)
+
+
+class StudentListFromTurn(Resource):
     """
     Endpoint to get a list of all students associated with a specific turn.
     """
@@ -502,7 +566,10 @@ class StudentList(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": StudentList.ENDPOINT_PATHS[0], "verb": "GET"},
+            structured_data={
+                "endpoint": StudentListFromTurn.ENDPOINT_PATHS[0],
+                "verb": "GET",
+            },
         )
 
         # Check if the turn exists
@@ -510,7 +577,7 @@ class StudentList(Resource):
             "SELECT ore FROM turni WHERE id_turno = %s",
             (turn_id,),  # Only check for existence (select column could be any field)
         )
-        if not turn:
+        if turn is None:
             return create_response(
                 message={"outcome": "no turn found with the provided id_"},
                 status_code=STATUS_CODES["not_found"],
@@ -533,11 +600,12 @@ class StudentList(Resource):
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
-        Handle OPTIONS request for the StudentList resource.
+        Handle OPTIONS request for the StudentListFromTurn resource.
         """
         return handle_options_request(resource_class=self)
 
 
 api.add_resource(Student, *Student.ENDPOINT_PATHS)
 api.add_resource(BindStudentToTurn, *BindStudentToTurn.ENDPOINT_PATHS)
-api.add_resource(StudentList, *StudentList.ENDPOINT_PATHS)
+api.add_resource(StudentListFromTurn, *StudentListFromTurn.ENDPOINT_PATHS)
+api.add_resource(StudentListFromClass, *StudentListFromClass.ENDPOINT_PATHS)

@@ -135,7 +135,7 @@ class Company(Resource):
         company: Dict[str, Any] = fetchone_query(
             "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s", (id_,)
         )  # Only fetch the province to check existence (could be any field)
-        if not company:
+        if company is None:
             return create_response(
                 message={"error": "specified company does not exist"},
                 status_code=STATUS_CODES["not_found"],
@@ -253,7 +253,7 @@ class Company(Resource):
             )
 
             # Check if the company exists
-            if not company:
+            if company is None:
                 return create_response(
                     message={"error": "company not found with specified id_"},
                     status_code=STATUS_CODES["not_found"],
@@ -399,9 +399,7 @@ class CompanyList(Resource):
             # Log the read operation
             log(
                 log_type="info",
-                message=(
-                    f"User {get_jwt_identity()} read all companies"
-                ),
+                message=(f"User {get_jwt_identity()} read all companies"),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -422,13 +420,17 @@ class CompanyList(Resource):
                 query="SELECT id_azienda FROM turni WHERE data_inizio LIKE %s",
                 params=(f"{anno}%",),
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         if comune:
             ids = fetchall_query(
                 "SELECT id_azienda FROM indirizzi WHERE comune = %s", (comune,)
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         if settore:
             ids = fetchall_query(
@@ -438,7 +440,9 @@ class CompanyList(Resource):
                 "WHERE TS.settore = %s",
                 (settore,),
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         if mese:
             ids = fetchall_query(
@@ -447,7 +451,9 @@ class CompanyList(Resource):
                 "WHERE MONTHNAME(T.data_inizio) = %s",
                 (mese,),
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         if materia:
             ids = fetchall_query(
@@ -457,7 +463,9 @@ class CompanyList(Resource):
                 "WHERE TM.materia = %s",
                 (materia,),
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         # Remove duplicates from ids_batch
         ids_batch: List[int] = list(set(ids_batch))

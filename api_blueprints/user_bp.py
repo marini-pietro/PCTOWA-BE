@@ -602,7 +602,7 @@ class ReadBindedUser(Resource):
                 "SELECT fax FROM aziende WHERE id_azienda = %s",
                 (id_,),  # Only check for existence (SELECT column could be any field)
             )
-            if not company:
+            if company is None:
                 return create_response(
                     message={"outcome": "error, specified company does not exist"},
                     status_code=STATUS_CODES["not_found"],
@@ -622,7 +622,7 @@ class ReadBindedUser(Resource):
                 "SELECT sigla FROM classi WHERE id_classe = %s",
                 (id_,),  # Only check for existence (SELECT column could be any field)
             )
-            if not class_:
+            if class_ is None:
                 return create_response(
                     message={"outcome": "error, specified class does not exist"},
                     status_code=STATUS_CODES["not_found"],

@@ -220,10 +220,10 @@ class Tutor(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM aziende WHERE id_azienda = %s",
+            "SELECT fax FROM aziende WHERE id_azienda = %s",
             (id_,),  # only check for existence (select column could be any field)
         )
-        if not company:
+        if company is None:
             return create_response(
                 message={"outcome": "specified company not_found"},
                 status_code=STATUS_CODES["not_found"],
@@ -239,7 +239,7 @@ class Tutor(Resource):
         )
 
         # Check if query returned any results
-        if not tutors:
+        if tutors is None:
             return create_response(
                 message={"outcome": "no tutors found for specified turn"},
                 status_code=STATUS_CODES["not_found"],

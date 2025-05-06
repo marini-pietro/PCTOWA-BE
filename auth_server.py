@@ -13,11 +13,11 @@ from flask_jwt_extended import (
     jwt_required,
 )
 from api_blueprints.blueprints_utils import (
-    log, 
+    log,
     fetchone_query,
     is_rate_limited,
     validate_json_request,
-    )
+)
 from config import (
     AUTH_SERVER_HOST,
     AUTH_SERVER_PORT,
@@ -49,6 +49,7 @@ app.config["JWT_ALGORITHM"] = JWT_ALGORITHM
 
 jwt = JWTManager(app)
 
+
 @app.before_request
 def enforce_rate_limit():
     """
@@ -57,7 +58,11 @@ def enforce_rate_limit():
     if AUTH_SERVER_RATE_LIMIT:  # Check if rate limiting is enabled
         client_ip = request.remote_addr
         if is_rate_limited(client_ip):
-            return jsonify({"error": "Rate limit exceeded"}), STATUS_CODES["too_many_requests"]
+            return (
+                jsonify({"error": "Rate limit exceeded"}),
+                STATUS_CODES["too_many_requests"],
+            )
+
 
 @app.route("/auth/login", methods=["POST"])
 def login():

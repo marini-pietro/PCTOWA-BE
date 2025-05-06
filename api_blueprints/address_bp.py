@@ -68,7 +68,7 @@ class Address(Resource):
         indirizzo: str = data.get("indirizzo")
         id_azienda: int = data.get("id_azienda")
 
-        # Validate parameters
+        # Validate parameters and performing casting if necessary
         if id_azienda is not None:
             try:
                 id_azienda = int(id_azienda)

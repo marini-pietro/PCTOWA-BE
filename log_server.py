@@ -149,6 +149,7 @@ queue_lock = Lock()  # Lock to ensure thread-safe access to the queue
 
 rate_limit_lock = Lock()  # Lock for thread-safe file access
 
+
 def enforce_rate_limit(source_ip, current_time):
     """
     Enforce rate limiting for a given source IP.
@@ -160,10 +161,14 @@ def enforce_rate_limit(source_ip, current_time):
             with open(RATE_LIMIT_FILE_NAME, "r") as file:
                 rate_limit_data = json.load(file)
     except (FileNotFoundError, json.JSONDecodeError):
-        rate_limit_data = {}  # Return an empty dictionary if the file doesn't exist or is invalid
+        rate_limit_data = (
+            {}
+        )  # Return an empty dictionary if the file doesn't exist or is invalid
 
     # Get the client data or initialize it
-    client_data = rate_limit_data.get(source_ip, {"count": 0, "timestamp": current_time})
+    client_data = rate_limit_data.get(
+        source_ip, {"count": 0, "timestamp": current_time}
+    )
 
     # Check and reset the count if the time window has passed
     if current_time - client_data["timestamp"] > RATE_LIMIT_TIME_WINDOW:

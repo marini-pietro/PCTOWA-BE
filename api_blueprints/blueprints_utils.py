@@ -255,7 +255,10 @@ def handle_options_request(resource_class) -> Response:
 
     return response
 
+
 rate_limit_lock = Lock()  # Lock for thread-safe file access
+
+
 def is_rate_limited(client_ip: str) -> bool:
     """
     Check if the client IP is rate-limited.
@@ -269,7 +272,9 @@ def is_rate_limited(client_ip: str) -> bool:
             rate_limit_data = {}
 
         current_time = time.time()
-        client_data = rate_limit_data.get(client_ip, {"count": 0, "timestamp": current_time})
+        client_data = rate_limit_data.get(
+            client_ip, {"count": 0, "timestamp": current_time}
+        )
 
         # Reset the count if the time window has passed
         if current_time - client_data["timestamp"] > RATE_LIMIT_TIME_WINDOW:
@@ -287,6 +292,7 @@ def is_rate_limited(client_ip: str) -> bool:
 
         # Check if the rate limit is exceeded
         return client_data["count"] > RATE_LIMIT_MAX_REQUESTS
+
 
 # Data handling related
 def parse_time_string(time_string: str) -> datetime:
@@ -327,7 +333,9 @@ def parse_date_string(date_string: str) -> datetime:
 
 # Database related
 # Lazy initialization for the database connection pool
-_DB_POOL: MySQLConnectionPool  = None  # Private variable to hold the connection pool instance
+_DB_POOL: MySQLConnectionPool = (
+    None  # Private variable to hold the connection pool instance
+)
 
 
 def get_db_pool():
@@ -335,7 +343,9 @@ def get_db_pool():
     Get the database connection pool instance, initializing it if necessary.
     """
     global _DB_POOL
-    if _DB_POOL is None:  # Initialize only when accessed for the first time (lazy initialization)
+    if (
+        _DB_POOL is None
+    ):  # Initialize only when accessed for the first time (lazy initialization)
         try:
             _DB_POOL = MySQLConnectionPool(
                 pool_name="pctowa_connection_pool",
@@ -434,6 +444,7 @@ def check_column_existence(
 
     # If all columns are valid, return True
     return True
+
 
 # Database query related
 def fetchone_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:

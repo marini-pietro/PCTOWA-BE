@@ -79,6 +79,7 @@ for filename in os_listdir(blueprints_dir):
         )  # Remove '_bp' for the URL prefix
         print(f"Registered blueprint: {module_name} with prefix {URL_PREFIX}")
 
+
 @app.before_request
 def enforce_rate_limit():
     """
@@ -87,7 +88,11 @@ def enforce_rate_limit():
     if API_SERVER_RATE_LIMIT:  # Check if rate limiting is enabled
         client_ip = request.remote_addr
         if is_rate_limited(client_ip):
-            return jsonify({"error": "Rate limit exceeded"}), STATUS_CODES["too_many_requests"]
+            return (
+                jsonify({"error": "Rate limit exceeded"}),
+                STATUS_CODES["too_many_requests"],
+            )
+
 
 # Handle unauthorized access (missing token)
 @jwt.unauthorized_loader

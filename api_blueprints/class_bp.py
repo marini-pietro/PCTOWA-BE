@@ -271,7 +271,7 @@ class Class(Resource):
                 email_responsabile
             ),  # Only fetch the name to check existence (could be any field)
         )
-        if not user:
+        if user is None:
             return create_response(
                 message={"outcome": "no user found with provided email"},
                 status_code=STATUS_CODES["not_found"],

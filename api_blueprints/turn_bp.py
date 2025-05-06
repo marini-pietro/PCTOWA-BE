@@ -328,7 +328,7 @@ class Turn(Resource):
             "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s",
             (id_,),  # Only check existence (SELECT field could be any)
         )
-        if not company:
+        if company is None:
             return create_response(
                 message={"outcome": "specified company not_found"},
                 status_code=STATUS_CODES["not_found"],
@@ -345,7 +345,7 @@ class Turn(Resource):
         )
 
         # Check if query returned any results
-        if not turns:
+        if turns is None:
             return create_response(
                 message={"outcome": "no turns found for specified company"},
                 status_code=STATUS_CODES["not_found"],

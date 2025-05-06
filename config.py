@@ -17,7 +17,9 @@ AUTH_SERVER_PORT: int = 6002  # The port of the authentication server
 AUTH_SERVER_NAME_IN_LOG: str = "auth-server"
 AUTH_SERVER_DEBUG_MODE: bool = True
 AUTH_SERVER_SSL: bool = False  # Whether the authentication server uses SSL/TLS or not
-AUTH_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the authentication server
+AUTH_SERVER_RATE_LIMIT: bool = (
+    True  # Whether to enable rate limiting on the authentication server
+)
 AUTH_SERVER_SSL_CERT: str = (
     "/path/to/cert.pem"  # The path to the SSL/TLS certificate file
 )
