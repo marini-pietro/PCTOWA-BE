@@ -3,8 +3,8 @@ from flask import Flask
 from flask.testing import FlaskClient
 from flask_jwt_extended import create_refresh_token
 from unittest.mock import patch, MagicMock
-from utils import auth_client
-from ..config import STATUS_CODES
+from tests.utils import auth_client
+from config import STATUS_CODES
 
 @pytest.fixture
 def mock_fetchone_query():

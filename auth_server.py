@@ -31,7 +31,7 @@ from config import (
 )
 
 # Initialize Flask app
-app = Flask(__name__)
+auth_api = Flask(__name__)
 
 # Check JWT secret key length
 PASSWORD_NUM_BITS = len(JWT_SECRET_KEY.encode("utf-8")) * 8
@@ -39,16 +39,16 @@ if PASSWORD_NUM_BITS < 256:
     raise RuntimeWarning("jwt secret key too short")
 
 # Configure JWT
-app.config["JWT_SECRET_KEY"] = (
+auth_api.config["JWT_SECRET_KEY"] = (
     JWT_SECRET_KEY  # Use a secure key (ideally at least 256 bits)
 )
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = JWT_ACCESS_TOKEN_EXPIRES
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = JWT_REFRESH_TOKEN_EXPIRES
-app.config["JWT_ALGORITHM"] = JWT_ALGORITHM
+auth_api.config["JWT_ACCESS_TOKEN_EXPIRES"] = JWT_ACCESS_TOKEN_EXPIRES
+auth_api.config["JWT_REFRESH_TOKEN_EXPIRES"] = JWT_REFRESH_TOKEN_EXPIRES
+auth_api.config["JWT_ALGORITHM"] = JWT_ALGORITHM
 
-jwt = JWTManager(app)
+jwt = JWTManager(auth_api)
 
-@app.before_request
+@auth_api.before_request
 def enforce_rate_limit():
     """
     Enforce rate limiting for all incoming requests.
@@ -57,7 +57,7 @@ def enforce_rate_limit():
     if is_rate_limited(client_ip):
         return jsonify({"error": "Rate limit exceeded"}), STATUS_CODES["too_many_requests"]
 
-@app.route("/auth/login", methods=["POST"])
+@auth_api.route("/auth/login", methods=["POST"])
 def login():
     """
     Login endpoint to authenticate users and generate JWT tokens.
@@ -115,7 +115,7 @@ def login():
     return jsonify({"error": "Invalid credentials"}), STATUS_CODES["unauthorized"]
 
 
-@app.route("/auth/refresh", methods=["POST"])
+@auth_api.route("/auth/refresh", methods=["POST"])
 @jwt_required(refresh=True)  # Require a valid refresh token
 def refresh():
     """
@@ -131,7 +131,7 @@ def refresh():
     return jsonify({"access_token": new_access_token}), STATUS_CODES["ok"]
 
 
-@app.route("/health", methods=["GET"])
+@auth_api.route("/health", methods=["GET"])
 def health_check():
     """
     Health check endpoint to verify the server is running.
@@ -140,4 +140,6 @@ def health_check():
 
 
 if __name__ == "__main__":
-    app.run(host=AUTH_SERVER_HOST, port=AUTH_SERVER_PORT, debug=AUTH_SERVER_DEBUG_MODE)
+    auth_api.run(host=AUTH_SERVER_HOST, 
+                 port=AUTH_SERVER_PORT, 
+                 debug=AUTH_SERVER_DEBUG_MODE)

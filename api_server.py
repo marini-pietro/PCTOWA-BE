@@ -33,31 +33,31 @@ from config import (
 )
 
 # Create a Flask app
-app = Flask(__name__)
+main_api = Flask(__name__)
 
 # Configure JWT validation settings
-app.config["JWT_SECRET_KEY"] = (
+main_api.config["JWT_SECRET_KEY"] = (
     JWT_SECRET_KEY  # Same secret key as the auth microservice
 )
-app.config["JWT_ALGORITHM"] = JWT_ALGORITHM  # Same algorithm as the auth microservice
-app.config["JWT_TOKEN_LOCATION"] = JWT_TOKEN_LOCATION  # Where to look for tokens
-app.config["JWT_QUERY_STRING_NAME"] = JWT_QUERY_STRING_NAME  # Custom query string name
-app.config["JWT_ACCESS_COOKIE_NAME"] = (
+main_api.config["JWT_ALGORITHM"] = JWT_ALGORITHM  # Same algorithm as the auth microservice
+main_api.config["JWT_TOKEN_LOCATION"] = JWT_TOKEN_LOCATION  # Where to look for tokens
+main_api.config["JWT_QUERY_STRING_NAME"] = JWT_QUERY_STRING_NAME  # Custom query string name
+main_api.config["JWT_ACCESS_COOKIE_NAME"] = (
     JWT_ACCESS_COOKIE_NAME  # Custom access cookie name
 )
-app.config["JWT_REFRESH_COOKIE_NAME"] = (
+main_api.config["JWT_REFRESH_COOKIE_NAME"] = (
     JWT_REFRESH_COOKIE_NAME  # Custom refresh cookie name
 )
-app.config["JWT_JSON_KEY"] = JWT_JSON_KEY  # Custom JSON key for access tokens
-app.config["JWT_REFRESH_JSON_KEY"] = (
+main_api.config["JWT_JSON_KEY"] = JWT_JSON_KEY  # Custom JSON key for access tokens
+main_api.config["JWT_REFRESH_JSON_KEY"] = (
     JWT_REFRESH_JSON_KEY  # Custom JSON key for refresh tokens
 )
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = (
+main_api.config["JWT_REFRESH_TOKEN_EXPIRES"] = (
     JWT_REFRESH_TOKEN_EXPIRES  # Refresh token valid duration
 )
 
 # Initialize JWTManager for validation only
-jwt = JWTManager(app)
+jwt = JWTManager(main_api)
 
 # Register the blueprints
 blueprints_dir: str = os_path_join(
@@ -73,12 +73,12 @@ for filename in os_listdir(blueprints_dir):
         # Get the Blueprint object (assumes the object has the same name as the file)
         blueprint = getattr(module, module_name)
 
-        app.register_blueprint(
+        main_api.register_blueprint(
             blueprint, url_prefix=URL_PREFIX
         )  # Remove '_bp' for the URL prefix
         print(f"Registered blueprint: {module_name} with prefix {URL_PREFIX}")
 
-@app.before_request
+@main_api.before_request
 def enforce_rate_limit():
     """
     Enforce rate limiting for all incoming requests.
@@ -119,7 +119,7 @@ def custom_revoked_token_response(jwt_header, jwt_payload):
     return jsonify({"error": "Token has been revoked"}), STATUS_CODES["unauthorized"]
 
 
-@app.route(f"/api/{API_VERSION}/health", methods=["GET"])
+@main_api.route(f"/api/{API_VERSION}/health", methods=["GET"])
 def health_check():
     """
     Health check endpoint to verify the server is running.
@@ -127,7 +127,7 @@ def health_check():
     return jsonify({"status": "ok"}), STATUS_CODES["ok"]
 
 if __name__ == "__main__":
-    app.run(host=API_SERVER_HOST, port=API_SERVER_PORT, debug=API_SERVER_DEBUG_MODE)
+    main_api.run(host=API_SERVER_HOST, port=API_SERVER_PORT, debug=API_SERVER_DEBUG_MODE)
     log(
         log_type="info",
         message="API server started",

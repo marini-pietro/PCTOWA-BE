@@ -2,9 +2,8 @@ import pytest
 import time
 from flask import Flask
 from flask.testing import FlaskClient
-from auth_server import app
-from utils import api_client
-from ..config import RATE_LIMIT_MAX_REQUESTS, URL_PREFIX, STATUS_CODES, RATE_LIMIT_TIME_WINDOW
+from tests.utils import api_client
+from config import RATE_LIMIT_MAX_REQUESTS, URL_PREFIX, STATUS_CODES, RATE_LIMIT_TIME_WINDOW
 
 # Test the health endpoint in api_server.py
 def test_health_check(api_client: FlaskClient):
@@ -42,6 +41,23 @@ def test_rate_limit(client: FlaskClient):
     assert response.status_code == STATUS_CODES["too_many_requests"]
     assert response.json["error"] == "Rate limit exceeded"
 
-    
+def test_health_check_unauthorized(client: FlaskClient):
+    """
+    Test the health check endpoint without proper authorization.
+    """
+    response = client.get("/health")
+    assert response.status_code == STATUS_CODES["unauthorized"]
+    assert "error" in response.json
+
+def test_invalid_configuration(client: FlaskClient, mocker):
+    """
+    Test the server behavior with an invalid configuration.
+    """
+    mocker.patch("config.JWT_SECRET_KEY", None)  # Simulate missing JWT secret key
+    response = client.get("/health")
+    assert response.status_code == STATUS_CODES["internal_server_error"]
+    assert "error" in response.json
+
+
 
 

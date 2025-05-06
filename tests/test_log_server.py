@@ -2,7 +2,7 @@ import pytest
 import socket
 import json
 from unittest.mock import patch, MagicMock
-from ..config import (
+from config import (
     LOG_SERVER_PORT,
 )
 from log_server import (
