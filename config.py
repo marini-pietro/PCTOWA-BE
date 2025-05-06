@@ -16,14 +16,12 @@ AUTH_SERVER_HOST: str = "localhost"  # The host of the authentication server
 AUTH_SERVER_PORT: int = 6002  # The port of the authentication server
 AUTH_SERVER_NAME_IN_LOG: str = "auth-server"
 AUTH_SERVER_DEBUG_MODE: bool = True
-AUTH_SERVER_SSL: bool = False  # Whether the authentication server uses SSL/TLS or not
 AUTH_SERVER_RATE_LIMIT: bool = (
     True  # Whether to enable rate limiting on the authentication server
 )
-AUTH_SERVER_SSL_CERT: str = (
-    "/path/to/cert.pem"  # The path to the SSL/TLS certificate file
-)
-AUTH_SERVER_SSL_KEY: str = "/path/to/key.pem"  # The path to the SSL/TLS key file
+AUTH_SERVER_SSL_CERT: str = "" # The path to the SSL/TLS certificate file
+AUTH_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
+AUTH_SERVER_SSL: bool = not (AUTH_SERVER_SSL_CERT == "" and AUTH_SERVER_SSL_KEY == "")  # Whether the authentication server uses SSL/TLS or not
 
 # Log server related settings
 LOG_SERVER_HOST: str = "localhost"  # The host of the log server
@@ -56,12 +54,10 @@ API_SERVER_NAME_IN_LOG: str = "api-server"  # The name of the server in the log 
 API_VERSION: str = "v1"  # The version of the API
 URL_PREFIX: str = f"/api/{API_VERSION}/"  # The prefix for all API endpoints
 API_SERVER_DEBUG_MODE: bool = True  # Whether the API server is in debug mode or not
-API_SERVER_SSL: bool = False  # Whether the API server uses SSL/TLS or not
 API_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the API server
-API_SERVER_SSL_CERT: str = (
-    "/path/to/cert.pem"  # The path to the SSL/TLS certificate file
-)
-API_SERVER_SSL_KEY: str = "/path/to/key.pem"  # The path to the SSL/TLS key file
+API_SERVER_SSL_CERT: str = ""  # The path to the SSL/TLS certificate file
+API_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
+API_SERVER_SSL: bool = not (API_SERVER_SSL_CERT == "" and API_SERVER_SSL_KEY == "")  # Whether the API server uses SSL/TLS or not
 
 # JWT custom configuration
 JWT_SECRET_KEY: str = "Lorem ipsum dolor sit amet eget."

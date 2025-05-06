@@ -29,6 +29,9 @@ from config import (
     JWT_REFRESH_TOKEN_EXPIRES,
     JWT_ALGORITHM,
     AUTH_SERVER_RATE_LIMIT,
+    AUTH_SERVER_SSL,
+    AUTH_SERVER_SSL_CERT,
+    AUTH_SERVER_SSL_KEY,
 )
 
 # Initialize Flask app
@@ -147,4 +150,16 @@ def health_check():
 
 
 if __name__ == "__main__":
-    app.run(host=AUTH_SERVER_HOST, port=AUTH_SERVER_PORT, debug=AUTH_SERVER_DEBUG_MODE)
+    app.run(host=AUTH_SERVER_HOST, 
+            port=AUTH_SERVER_PORT, 
+            debug=AUTH_SERVER_DEBUG_MODE,
+            ssl_context=(AUTH_SERVER_SSL_CERT, AUTH_SERVER_SSL_KEY) if AUTH_SERVER_SSL else None
+            )
+    log(
+        log_type="info",
+        message="Authentication server started",
+        origin_name=AUTH_SERVER_NAME_IN_LOG,
+        origin_host=AUTH_SERVER_HOST,
+        message_id="ServerAction",
+        structured_data=f"[host='{AUTH_SERVER_HOST}' port='{AUTH_SERVER_PORT}']",
+    )

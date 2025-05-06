@@ -31,6 +31,9 @@ from config import (
     JWT_TOKEN_LOCATION,
     JWT_REFRESH_TOKEN_EXPIRES,
     API_SERVER_RATE_LIMIT,
+    API_SERVER_SSL,
+    API_SERVER_SSL_CERT,
+    API_SERVER_SSL_KEY,
 )
 
 # Create a Flask app
@@ -159,7 +162,11 @@ def list_endpoints():
 
 
 if __name__ == "__main__":
-    app.run(host=API_SERVER_HOST, port=API_SERVER_PORT, debug=API_SERVER_DEBUG_MODE)
+    app.run(host=API_SERVER_HOST, 
+            port=API_SERVER_PORT, 
+            debug=API_SERVER_DEBUG_MODE,
+            ssl_context=(API_SERVER_SSL_CERT, API_SERVER_SSL_KEY) if API_SERVER_SSL else None
+            )
     log(
         log_type="info",
         message="API server started",
