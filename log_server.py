@@ -28,6 +28,7 @@ from config import (
     RATE_LIMIT_FILE_NAME,
     RATE_LIMIT_TIME_WINDOW,
     RATE_LIMIT_MAX_REQUESTS,
+    LOG_SERVER_RATE_LIMIT,
 )
 
 
@@ -148,13 +149,11 @@ queue_lock = Lock()  # Lock to ensure thread-safe access to the queue
 
 rate_limit_lock = Lock()  # Lock for thread-safe file access
 
-def process_syslog_message(message, addr):
+def enforce_rate_limit(source_ip, current_time):
     """
-    Process and log a syslog message according to RFC 5424 with shared rate limiting.
+    Enforce rate limiting for a given source IP.
+    Returns True if the rate limit is exceeded, otherwise False.
     """
-    source_ip = addr[0]
-    current_time = time.time()
-
     # Load the rate limit data from the shared file
     try:
         with rate_limit_lock:
@@ -181,17 +180,29 @@ def process_syslog_message(message, addr):
         with open(RATE_LIMIT_FILE_NAME, "w") as file:
             json.dump(rate_limit_data, file)
 
+    # Return True if the rate limit is exceeded
+    return client_data["count"] > RATE_LIMIT_MAX_REQUESTS
+
+
+def process_syslog_message(message, addr):
+    """
+    Process and log a syslog message according to RFC 5424 with shared rate limiting.
+    """
+    source_ip = addr[0]
+    current_time = time.time()
+
     # Enforce rate limit
-    if client_data["count"] > RATE_LIMIT_MAX_REQUESTS:
-        # Add the log to the delayed queue instead of dropping it
-        with queue_lock:
-            delayed_logs.append((message, addr))
-        logger.log(
-            "warning",
-            f"Rate limit exceeded for {source_ip}. Delaying message: {message}",
-            f"Syslog-{source_ip}",
-        )
-        return  # Do not process the message immediately
+    if LOG_SERVER_RATE_LIMIT is True:
+        if enforce_rate_limit(source_ip, current_time):
+            # Add the log to the delayed queue instead of dropping it
+            with queue_lock:
+                delayed_logs.append((message, addr))
+            logger.log(
+                "warning",
+                f"Rate limit exceeded for {source_ip}. Delaying message: {message}",
+                f"Syslog-{source_ip}",
+            )
+            return  # Do not process the message immediately
 
     # Process the syslog message as usual
     _process_message(message, addr)

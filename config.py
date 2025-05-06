@@ -17,6 +17,7 @@ AUTH_SERVER_PORT: int = 6002  # The port of the authentication server
 AUTH_SERVER_NAME_IN_LOG: str = "auth-server"
 AUTH_SERVER_DEBUG_MODE: bool = True
 AUTH_SERVER_SSL: bool = False  # Whether the authentication server uses SSL/TLS or not
+AUTH_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the authentication server
 AUTH_SERVER_SSL_CERT: str = (
     "/path/to/cert.pem"  # The path to the SSL/TLS certificate file
 )
@@ -30,6 +31,7 @@ LOG_SERVER_PORT: int = (
 LOG_FILE_NAME: str = "pctowa_log.txt"
 LOGGER_NAME: str = "pctowa_logger"  # The name of the logger
 LOG_SERVER_NAME_IN_LOG: str = "log-server"  # The name of the server in the log messages
+LOG_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the log server
 DELAYED_LOGS_QUEUE_SIZE: int = 100  # The size of the delayed logs queue
 # (if the queue is full, the oldest logs will
 #  be removed to make space for new ones)
@@ -53,6 +55,7 @@ API_VERSION: str = "v1"  # The version of the API
 URL_PREFIX: str = f"/api/{API_VERSION}/"  # The prefix for all API endpoints
 API_SERVER_DEBUG_MODE: bool = True  # Whether the API server is in debug mode or not
 API_SERVER_SSL: bool = False  # Whether the API server uses SSL/TLS or not
+API_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the API server
 API_SERVER_SSL_CERT: str = (
     "/path/to/cert.pem"  # The path to the SSL/TLS certificate file
 )
@@ -87,7 +90,6 @@ CONNECTION_POOL_SIZE: int = 20  # The maximum number of connections in the pool
 
 
 # Miscellaneous settings
-
 # | Rate limiting settings
 RATE_LIMIT_MAX_REQUESTS: int = 50  # Maximum messages per source
 RATE_LIMIT_TIME_WINDOW: int = 1  # Time window in seconds

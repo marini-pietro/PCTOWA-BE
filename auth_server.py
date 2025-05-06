@@ -28,6 +28,7 @@ from config import (
     STATUS_CODES,
     JWT_REFRESH_TOKEN_EXPIRES,
     JWT_ALGORITHM,
+    AUTH_SERVER_RATE_LIMIT,
 )
 
 # Initialize Flask app
@@ -53,9 +54,10 @@ def enforce_rate_limit():
     """
     Enforce rate limiting for all incoming requests.
     """
-    client_ip = request.remote_addr
-    if is_rate_limited(client_ip):
-        return jsonify({"error": "Rate limit exceeded"}), STATUS_CODES["too_many_requests"]
+    if AUTH_SERVER_RATE_LIMIT:  # Check if rate limiting is enabled
+        client_ip = request.remote_addr
+        if is_rate_limited(client_ip):
+            return jsonify({"error": "Rate limit exceeded"}), STATUS_CODES["too_many_requests"]
 
 @app.route("/auth/login", methods=["POST"])
 def login():
