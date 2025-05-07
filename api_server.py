@@ -13,7 +13,7 @@ from importlib import import_module
 from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager
 from api_blueprints import __all__  # Import all the blueprints
-from api_blueprints.blueprints_utils import log, is_rate_limited, is_input_safe
+from api_blueprints.blueprints_utils import log, is_rate_limited
 from config import (
     API_SERVER_HOST,
     API_SERVER_PORT,
@@ -85,21 +85,7 @@ for filename in os_listdir(blueprints_dir):
         print(f"Registered blueprint: {module_name} with prefix {URL_PREFIX}")
 
 
-@app.before_request
-def enforce_rate_limit():
-    """
-    Enforce rate limiting for all incoming requests.
-    """
-    if API_SERVER_RATE_LIMIT:  # Check if rate limiting is enabled
-        client_ip = request.remote_addr
-        if is_rate_limited(client_ip):
-            return (
-                jsonify({"error": "Rate limit exceeded"}),
-                STATUS_CODES["too_many_requests"],
-            )
-
-
-def is_input_safe(data: Union[str, List[str], Dict[Any, Any]]) -> bool:
+def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
     """
     Check if the input data (string, list, or dictionary) contains SQL instructions.
     Returns True if safe, False if potentially unsafe.
@@ -110,19 +96,20 @@ def is_input_safe(data: Union[str, List[str], Dict[Any, Any]]) -> bool:
     if isinstance(data, str):
         return not bool(SQL_PATTERN.search(data))
     if isinstance(data, list):
-        return all(
-            isinstance(item, str) and not bool(SQL_PATTERN.search(item))
-            for item in data
-        )
+        for item in data:
+            if isinstance(item, str) and SQL_PATTERN.search(item):
+                return False
+        return True
     if isinstance(data, dict):
-        return all(
-            isinstance(key, str)
-            and isinstance(value, str)
-            and not bool(SQL_PATTERN.search(value))
-            for key, value in data.items()
-        )
+        # Check keys and values in the dictionary for SQL patterns
+        for key, value in data.items():
+            if isinstance(key, str) and SQL_PATTERN.search(key):
+                return False
+            if isinstance(value, str) and SQL_PATTERN.search(value):
+                return False
+        return True
     else:
-        raise TypeError(
+        return (
             "Input must be a string, list of strings, or dictionary with string keys and values."
         )
 
@@ -150,7 +137,7 @@ def validate_user_data():
                     jsonify("Request body must not be empty"),
                     STATUS_CODES["bad_request"],
                 )
-        except (ValueError, Exception):
+        except ValueError:
             return (jsonify("Invalid JSON format"), STATUS_CODES["bad_request"])
 
         # Validate JSON keys and values for SQL injection
@@ -180,6 +167,20 @@ def validate_user_data():
                     {"error": f"Invalid path variable: {key} suspected SQL injection"}
                 ),
                 STATUS_CODES["bad_request"],
+            )
+
+
+@app.before_request
+def enforce_rate_limit():
+    """
+    Enforce rate limiting for all incoming requests.
+    """
+    if API_SERVER_RATE_LIMIT:  # Check if rate limiting is enabled
+        client_ip = request.remote_addr
+        if is_rate_limited(client_ip):
+            return (
+                jsonify({"error": "Rate limit exceeded"}),
+                STATUS_CODES["too_many_requests"],
             )
 
 
