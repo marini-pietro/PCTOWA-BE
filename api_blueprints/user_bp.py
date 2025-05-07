@@ -26,6 +26,7 @@ from config import (
     AUTH_SERVER_HOST,
     AUTH_SERVER_PORT,
     STATUS_CODES,
+    LOGIN_AVAILABLE_THROUGH_API,
 )
 
 from .blueprints_utils import (
@@ -269,6 +270,13 @@ class UserLogin(Resource):
         User login endpoint.
         The request body must be a JSON object with application/json content type.
         """
+
+        # Check if login is available through the API server
+        if not LOGIN_AVAILABLE_THROUGH_API:
+            return create_response(
+                message={"error": "login not available through API server, contact authentication service directly"},
+                status_code=STATUS_CODES["forbidden"],
+            )
 
         # Validate request
         data = validate_json_request(request)

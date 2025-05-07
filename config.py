@@ -55,6 +55,7 @@ API_VERSION: str = "v1"  # The version of the API
 URL_PREFIX: str = f"/api/{API_VERSION}/"  # The prefix for all API endpoints
 API_SERVER_DEBUG_MODE: bool = True  # Whether the API server is in debug mode or not
 API_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the API server
+LOGIN_AVAILABLE_THROUGH_API: bool = not (AUTH_SERVER_HOST in {"localhost", "127.0.0.1"})  # Determines if login is allowed through the API server (False if the authentication server is running locally)
 API_SERVER_SSL_CERT: str = ""  # The path to the SSL/TLS certificate file
 API_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
 API_SERVER_SSL: bool = not (API_SERVER_SSL_CERT == "" and API_SERVER_SSL_KEY == "")  # Whether the API server uses SSL/TLS or not
