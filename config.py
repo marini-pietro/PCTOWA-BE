@@ -8,6 +8,7 @@ This module contains the configuration settings for the API server, including:
 - Authorization settings
 """
 
+import re
 from typing import Dict
 from datetime import timedelta
 
@@ -19,9 +20,11 @@ AUTH_SERVER_DEBUG_MODE: bool = True
 AUTH_SERVER_RATE_LIMIT: bool = (
     True  # Whether to enable rate limiting on the authentication server
 )
-AUTH_SERVER_SSL_CERT: str = "" # The path to the SSL/TLS certificate file
+AUTH_SERVER_SSL_CERT: str = ""  # The path to the SSL/TLS certificate file
 AUTH_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
-AUTH_SERVER_SSL: bool = not (AUTH_SERVER_SSL_CERT == "" and AUTH_SERVER_SSL_KEY == "")  # Whether the authentication server uses SSL/TLS or not
+AUTH_SERVER_SSL: bool = not (
+    AUTH_SERVER_SSL_CERT == "" and AUTH_SERVER_SSL_KEY == ""
+)  # Whether the authentication server uses SSL/TLS or not
 
 # Log server related settings
 LOG_SERVER_HOST: str = "localhost"  # The host of the log server
@@ -55,10 +58,14 @@ API_VERSION: str = "v1"  # The version of the API
 URL_PREFIX: str = f"/api/{API_VERSION}/"  # The prefix for all API endpoints
 API_SERVER_DEBUG_MODE: bool = True  # Whether the API server is in debug mode or not
 API_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the API server
-LOGIN_AVAILABLE_THROUGH_API: bool = not (AUTH_SERVER_HOST in {"localhost", "127.0.0.1"})  # Determines if login is allowed through the API server (False if the authentication server is running locally)
+LOGIN_AVAILABLE_THROUGH_API: bool = not (
+    AUTH_SERVER_HOST in {"localhost", "127.0.0.1"}
+)  # Determines if login is allowed through the API server (False if the authentication server is running locally)
 API_SERVER_SSL_CERT: str = ""  # The path to the SSL/TLS certificate file
 API_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
-API_SERVER_SSL: bool = not (API_SERVER_SSL_CERT == "" and API_SERVER_SSL_KEY == "")  # Whether the API server uses SSL/TLS or not
+API_SERVER_SSL: bool = not (
+    API_SERVER_SSL_CERT == "" and API_SERVER_SSL_KEY == ""
+)  # Whether the API server uses SSL/TLS or not
 
 # JWT custom configuration
 JWT_SECRET_KEY: str = "Lorem ipsum dolor sit amet eget."
@@ -116,3 +123,37 @@ ROLES: Dict[int, str] = {0: "admin", 1: "teacher", 2: "tutor", 3: "supertutor"}
 NOT_AUTHORIZED_MESSAGE: Dict[str, str] = {
     "outcome": "error, action not permitted with current user"
 }
+
+# | Regex pattern for SQL injection detection
+# This pattern matches common SQL keywords and is used to detect potential SQL injection attacks
+# Precompile the regex pattern once
+SQL_PATTERN = re.compile(
+    r"\b("
+    + "|".join(
+        [
+            r"SELECT",
+            r"INSERT",
+            r"UPDATE",
+            r"DELETE",
+            r"DROP",
+            r"CREATE",
+            r"ALTER",
+            r"EXEC",
+            r"UNION",
+            r"ALL",
+            r"WHERE",
+            r"FROM",
+            r"TABLE",
+            r"JOIN",
+            r"TRUNCATE",
+            r"REPLACE",
+            r"GRANT",
+            r"REVOKE",
+            r"DECLARE",
+            r"CAST",
+            r"SET",
+        ]
+    )
+    + r")\b",
+    re.IGNORECASE,
+)

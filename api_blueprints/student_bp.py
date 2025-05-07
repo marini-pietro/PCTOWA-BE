@@ -24,7 +24,6 @@ from .blueprints_utils import (
     create_response,
     build_update_query_from_filters,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -64,14 +63,8 @@ class Student(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         matricola: str = data.get("matricola")
         nome: str = data.get("nome")
         cognome: str = data.get("cognome")
@@ -204,12 +197,8 @@ class Student(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check that the specified student exists
         student: Dict[str, Any] = fetchone_query(
@@ -283,7 +272,7 @@ class Student(Resource):
                 message={"outcome": "no student found with the provided matricola"},
                 status_code=STATUS_CODES["not_found"],
             )
-        
+
         # Return the response
         return create_response(message=student, status_code=STATUS_CODES["ok"])
 
@@ -309,16 +298,11 @@ class BindStudentToTurn(Resource):
     def post(self, matricola) -> Response:
         """
         Bind a student to a turn.
+        The request must include the student matricola as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         id_turno: Union[str, int] = data.get("id_turno")
 
         # Validate parameters

@@ -25,7 +25,6 @@ from .blueprints_utils import (
     log,
     create_response,
     handle_options_request,
-    validate_json_request,
     get_hateos_location_string,
 )
 
@@ -58,14 +57,8 @@ class Sector(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         settore: str = data.get("settore")
 
         # Validate parameters
@@ -186,14 +179,8 @@ class Sector(Resource):
         The request must include the sector name as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather JSON data
+        data = request.get_json()
         new_value: str = data.get("new_value")
 
         # Validate parameters

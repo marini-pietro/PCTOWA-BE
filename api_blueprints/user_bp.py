@@ -38,7 +38,6 @@ from .blueprints_utils import (
     create_response,
     build_update_query_from_filters,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -72,14 +71,8 @@ class User(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         email: str = data.get("email")
         password: str = data.get("password")
         name: str = data.get("nome")
@@ -184,12 +177,8 @@ class User(Resource):
         The id_ is passed as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
@@ -274,18 +263,14 @@ class UserLogin(Resource):
         # Check if login is available through the API server
         if not LOGIN_AVAILABLE_THROUGH_API:
             return create_response(
-                message={"error": "login not available through API server, contact authentication service directly"},
+                message={
+                    "error": "login not available through API server, contact authentication service directly"
+                },
                 status_code=STATUS_CODES["forbidden"],
             )
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         email: str = data.get("email")
         password: str = data.get("password")
 
@@ -429,14 +414,8 @@ class BindUserToCompany(Resource):
         The id_ is passed as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         company_id: Union[str, int] = data.get("id_azienda")
 
         # Validate parameters

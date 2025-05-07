@@ -24,7 +24,6 @@ from .blueprints_utils import (
     create_response,
     build_update_query_from_filters,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -58,14 +57,8 @@ class Tutor(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         nome: str = data.get("nome")
         cognome: str = data.get("cognome")
         telefono: str = data.get("telefono")
@@ -141,12 +134,8 @@ class Tutor(Resource):
         The id must be provided as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check if tutor exists
         tutor: Dict[str, Any] = fetchone_query(

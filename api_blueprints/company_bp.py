@@ -25,7 +25,6 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     parse_date_string,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -59,15 +58,9 @@ class Company(Resource):
         The request body must be a JSON object with application/json content log_type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters from the request body
         # (new dictionary is necessary so that user can provide JSON with fields in any order)
+        data = request.get_json()
         params: Dict[str, str] = {
             "ragione_sociale": data.get("ragione_sociale"),
             "nome": data.get("nome"),
@@ -168,12 +161,8 @@ class Company(Resource):
         The company ID is passed as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check if the company exists
         company: Dict[str, Any] = fetchone_query(

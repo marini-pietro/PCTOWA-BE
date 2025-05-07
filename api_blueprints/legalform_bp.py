@@ -24,7 +24,6 @@ from .blueprints_utils import (
     log,
     create_response,
     handle_options_request,
-    validate_json_request,
     get_hateos_location_string,
 )
 
@@ -53,14 +52,8 @@ class LegalForm(Resource):
         The request must contain a JSON body with application/json.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         forma: str = data.get("forma")
 
         # Validate parameters
@@ -179,14 +172,8 @@ class LegalForm(Resource):
         The legal form is passed as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
-        # Gather JSON data
+        # Gather data
+        data = request.get_json()
         new_value: str = data.get("new_value")
 
         # Validate parameters

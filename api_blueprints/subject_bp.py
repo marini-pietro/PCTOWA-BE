@@ -26,7 +26,6 @@ from .blueprints_utils import (
     create_response,
     build_update_query_from_filters,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -60,14 +59,8 @@ class Subject(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         descrizione: str = data.get("descrizione")
         hex_color: str = data.get("hex_color")
 
@@ -222,12 +215,8 @@ class Subject(Resource):
         The request must include the subject name as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check that specified subject exists
         subject: Dict[str, Any] = fetchone_query(

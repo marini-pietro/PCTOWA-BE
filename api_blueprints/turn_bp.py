@@ -26,7 +26,6 @@ from .blueprints_utils import (
     fetchall_query,
     build_update_query_from_filters,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -55,14 +54,8 @@ class Turn(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         settore = data.get("settore")
         materia = data.get("materia")
         data_inizio = parse_date_string(date_string=data.get("data_inizio"))
@@ -237,12 +230,8 @@ class Turn(Resource):
         The request must include the turn ID as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check that the specified class exists
         turn: Dict[str, Any] = fetchone_query(
