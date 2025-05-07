@@ -73,7 +73,7 @@ class Tutor(Resource):
 
         # Insert the tutor
         lastrowid: int = execute_query(
-            "INSERT INTO tutor (nome, cognome, telefonoTutor, emailTutor) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO tutor (nome, cognome, telefonoTutor, email_tutor) VALUES (%s, %s, %s, %s)",
             (nome, cognome, telefono, email),
         )
 
@@ -164,7 +164,7 @@ class Tutor(Resource):
             modifiable_columns=[
                 "nome",
                 "cognome",
-                "emailTutor",
+                "email_tutor",
                 "telefonoTutor",
             ],
             to_modify=list(data.keys()),
@@ -231,10 +231,13 @@ class Tutor(Resource):
 
         # Get the data
         tutors: List[Dict[str, Any]] = fetchall_query(
-            "SELECT TU.nome, TU.cognome, TU.email_tutor, TU.telefono_tutor "
-            "FROM turni AS T JOIN turno_tutor AS TT ON T.id_turno = TT.id_turno "
-            "JOIN tutor AS TU ON TU.id_tutor = TT.id_tutor "
-            "WHERE T.id_turno = %s",
+            """
+            SELECT TU.nome, TU.cognome, TU.emailTutor, TU.telefonoTutor
+            FROM turni AS T
+            JOIN turno_tutor AS TT ON T.id_turno = TT.id_turno
+            JOIN tutor AS TU ON TU.id_tutor = TT.id_tutor
+            WHERE T.id_turno = %s
+            """,
             (id_,),
         )
 

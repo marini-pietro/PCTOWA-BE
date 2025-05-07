@@ -173,5 +173,5 @@ if __name__ == "__main__":
         origin_name=API_SERVER_NAME_IN_LOG,
         origin_host=API_SERVER_HOST,
         message_id="UserAction",
-        structured_data=f"[host: {API_SERVER_HOST}, port: {API_SERVER_PORT}]",
+        structured_data=f"[host='{API_SERVER_HOST}' port='{API_SERVER_PORT}']",
     )

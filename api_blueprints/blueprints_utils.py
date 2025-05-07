@@ -414,6 +414,9 @@ def build_update_query_from_filters(
         None
     """
 
+    # Remove keys with None values from the dictionary
+    data = {key: value for key, value in data.items() if value is not None}
+
     filters = ", ".join([f"{key} = %s" for key in data.keys()])
     params = list(data.values()) + [pk_value]
     query = f"UPDATE {table_name} SET {filters} WHERE {pk_column} = %s"

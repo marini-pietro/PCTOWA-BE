@@ -54,6 +54,16 @@ class Student(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
+        # Log the student creation
+        log(
+            log_type="info",
+            message=f"User {get_jwt_identity()} created student {matricola}",
+            origin_name=API_SERVER_NAME_IN_LOG,
+            origin_host=API_SERVER_HOST,
+            message_id="UserAction",
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
+
         # Validate request
         data = validate_json_request(request)
         if isinstance(data, str):
@@ -131,16 +141,6 @@ class Student(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-        # Log the student creation
-        log(
-            log_type="info",
-            message=f"User {get_jwt_identity()} created student {matricola}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
-            structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": "POST"},
-        )
-
         return create_response(
             message={
                 "outcome": "student successfully created",
@@ -157,6 +157,16 @@ class Student(Resource):
         The request must include the student matricola as a path variable.
         """
 
+        # Log the deletion
+        log(
+            log_type="info",
+            message=f"User {get_jwt_identity()} deleted student {matricola}",
+            origin_name=API_SERVER_NAME_IN_LOG,
+            origin_host=API_SERVER_HOST,
+            message_id="UserAction",
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
+
         # Check that the specified student exists
         student: Dict[str, Any] = fetchone_query(
             "SELECT nome FROM studenti WHERE matricola = %s", (matricola,)
@@ -169,16 +179,6 @@ class Student(Resource):
 
         # Delete the student
         execute_query("DELETE FROM studenti WHERE matricola = %s", (matricola,))
-
-        # Log the deletion
-        log(
-            log_type="info",
-            message=f"User {get_jwt_identity()} deleted student {matricola}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
-            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": "DELETE"},
-        )
 
         # Return a success message
         return create_response(
@@ -193,6 +193,16 @@ class Student(Resource):
         Update a student.
         The request must include the student matricola as a path variable.
         """
+
+        # Log the update
+        log(
+            log_type="info",
+            message=f"User {get_jwt_identity()} updated student {matricola}",
+            origin_name=API_SERVER_NAME_IN_LOG,
+            origin_host=API_SERVER_HOST,
+            message_id="UserAction",
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
 
         # Validate request
         data = validate_json_request(request)
@@ -233,16 +243,6 @@ class Student(Resource):
         # Update the student
         execute_query(query, params)
 
-        # Log the update
-        log(
-            log_type="info",
-            message=f"User {get_jwt_identity()} updated student {matricola}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
-            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": "PATCH"},
-        )
-
         # Return a success message
         return create_response(
             message={"outcome": "student successfully updated"},
@@ -256,6 +256,7 @@ class Student(Resource):
         Get students data by matricola.
         The request must include the student matricola as a path variable.
         """
+
         # Log the request
         log(
             log_type="info",
@@ -263,7 +264,7 @@ class Student(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Student.ENDPOINT_PATHS[1], "verb": "GET"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Get student data
@@ -282,7 +283,7 @@ class Student(Resource):
                 message={"outcome": "no student found with the provided matricola"},
                 status_code=STATUS_CODES["not_found"],
             )
-
+        
         # Return the response
         return create_response(message=student, status_code=STATUS_CODES["ok"])
 
@@ -444,6 +445,7 @@ class StudentListFromClass(Resource):
         Get a list of all students that are associated
         to a class passed by its id_ as a path variable.
         """
+
         # Log the request
         log(
             log_type="info",
@@ -454,10 +456,7 @@ class StudentListFromClass(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={
-                "endpoint": StudentListFromClass.ENDPOINT_PATHS[0],
-                "verb": "GET",
-            },
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Check if the class exists
@@ -475,22 +474,24 @@ class StudentListFromClass(Resource):
         student_data: List[Dict[str, Any]] = fetchall_query(
             """
             SELECT S.matricola, S.nome, S.cognome, 
-                  S.comune, T.id_turno, T.data_inizio, 
-                  T.data_fine, T.giorno_inizio, T.giorno_fine, 
-                  T.ora_inizio, T.ora_fine, T.ore,
-                  A.ragione_sociale, A.indirizzo, A.cap, 
-                  A.comune AS comuneAzienda, A.provincia, A.stato
+                S.comune, T.id_turno, T.data_inizio, 
+                T.data_fine, T.giorno_inizio, T.giorno_fine, 
+                T.ora_inizio, T.ora_fine, T.ore,
+                A.ragione_sociale, A.cap, 
+                A.comune AS comuneAzienda, A.provincia, A.stato, 
+                I.indirizzo AS indirizzoAzienda
             FROM studenti AS S
             LEFT JOIN studente_turno AS ST ON S.matricola = ST.matricola
             LEFT JOIN turni AS T ON ST.id_turno = T.id_turno
             LEFT JOIN aziende AS A ON T.id_azienda = A.id_azienda
+            LEFT JOIN indirizzi AS I ON T.id_indirizzo = I.id_indirizzo
             WHERE S.id_classe = %s
             """,
             (class_id,),
         )
 
         # Check if student_data is empty
-        if student_data is None:
+        if not student_data:
             return create_response(
                 message={"outcome": "no students found for the provided class_id"},
                 status_code=STATUS_CODES["not_found"],
@@ -524,7 +525,7 @@ class StudentListFromClass(Resource):
                             "provincia": row.get("provincia"),
                             "comune": row.get("comuneAzienda"),
                             "cap": row.get("cap"),
-                            "indirizzo": row.get("indirizzo"),
+                            "indirizzo": row.get("indirizzoAzienda"),
                         },
                     }
                 )
@@ -566,10 +567,7 @@ class StudentListFromTurn(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={
-                "endpoint": StudentListFromTurn.ENDPOINT_PATHS[0],
-                "verb": "GET",
-            },
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Check if the turn exists
