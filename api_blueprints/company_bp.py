@@ -124,18 +124,17 @@ class Company(Resource):
         The company ID is passed as a path variable.
         """
 
-        # Check if specified company exists
-        company: Dict[str, Any] = fetchone_query(
-            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s", (id_,)
-        )  # Only fetch the province to check existence (could be any field)
-        if company is None:
+        # Delete the company
+        _, rows_affected = execute_query(
+            "DELETE FROM aziende WHERE id_azienda = %s", (id_,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified company does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the company
-        execute_query("DELETE FROM aziende WHERE id_azienda = %s", (id_,))
 
         # Log the deletion of the company
         log(

@@ -165,31 +165,17 @@ class Subject(Resource):
         The request must include the subject name as a path variable.
         """
 
-        # Check that the specified subject exists
-        subject: Dict[str, Any] = fetchone_query(
-            "SELECT materia FROM materie WHERE materia = %s", (materia,)
-        )  # Only fetch the province to check existence (could be any field)
-        if subject is None:
+        # Delete the subject
+        _, rows_affected = execute_query(
+            "DELETE FROM materie WHERE materia = %s", (materia,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified subject does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Check if subject exists
-        subject: Dict[str, Any] = fetchone_query(
-            "SELECT descrizione FROM materie WHERE materia = %s",
-            (
-                materia,
-            ),  # Only fetch the description to check existence (could be any field)
-        )
-        if subject is None:
-            return create_response(
-                message={"outcome": "error, specified subject does not exist"},
-                status_code=STATUS_CODES["not_found"],
-            )
-
-        # Delete the subject
-        execute_query("DELETE FROM materie WHERE materia = %s", (materia,))
 
         # Log the deletion
         log(

@@ -150,6 +150,18 @@ class Student(Resource):
         The request must include the student matricola as a path variable.
         """
 
+        # Delete the student
+        _, rows_affected = execute_query(
+            "DELETE FROM studenti WHERE matricola = %s", (matricola,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
+            return create_response(
+                message={"error": "no student found with the provided matricola"},
+                status_code=STATUS_CODES["not_found"],
+            )
+
         # Log the deletion
         log(
             log_type="info",
@@ -159,19 +171,6 @@ class Student(Resource):
             message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
-
-        # Check that the specified student exists
-        student: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM studenti WHERE matricola = %s", (matricola,)
-        )  # Only fetch the province to check existence (could be any field)
-        if student is None:
-            return create_response(
-                message={"error": "specified student does not exist"},
-                status_code=STATUS_CODES["not_found"],
-            )
-
-        # Delete the student
-        execute_query("DELETE FROM studenti WHERE matricola = %s", (matricola,))
 
         # Return a success message
         return create_response(

@@ -120,18 +120,17 @@ class Contact(Resource):
         The id is passed as a path variable.
         """
 
-        # Check that the specified contact exists
-        contact: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM contatti WHERE idContatto = %s", (id_,)
-        )  # Only fetch the province to check existence (could be any field)
-        if contact is None:
+        # Execute query to delete the contact
+        _, rows_affected = execute_query(
+            "DELETE FROM contatti WHERE idContatto = %s", (id_,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"outcome": "specified contact not_found"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Execute query to delete the contact
-        execute_query("DELETE FROM contatti WHERE idContatto = %s", (id_,))
 
         # Log the deletion of the contact
         log(

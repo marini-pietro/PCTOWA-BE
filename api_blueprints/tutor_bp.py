@@ -97,18 +97,17 @@ class Tutor(Resource):
         The id must be provided as a path variable.
         """
 
-        # Check if the tutor exists
-        tutor: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM tutor WHERE id_tutor = %s", (id_,)
+        # Delete the tutor
+        _, rows_affected = execute_query(
+            "DELETE FROM tutor WHERE id_tutor = %s", (id_,)
         )
-        if tutor is None:
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified tutor does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the tutor
-        execute_query("DELETE FROM tutor WHERE id_tutor = %s", (id_,))
 
         # Log the deletion
         log(

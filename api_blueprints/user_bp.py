@@ -140,18 +140,19 @@ class User(Resource):
         The id_ is passed as a path variable.
         """
 
-        # Check if user exists
-        user: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM utente WHERE email_utente = %s", (email,)
+        # Validate parameters TODO add regex check for email format
+
+        # Delete the user
+        _, rows_affected = execute_query(
+            "DELETE FROM utente WHERE email_utente = %s", (email,)
         )
-        if user is None:
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "user with provided email does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the user
-        execute_query("DELETE FROM utente WHERE email_utente = %s", (email,))
 
         # Log the deletion
         log(
@@ -176,6 +177,8 @@ class User(Resource):
         Update an existing user.
         The id_ is passed as a path variable.
         """
+
+        # Validate parameters TODO add regex check for email format
 
         # Gather parameters
         data = request.get_json()
@@ -414,6 +417,8 @@ class BindUserToCompany(Resource):
         The id_ is passed as a path variable.
         """
 
+        # Validate parameters TODO add regex check for email format
+
         # Gather parameters
         data = request.get_json()
         company_id: Union[str, int] = data.get("id_azienda")
@@ -551,6 +556,13 @@ class ReadBindedUser(Resource):
         The id_type is passed as a query parameter.
         The id_type can be either 'company' or 'class'.
         """
+
+        # Validate parameters
+        if id_ < 0:
+            return create_response(
+                message={"error": "id must be a positive integer"},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Gather parameters
         id_type: str = request.args.get("id_type")

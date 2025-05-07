@@ -116,18 +116,17 @@ class Address(Resource):
         The request must contain the id parameter in the URI as a path variable.
         """
 
-        # Check that specified resource exists
-        address: Dict[str, Any] = fetchone_query(
-            "SELECT provincia FROM indirizzi WHERE id_indirizzo = %s", (id_,)
-        )  # Only fetch the province to check existence (could be any field)
-        if address is None:  # If the address does not exist, return a 404 error
+        # Delete the address
+        _, rows_affected = execute_query(
+            "DELETE FROM indirizzi WHERE id_indirizzo = %s", (id_,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified address does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the address
-        execute_query("DELETE FROM indirizzi WHERE id_indirizzo = %s", (id_,))
 
         # Log the deletion
         log(

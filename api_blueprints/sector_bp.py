@@ -143,17 +143,29 @@ class Sector(Resource):
         The request must include the sector name as a path variable.
         """
 
-        # Check if sector exists
-        sector: Dict[str, Any] = fetchone_query(
-            "SELECT settore FROM settori WHERE settore = %s", (settore,)
-        )  # Only fetch the province to check existence (could be any field)
-        if sector is None:
-            return {"error": "specified sector does not exist"}, STATUS_CODES[
-                "not_found"
-            ]
+        # Validate parameters
+        if settore is None or len(settore) == 0:
+            return create_response(
+                message={"error": "settore parameter is required"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+        if len(settore) > 255:
+            return create_response(
+                message={"error": "settore parameter is too long"},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Delete the sector
-        execute_query("DELETE FROM settori WHERE settore = %s", (settore,))
+        _, rows_affected = execute_query(
+            "DELETE FROM settori WHERE settore = %s", (settore,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
+            return create_response(
+                message={"error": "specified sector does not exist"},
+                status_code=STATUS_CODES["not_found"],
+            )
 
         # Log the deletion
         log(

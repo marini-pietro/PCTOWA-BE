@@ -146,19 +146,17 @@ class Class(Resource):
         The class ID is passed as a path parameter.
         """
 
-        # Check that class exists
-        # Only fetch the province to check existence (could be any field)
-        class_: Dict[str, Any] = fetchone_query(
-            "SELECT sigla FROM classi WHERE id_classe = %s", (id_,)
+        # Delete the class
+        _, rows_affected = execute_query(
+            "DELETE FROM classi WHERE id_classe = %s", (id_,)
         )
-        if class_ is None:
+
+        # Gather parameters
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified class does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the class
-        execute_query("DELETE FROM classi WHERE id_classe = %s", (id_,))
 
         # Log the deletion of the class
         log(
