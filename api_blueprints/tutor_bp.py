@@ -24,7 +24,6 @@ from .blueprints_utils import (
     create_response,
     build_update_query_from_filters,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -58,14 +57,8 @@ class Tutor(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         nome: str = data.get("nome")
         cognome: str = data.get("cognome")
         telefono: str = data.get("telefono")
@@ -73,7 +66,7 @@ class Tutor(Resource):
 
         # Insert the tutor
         lastrowid: int = execute_query(
-            "INSERT INTO tutor (nome, cognome, telefonoTutor, emailTutor) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO tutor (nome, cognome, telefonoTutor, email_tutor) VALUES (%s, %s, %s, %s)",
             (nome, cognome, telefono, email),
         )
 
@@ -104,18 +97,17 @@ class Tutor(Resource):
         The id must be provided as a path variable.
         """
 
-        # Check if the tutor exists
-        tutor: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM tutor WHERE id_tutor = %s", (id_,)
+        # Delete the tutor
+        _, rows_affected = execute_query(
+            "DELETE FROM tutor WHERE id_tutor = %s", (id_,)
         )
-        if tutor is None:
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified tutor does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the tutor
-        execute_query("DELETE FROM tutor WHERE id_tutor = %s", (id_,))
 
         # Log the deletion
         log(
@@ -141,12 +133,8 @@ class Tutor(Resource):
         The id must be provided as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check if tutor exists
         tutor: Dict[str, Any] = fetchone_query(
@@ -164,7 +152,7 @@ class Tutor(Resource):
             modifiable_columns=[
                 "nome",
                 "cognome",
-                "emailTutor",
+                "email_tutor",
                 "telefonoTutor",
             ],
             to_modify=list(data.keys()),
@@ -220,10 +208,10 @@ class Tutor(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM aziende WHERE id_azienda = %s",
+            "SELECT fax FROM aziende WHERE id_azienda = %s",
             (id_,),  # only check for existence (select column could be any field)
         )
-        if not company:
+        if company is None:
             return create_response(
                 message={"outcome": "specified company not_found"},
                 status_code=STATUS_CODES["not_found"],
@@ -231,15 +219,18 @@ class Tutor(Resource):
 
         # Get the data
         tutors: List[Dict[str, Any]] = fetchall_query(
-            "SELECT TU.nome, TU.cognome, TU.email_tutor, TU.telefono_tutor "
-            "FROM turni AS T JOIN turno_tutor AS TT ON T.id_turno = TT.id_turno "
-            "JOIN tutor AS TU ON TU.id_tutor = TT.id_tutor "
-            "WHERE T.id_turno = %s",
+            """
+            SELECT TU.nome, TU.cognome, TU.emailTutor, TU.telefonoTutor
+            FROM turni AS T
+            JOIN turno_tutor AS TT ON T.id_turno = TT.id_turno
+            JOIN tutor AS TU ON TU.id_tutor = TT.id_tutor
+            WHERE T.id_turno = %s
+            """,
             (id_,),
         )
 
         # Check if query returned any results
-        if not tutors:
+        if tutors is None:
             return create_response(
                 message={"outcome": "no tutors found for specified turn"},
                 status_code=STATUS_CODES["not_found"],

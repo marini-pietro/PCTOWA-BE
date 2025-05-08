@@ -26,7 +26,6 @@ from .blueprints_utils import (
     fetchall_query,
     build_update_query_from_filters,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -55,14 +54,8 @@ class Turn(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         settore = data.get("settore")
         materia = data.get("materia")
         data_inizio = parse_date_string(date_string=data.get("data_inizio"))
@@ -200,18 +193,24 @@ class Turn(Resource):
         The request must include the turn ID as a path variable.
         """
 
-        # Check that the specified turn exists
-        turn: Dict[str, Any] = fetchone_query(
-            "SELECT posti_occupati FROM turni WHERE id_turno = %s", (id_,)
-        )  # Only fetch the province to check existence (could be any field)
-        if turn is None:
+        # Validate the ID
+        if id_ < 0:
+            return create_response(
+                message={"error": "id must be a positive integer"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        # Delete the turn
+        _, rows_affected = execute_query(
+            "DELETE FROM turni WHERE id_turno = %s", (id_,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"outcome": "specified turn does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the turn
-        execute_query("DELETE FROM turni WHERE id_turno = %s", (id_,))
 
         # Log the deletion
         log(
@@ -237,12 +236,8 @@ class Turn(Resource):
         The request must include the turn ID as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check that the specified class exists
         turn: Dict[str, Any] = fetchone_query(
@@ -328,7 +323,7 @@ class Turn(Resource):
             "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s",
             (id_,),  # Only check existence (SELECT field could be any)
         )
-        if not company:
+        if company is None:
             return create_response(
                 message={"outcome": "specified company not_found"},
                 status_code=STATUS_CODES["not_found"],
@@ -345,7 +340,7 @@ class Turn(Resource):
         )
 
         # Check if query returned any results
-        if not turns:
+        if turns is None:
             return create_response(
                 message={"outcome": "no turns found for specified company"},
                 status_code=STATUS_CODES["not_found"],

@@ -25,7 +25,6 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     parse_date_string,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -59,15 +58,9 @@ class Company(Resource):
         The request body must be a JSON object with application/json content log_type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters from the request body
         # (new dictionary is necessary so that user can provide JSON with fields in any order)
+        data = request.get_json()
         params: Dict[str, str] = {
             "ragione_sociale": data.get("ragione_sociale"),
             "nome": data.get("nome"),
@@ -131,18 +124,17 @@ class Company(Resource):
         The company ID is passed as a path variable.
         """
 
-        # Check if specified company exists
-        company: Dict[str, Any] = fetchone_query(
-            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s", (id_,)
-        )  # Only fetch the province to check existence (could be any field)
-        if not company:
+        # Delete the company
+        _, rows_affected = execute_query(
+            "DELETE FROM aziende WHERE id_azienda = %s", (id_,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified company does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the company
-        execute_query("DELETE FROM aziende WHERE id_azienda = %s", (id_,))
 
         # Log the deletion of the company
         log(
@@ -168,12 +160,8 @@ class Company(Resource):
         The company ID is passed as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check if the company exists
         company: Dict[str, Any] = fetchone_query(
@@ -253,7 +241,7 @@ class Company(Resource):
             )
 
             # Check if the company exists
-            if not company:
+            if company is None:
                 return create_response(
                     message={"error": "company not found with specified id_"},
                     status_code=STATUS_CODES["not_found"],
@@ -399,9 +387,7 @@ class CompanyList(Resource):
             # Log the read operation
             log(
                 log_type="info",
-                message=(
-                    f"User {get_jwt_identity()} read all companies"
-                ),
+                message=(f"User {get_jwt_identity()} read all companies"),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -422,13 +408,17 @@ class CompanyList(Resource):
                 query="SELECT id_azienda FROM turni WHERE data_inizio LIKE %s",
                 params=(f"{anno}%",),
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         if comune:
             ids = fetchall_query(
                 "SELECT id_azienda FROM indirizzi WHERE comune = %s", (comune,)
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         if settore:
             ids = fetchall_query(
@@ -438,7 +428,9 @@ class CompanyList(Resource):
                 "WHERE TS.settore = %s",
                 (settore,),
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         if mese:
             ids = fetchall_query(
@@ -447,7 +439,9 @@ class CompanyList(Resource):
                 "WHERE MONTHNAME(T.data_inizio) = %s",
                 (mese,),
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         if materia:
             ids = fetchall_query(
@@ -457,7 +451,9 @@ class CompanyList(Resource):
                 "WHERE TM.materia = %s",
                 (materia,),
             )
-            ids_batch.extend([row["id_azienda"] for row in ids])  # Extract id_azienda values
+            ids_batch.extend(
+                [row["id_azienda"] for row in ids]
+            )  # Extract id_azienda values
 
         # Remove duplicates from ids_batch
         ids_batch: List[int] = list(set(ids_batch))

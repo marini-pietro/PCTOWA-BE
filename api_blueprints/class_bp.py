@@ -25,9 +25,7 @@ from .blueprints_utils import (
     log,
     create_response,
     build_update_query_from_filters,
-    is_input_safe,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -60,14 +58,8 @@ class Class(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         sigla: str = data.get("sigla")
         anno: str = data.get("anno")
         email_responsabile: str = data.get("email_responsabile")
@@ -154,19 +146,17 @@ class Class(Resource):
         The class ID is passed as a path parameter.
         """
 
-        # Check that class exists
-        # Only fetch the province to check existence (could be any field)
-        class_: Dict[str, Any] = fetchone_query(
-            "SELECT sigla FROM classi WHERE id_classe = %s", (id_,)
+        # Delete the class
+        _, rows_affected = execute_query(
+            "DELETE FROM classi WHERE id_classe = %s", (id_,)
         )
-        if class_ is None:
+
+        # Gather parameters
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified class does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the class
-        execute_query("DELETE FROM classi WHERE id_classe = %s", (id_,))
 
         # Log the deletion of the class
         log(
@@ -191,12 +181,8 @@ class Class(Resource):
         The class ID is passed as a path parameter.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check that class exists
         class_: Dict[str, Any] = fetchone_query(
@@ -271,7 +257,7 @@ class Class(Resource):
                 email_responsabile
             ),  # Only fetch the name to check existence (could be any field)
         )
-        if not user:
+        if user is None:
             return create_response(
                 message={"outcome": "no user found with provided email"},
                 status_code=STATUS_CODES["not_found"],
@@ -301,17 +287,16 @@ class ClassFuzzySearch(Resource):
     Class for fuzzy search of class names in the database.
     """
 
-    ENDPOINT_PATHS = [f"/{BP_NAME}/fsearch"]
+    ENDPOINT_PATHS = [f"/{BP_NAME}/fsearch/<string:input_str>"]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self) -> Response:
+    def get(self, input_str) -> Response:
         """
         Execute fuzzy search for class names in database.
         """
 
         # Gather parameters
-        input_str: str = request.args.get("fnome")
         if not input_str:
             return create_response(
                 message={"error": "missing required field fnome"},
@@ -325,13 +310,6 @@ class ClassFuzzySearch(Resource):
         if "%" in input_str or "_" in input_str:
             return create_response(
                 message={"error": "fnome cannot contain % or _ characters"},
-                status_code=STATUS_CODES["bad_request"],
-            )
-
-        # Check for sql injection
-        if not is_input_safe(input_str):
-            return create_response(
-                message={"error": "invalid input, suspected sql injection"},
                 status_code=STATUS_CODES["bad_request"],
             )
 

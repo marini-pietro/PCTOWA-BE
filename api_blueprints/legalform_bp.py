@@ -24,7 +24,6 @@ from .blueprints_utils import (
     log,
     create_response,
     handle_options_request,
-    validate_json_request,
     get_hateos_location_string,
 )
 
@@ -53,14 +52,8 @@ class LegalForm(Resource):
         The request must contain a JSON body with application/json.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         forma: str = data.get("forma")
 
         # Validate parameters
@@ -139,18 +132,17 @@ class LegalForm(Resource):
         The legal form is passed as a path variable.
         """
 
-        # Check that the legal form exists
-        form: Dict[str, Any] = fetchone_query(
-            "SELECT forma FROM forma_giuridica WHERE forma = %s", (forma,)
+        # Delete the legal form
+        _, rows_affected = execute_query(
+            "DELETE FROM forma_giuridica WHERE forma = %s", (forma,)
         )
-        if form is None:
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified legal form does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the legal form
-        execute_query("DELETE FROM forma_giuridica WHERE forma = %s", (forma,))
 
         # Log the deletion
         log(
@@ -179,14 +171,8 @@ class LegalForm(Resource):
         The legal form is passed as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
-        # Gather JSON data
+        # Gather data
+        data = request.get_json()
         new_value: str = data.get("new_value")
 
         # Validate parameters

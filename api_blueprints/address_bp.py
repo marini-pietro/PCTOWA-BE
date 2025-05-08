@@ -22,7 +22,6 @@ from .blueprints_utils import (
     fetchone_query,
     handle_options_request,
     log,
-    validate_json_request,
     get_hateos_location_string,
     check_column_existence,
 )
@@ -53,14 +52,8 @@ class Address(Resource):
         The request must contain a JSON in the body and application/json as Content-Type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         stato = data.get("stato")
         provincia = data.get("provincia")
         comune = data.get("comune")
@@ -68,7 +61,7 @@ class Address(Resource):
         indirizzo: str = data.get("indirizzo")
         id_azienda: int = data.get("id_azienda")
 
-        # Validate parameters
+        # Validate parameters and performing casting if necessary
         if id_azienda is not None:
             try:
                 id_azienda = int(id_azienda)
@@ -123,18 +116,17 @@ class Address(Resource):
         The request must contain the id parameter in the URI as a path variable.
         """
 
-        # Check that specified resource exists
-        address: Dict[str, Any] = fetchone_query(
-            "SELECT provincia FROM indirizzi WHERE id_indirizzo = %s", (id_,)
-        )  # Only fetch the province to check existence (could be any field)
-        if address is None:  # If the address does not exist, return a 404 error
+        # Delete the address
+        _, rows_affected = execute_query(
+            "DELETE FROM indirizzi WHERE id_indirizzo = %s", (id_,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "specified address does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the address
-        execute_query("DELETE FROM indirizzi WHERE id_indirizzo = %s", (id_,))
 
         # Log the deletion
         log(
@@ -160,12 +152,8 @@ class Address(Resource):
         The request must contain the id parameter in the URI as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather data
+        data = request.get_json()
 
         # Check if address exists
         address = fetchone_query(

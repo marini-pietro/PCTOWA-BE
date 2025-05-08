@@ -24,7 +24,6 @@ from .blueprints_utils import (
     build_update_query_from_filters,
     fetchall_query,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -52,14 +51,8 @@ class Contact(Resource):
         The request must contain a JSON body with application/json.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         params: Dict[str, str] = {
             "nome": data.get("nome"),
             "cognome": data.get("cognome"),
@@ -86,7 +79,7 @@ class Contact(Resource):
                 params["id_azienda"],
             ),  # only check existence (select column could be any)
         )
-        if not company:
+        if company is None:
             return create_response(
                 message={"outcome": "specified company does not exist"},
                 status_code=STATUS_CODES["not_found"],
@@ -127,18 +120,17 @@ class Contact(Resource):
         The id is passed as a path variable.
         """
 
-        # Check that the specified contact exists
-        contact: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM contatti WHERE idContatto = %s", (id_,)
-        )  # Only fetch the province to check existence (could be any field)
-        if not contact:
+        # Execute query to delete the contact
+        _, rows_affected = execute_query(
+            "DELETE FROM contatti WHERE idContatto = %s", (id_,)
+        )
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"outcome": "specified contact not_found"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Execute query to delete the contact
-        execute_query("DELETE FROM contatti WHERE idContatto = %s", (id_,))
 
         # Log the deletion of the contact
         log(
@@ -164,12 +156,8 @@ class Contact(Resource):
         The id is passed as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Gather parameters
+        data = request.get_json()
 
         # Check that the specified contact exists
         contact: Dict[str, Any] = fetchone_query(
@@ -246,10 +234,10 @@ class Contact(Resource):
 
         # Check that the specified company exists
         company: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM aziende WHERE id_azienda = %s",
+            "SELECT fax FROM aziende WHERE id_azienda = %s",
             (id_,),  # Only fetch the name to check existence (could be any field)
         )
-        if not company:
+        if company is None:
             return create_response(
                 message={"outcome": "specified company not_found"},
                 status_code=STATUS_CODES["not_found"],
@@ -257,12 +245,12 @@ class Contact(Resource):
 
         # Get the data
         contact: List[Dict[str, Any]] = fetchall_query(
-            "SELECT nome FROM contatti WHERE id_azienda = %s",
+            "SELECT nome, cognome, telefono, email, ruolo FROM contatti WHERE id_azienda = %s",
             (id_,),  # Only fetch the name (select column could be any field)
         )
 
         # Check if query returned any results
-        if not contact:
+        if contact is None:
             return create_response(
                 message={"outcome": "no contacts found for the specified company"},
                 status_code=STATUS_CODES["not_found"],

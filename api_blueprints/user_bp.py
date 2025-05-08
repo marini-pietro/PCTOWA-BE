@@ -11,6 +11,8 @@ It includes the following functionalities:
 - Fetching the list of users associated with a given company or class
 """
 
+import os
+import base64
 from os.path import basename as os_path_basename
 from typing import List, Dict, Any, Union
 from flask import Blueprint, request, Response
@@ -18,6 +20,9 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from requests import post as requests_post
 from requests.exceptions import RequestException
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
 from mysql.connector import IntegrityError
 
 from config import (
@@ -26,6 +31,7 @@ from config import (
     AUTH_SERVER_HOST,
     AUTH_SERVER_PORT,
     STATUS_CODES,
+    LOGIN_AVAILABLE_THROUGH_API,
 )
 
 from .blueprints_utils import (
@@ -37,7 +43,6 @@ from .blueprints_utils import (
     create_response,
     build_update_query_from_filters,
     handle_options_request,
-    validate_json_request,
     check_column_existence,
     get_hateos_location_string,
 )
@@ -49,6 +54,22 @@ BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 user_bp = Blueprint(BP_NAME, __name__)
 api = Api(user_bp)
 
+def hash_password(password: str) -> str:
+    # Generate a random salt
+    salt = os.urandom(16)
+    
+    # Use PBKDF2 to hash the password
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    hashed_password = base64.urlsafe_b64encode(kdf.derive(password.encode('utf-8')))
+    
+    # Store the salt and hashed password together
+    return f"{base64.urlsafe_b64encode(salt).decode('utf-8')}:{hashed_password.decode('utf-8')}"
 
 class User(Resource):
     """
@@ -71,25 +92,22 @@ class User(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
-
         # Gather parameters
+        data = request.get_json()
         email: str = data.get("email")
         password: str = data.get("password")
         name: str = data.get("nome")
         surname: str = data.get("cognome")
         user_type: int = data.get("tipo")
 
+        # Hash the password before storing it
+        hashed_password = hash_password(password)
+
         try:
             lastrowid: int = execute_query(
                 "INSERT INTO utenti (email_utente, password, nome, cognome, tipo) "
                 "VALUES (%s, %s, %s, %s, %s)",
-                (email, password, name, surname, int(user_type)),
+                (email, hashed_password, name, surname, int(user_type)),
             )
 
             # Log the register
@@ -99,7 +117,7 @@ class User(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data=f"[endpoint={User.ENDPOINT_PATHS[0]} verb='POST']",
+                structured_data=f"[endpoint={User.ENDPOINT_PATHS[0]}' verb='POST']",
             )
 
             # Return success message
@@ -117,10 +135,8 @@ class User(Resource):
             # Log the error
             log(
                 log_type="error",
-                message=(
-                    f"User {get_jwt_identity()} tried to "
-                    f"register user {email} but it already generated {ex}"
-                ),
+                message=(f"User {get_jwt_identity()} tried to "
+                         f"register user {email} but it already generated {ex}"),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -146,18 +162,19 @@ class User(Resource):
         The id_ is passed as a path variable.
         """
 
-        # Check if user exists
-        user: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM utente WHERE email_utente = %s", (email,)
+        # Validate parameters TODO add regex check for email format
+
+        # Delete the user
+        _, rows_affected = execute_query(
+            "DELETE FROM utente WHERE email_utente = %s", (email,)
         )
-        if user is None:
+
+        # Check if any rows were affected
+        if rows_affected == 0:
             return create_response(
                 message={"error": "user with provided email does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
-
-        # Delete the user
-        execute_query("DELETE FROM utente WHERE email_utente = %s", (email,))
 
         # Log the deletion
         log(
@@ -183,12 +200,10 @@ class User(Resource):
         The id_ is passed as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Validate parameters TODO add regex check for email format
+
+        # Gather parameters
+        data = request.get_json()
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
@@ -270,14 +285,17 @@ class UserLogin(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
+        # Check if login is available through the API server
+        if not LOGIN_AVAILABLE_THROUGH_API:
             return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
+                message={
+                    "error": "login not available through API server, contact authentication service directly"
+                },
+                status_code=STATUS_CODES["forbidden"],
             )
 
         # Gather parameters
+        data = request.get_json()
         email: str = data.get("email")
         password: str = data.get("password")
 
@@ -421,14 +439,10 @@ class BindUserToCompany(Resource):
         The id_ is passed as a path variable.
         """
 
-        # Validate request
-        data = validate_json_request(request)
-        if isinstance(data, str):
-            return create_response(
-                message={"error": data}, status_code=STATUS_CODES["bad_request"]
-            )
+        # Validate parameters TODO add regex check for email format
 
         # Gather parameters
+        data = request.get_json()
         company_id: Union[str, int] = data.get("id_azienda")
 
         # Validate parameters
@@ -565,6 +579,13 @@ class ReadBindedUser(Resource):
         The id_type can be either 'company' or 'class'.
         """
 
+        # Validate parameters
+        if id_ < 0:
+            return create_response(
+                message={"error": "id must be a positive integer"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
         # Gather parameters
         id_type: str = request.args.get("id_type")
 
@@ -602,7 +623,7 @@ class ReadBindedUser(Resource):
                 "SELECT fax FROM aziende WHERE id_azienda = %s",
                 (id_,),  # Only check for existence (SELECT column could be any field)
             )
-            if not company:
+            if company is None:
                 return create_response(
                     message={"outcome": "error, specified company does not exist"},
                     status_code=STATUS_CODES["not_found"],
@@ -622,7 +643,7 @@ class ReadBindedUser(Resource):
                 "SELECT sigla FROM classi WHERE id_classe = %s",
                 (id_,),  # Only check for existence (SELECT column could be any field)
             )
-            if not class_:
+            if class_ is None:
                 return create_response(
                     message={"outcome": "error, specified class does not exist"},
                     status_code=STATUS_CODES["not_found"],

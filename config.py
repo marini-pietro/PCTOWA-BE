@@ -8,6 +8,7 @@ This module contains the configuration settings for the API server, including:
 - Authorization settings
 """
 
+import re
 from typing import Dict
 from datetime import timedelta
 
@@ -16,20 +17,24 @@ AUTH_SERVER_HOST: str = "localhost"  # The host of the authentication server
 AUTH_SERVER_PORT: int = 6002  # The port of the authentication server
 AUTH_SERVER_NAME_IN_LOG: str = "auth-server"
 AUTH_SERVER_DEBUG_MODE: bool = True
-AUTH_SERVER_SSL: bool = False  # Whether the authentication server uses SSL/TLS or not
-AUTH_SERVER_SSL_CERT: str = (
-    "/path/to/cert.pem"  # The path to the SSL/TLS certificate file
+AUTH_SERVER_RATE_LIMIT: bool = (
+    True  # Whether to enable rate limiting on the authentication server
 )
-AUTH_SERVER_SSL_KEY: str = "/path/to/key.pem"  # The path to the SSL/TLS key file
+AUTH_SERVER_SSL_CERT: str = ""  # The path to the SSL/TLS certificate file
+AUTH_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
+AUTH_SERVER_SSL: bool = not (
+    AUTH_SERVER_SSL_CERT == "" and AUTH_SERVER_SSL_KEY == ""
+)  # Whether the authentication server uses SSL/TLS or not
 
 # Log server related settings
 LOG_SERVER_HOST: str = "localhost"  # The host of the log server
 LOG_SERVER_PORT: int = (
     6014  # The port of the log server (default syslog port, can modified to open port for testing)
 )
-LOG_FILE_NAME: str = "pctowa_log.txt"
-LOGGER_NAME: str = "pctowa_logger"  # The name of the logger
+LOG_FILE_NAME: str = "idranjia_log.txt"
+LOGGER_NAME: str = "idranjia_logger"  # The name of the logger
 LOG_SERVER_NAME_IN_LOG: str = "log-server"  # The name of the server in the log messages
+LOG_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the log server
 DELAYED_LOGS_QUEUE_SIZE: int = 100  # The size of the delayed logs queue
 # (if the queue is full, the oldest logs will
 #  be removed to make space for new ones)
@@ -52,11 +57,15 @@ API_SERVER_NAME_IN_LOG: str = "api-server"  # The name of the server in the log 
 API_VERSION: str = "v1"  # The version of the API
 URL_PREFIX: str = f"/api/{API_VERSION}/"  # The prefix for all API endpoints
 API_SERVER_DEBUG_MODE: bool = True  # Whether the API server is in debug mode or not
-API_SERVER_SSL: bool = False  # Whether the API server uses SSL/TLS or not
-API_SERVER_SSL_CERT: str = (
-    "/path/to/cert.pem"  # The path to the SSL/TLS certificate file
-)
-API_SERVER_SSL_KEY: str = "/path/to/key.pem"  # The path to the SSL/TLS key file
+API_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the API server
+LOGIN_AVAILABLE_THROUGH_API: bool = not (
+    AUTH_SERVER_HOST in {"localhost", "127.0.0.1"}
+)  # Determines if login is allowed through the API server (False if the authentication server is running locally)
+API_SERVER_SSL_CERT: str = ""  # The path to the SSL/TLS certificate file
+API_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
+API_SERVER_SSL: bool = not (
+    API_SERVER_SSL_CERT == "" and API_SERVER_SSL_KEY == ""
+)  # Whether the API server uses SSL/TLS or not
 
 # JWT custom configuration
 JWT_SECRET_KEY: str = "Lorem ipsum dolor sit amet eget."
@@ -80,14 +89,13 @@ JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=10)  # Refresh token valid duration
 JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=3)  # Access token valid duration
 # | Database configuration
 DB_HOST: str = "localhost"
-DB_NAME: str = "pctowa"
-DB_USER: str = "abc"
-DB_PASSWORD: str = "123"
+DB_NAME: str = "idranjia"
+DB_USER: str = "root"
+DB_PASSWORD: str = ""
 CONNECTION_POOL_SIZE: int = 20  # The maximum number of connections in the pool
 
 
 # Miscellaneous settings
-
 # | Rate limiting settings
 RATE_LIMIT_MAX_REQUESTS: int = 50  # Maximum messages per source
 RATE_LIMIT_TIME_WINDOW: int = 1  # Time window in seconds
@@ -109,9 +117,72 @@ STATUS_CODES: Dict[str, int] = {
     "service_unavailable": 503,
 }
 # | Roles and their corresponding IDs
-ROLES: Dict[int, str] = {0: "admin", 1: "teacher", 2: "tutor", 3: "supertutor"}
+ROLES: Dict[int, str] = {0: "admin"}  # TODO figure out if any more roles are needed
 
 # | Standard not authorized message
 NOT_AUTHORIZED_MESSAGE: Dict[str, str] = {
     "outcome": "error, action not permitted with current user"
 }
+
+# | Regex pattern for SQL injection detection
+# This regex pattern is used to detect SQL injection attempts in user input.
+# It matches common SQL keywords and commands that are often used in SQL injection attacks.
+# Precompile the regex pattern once
+SQL_PATTERN = re.compile(
+    r"\b("
+    + "|".join(
+        [
+            r"SELECT",
+            r"INSERT",
+            r"UPDATE",
+            r"DELETE",
+            r"DROP",
+            r"CREATE",
+            r"ALTER",
+            r"EXEC",
+            r"EXECUTE",
+            r"SHOW",
+            r"DESCRIBE",
+            r"USE",
+            r"LOAD",
+            r"INTO",
+            r"OUTFILE",
+            r"INFORMATION_SCHEMA",
+            r"DATABASES",
+            r"SCHEMAS",
+            r"COLUMNS",
+            r"VALUES",
+            r"UNION",
+            r"ALL",
+            r"WHERE",
+            r"FROM",
+            r"TABLE",
+            r"JOIN",
+            r"TRUNCATE",
+            r"REPLACE",
+            r"GRANT",
+            r"REVOKE",
+            r"DECLARE",
+            r"CAST",
+            r"SET",
+            r"LIKE",
+            r"OR",
+            r"AND",
+            r"HAVING",
+            r"LIMIT",
+            r"OFFSET",
+            r"ORDER BY",
+            r"GROUP BY",
+            r"CONCAT",
+            r"SLEEP",
+            r"BENCHMARK",
+            r"IF",
+            r"ASCII",
+            r"CHAR",
+            r"HEX",
+        ]
+    )
+    + r")\b"
+    + r"|(--|#|;)",  # Match special characters without word boundaries
+    re.IGNORECASE,
+)
