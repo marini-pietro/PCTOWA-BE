@@ -1,4 +1,5 @@
 #!/bin/bash
+# filepath: c:\Users\pmari\Documents\GitHub\Webapp-PCTO\scripts\kill_quick.sh
 
 # Updated program names in the specified order
 PROGRAM_NAMES=("log_server.py" "auth_server.py" "api_server.py")
@@ -20,3 +21,12 @@ for PROGRAM_NAME in "${PROGRAM_NAMES[@]}"; do
 
     echo "All processes with name $PROGRAM_NAME have been terminated."
 done
+
+# Delete the rate_limit.json file if it exists
+RATE_LIMIT_FILE="../rate_limit.json"
+if [ -f "$RATE_LIMIT_FILE" ]; then
+    rm -f "$RATE_LIMIT_FILE"
+    echo "rate_limit.json file deleted."
+else
+    echo "rate_limit.json file not found."
+fi

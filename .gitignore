@@ -9,6 +9,9 @@ __pycache__/
 # Log files
 *_log.txt
 
+# Rate limiting files
+rate_limit.json
+
 # VS Code
 .vscode/
 
