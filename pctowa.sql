@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Creato il: Mag 02, 2025 alle 20:40
+-- Creato il: Mag 08, 2025 alle 19:00
 -- Versione del server: 8.0.27
 -- Versione PHP: 7.3.31-1~deb10u7
 
@@ -261,25 +261,26 @@ CREATE TABLE `turni` (
   `id_turno` int NOT NULL,
   `data_inizio` date DEFAULT NULL,
   `data_fine` date DEFAULT NULL,
-  `posti` int DEFAULT NULL,
-  `posti_occupati` int DEFAULT '0',
-  `ore` int DEFAULT NULL,
+  `giorno_inizio` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
   `id_azienda` int NOT NULL,
   `id_indirizzo` int DEFAULT NULL,
+  `giorno_fine` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
   `ora_inizio` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `ora_fine` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `giorno_inizio` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
-  `giorno_fine` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL
+  `posti` int DEFAULT NULL,
+  `posti_occupati` int DEFAULT '0',
+  `posti_confermati` tinyint(1) NOT NULL COMMENT 'se il numero dei posti è stato confermato o meno',
+  `ore` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dump dei dati per la tabella `turni`
 --
 
-INSERT INTO `turni` (`id_turno`, `data_inizio`, `data_fine`, `posti`, `posti_occupati`, `ore`, `id_azienda`, `id_indirizzo`, `ora_inizio`, `ora_fine`, `giorno_inizio`, `giorno_fine`) VALUES
-(1, '2024-03-01', '2024-05-31', 2, 2, 120, 1, 1, '09:00', '13:00', 'lunedì', 'venerdì'),
-(2, '2024-04-01', '2024-06-30', 3, 1, 100, 2, 2, '10:00', '14:00', 'martedì', 'giovedì'),
-(3, '2024-05-15', '2024-07-31', 1, 1, 80, 3, 3, '08:30', '12:00', 'mercoledì', 'venerdì');
+INSERT INTO `turni` (`id_turno`, `data_inizio`, `data_fine`, `giorno_inizio`, `id_azienda`, `id_indirizzo`, `giorno_fine`, `ora_inizio`, `ora_fine`, `posti`, `posti_occupati`, `posti_confermati`, `ore`) VALUES
+(1, '2024-03-01', '2024-05-31', 'lunedì', 1, 1, 'venerdì', '09:00', '13:00', 2, 2, 0, 120),
+(2, '2024-04-01', '2024-06-30', 'martedì', 2, 2, 'giovedì', '10:00', '14:00', 3, 1, 0, 100),
+(3, '2024-05-15', '2024-07-31', 'mercoledì', 3, 3, 'venerdì', '08:30', '12:00', 1, 1, 0, 80);
 
 -- --------------------------------------------------------
 
@@ -342,17 +343,18 @@ CREATE TABLE `tutor` (
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `email_tutor` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `telefono_tutor` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
+  `telefono_tutor` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `id_azienda` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dump dei dati per la tabella `tutor`
 --
 
-INSERT INTO `tutor` (`id_tutor`, `nome`, `cognome`, `email_tutor`, `telefono_tutor`) VALUES
-(1, 'Andrea', 'Gialli', 'a.gialli@techsolutions.it', '3456789012'),
-(2, 'Chiara', 'Blu', 'c.blu@greenfuture.it', '3344556677'),
-(3, 'Elena', 'Rosa', 'e.rosa@eduinnovazione.it', '3399988776');
+INSERT INTO `tutor` (`id_tutor`, `nome`, `cognome`, `email_tutor`, `telefono_tutor`, `id_azienda`) VALUES
+(1, 'Andrea', 'Gialli', 'a.gialli@techsolutions.it', '3456789012', 1),
+(2, 'Chiara', 'Blu', 'c.blu@greenfuture.it', '3344556677', 2),
+(3, 'Elena', 'Rosa', 'e.rosa@eduinnovazione.it', '3399988776', 3);
 
 -- --------------------------------------------------------
 
@@ -365,7 +367,7 @@ CREATE TABLE `utenti` (
   `password` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `ruolo` int NOT NULL
+  `ruolo` enum('admin','tutor','supertutor','teacher') COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -373,9 +375,9 @@ CREATE TABLE `utenti` (
 --
 
 INSERT INTO `utenti` (`email_utente`, `password`, `nome`, `cognome`, `ruolo`) VALUES
-('cinzia.decarli@marconiverona.edu.it', 'hashed_pwd3', 'Giorgio', 'Rosa', 3),
-('irene.decarli@marconiverona.edu.it', 'hashed_pwd2', 'Anna', 'Verdi', 2),
-('lorenzo.decarli@marconiverona.edu.it', 'hashed_pwd1', 'Luca', 'Bianchi', 1);
+('cinzia.decarli@marconiverona.edu.it', 'hashed_pwd3', 'Giorgio', 'Rosa', 'supertutor'),
+('irene.decarli@marconiverona.edu.it', 'hashed_pwd2', 'Anna', 'Verdi', 'tutor'),
+('lorenzo.decarli@marconiverona.edu.it', 'hashed_pwd1', 'Luca', 'Bianchi', 'admin');
 
 --
 -- Indici per le tabelle scaricate
@@ -482,7 +484,8 @@ ALTER TABLE `turno_tutor`
 -- Indici per le tabelle `tutor`
 --
 ALTER TABLE `tutor`
-  ADD PRIMARY KEY (`id_tutor`);
+  ADD PRIMARY KEY (`id_tutor`),
+  ADD KEY `fk_id_azienda` (`id_azienda`);
 
 --
 -- Indici per le tabelle `utenti`
@@ -611,6 +614,12 @@ ALTER TABLE `turno_settore`
 ALTER TABLE `turno_tutor`
   ADD CONSTRAINT `turnoTutor_ibfk_1` FOREIGN KEY (`id_tutor`) REFERENCES `tutor` (`id_tutor`),
   ADD CONSTRAINT `turnoTutor_ibfk_2` FOREIGN KEY (`id_turno`) REFERENCES `turni` (`id_turno`);
+
+--
+-- Limiti per la tabella `tutor`
+--
+ALTER TABLE `tutor`
+  ADD CONSTRAINT `fk_id_azienda` FOREIGN KEY (`id_azienda`) REFERENCES `aziende` (`id_azienda`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
