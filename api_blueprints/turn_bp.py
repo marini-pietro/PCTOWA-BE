@@ -56,8 +56,8 @@ class Turn(Resource):
 
         # Gather parameters
         data = request.get_json()
-        settore = data.get("settore")
-        materia = data.get("materia")
+        settori: List[str] = data.get("settori")
+        materie: List[str] = data.get("materie")
         data_inizio = parse_date_string(date_string=data.get("data_inizio"))
         data_fine = parse_date_string(date_string=data.get("data_fine"))
         ora_inizio = parse_time_string(time_string=data.get("ora_inizio"))
@@ -70,7 +70,14 @@ class Turn(Resource):
         id_tutor = data.get("id_tutor")
         id_azienda = data.get("id_azienda")
 
-        # Validate data
+        # Validate lists
+        for field_name, field_value in [("settori", settori), ("materie", materie)]:
+            if not isinstance(field_value, List) or not all(isinstance(item, str) for item in field_value):
+                return create_response(
+                    message={f"error": f"{field_name} must be a list of strings"},
+                    status_code=STATUS_CODES["bad_request"],
+                )
+
         valid_days: List[str] = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"]
         if giorno_inizio not in valid_days:
             return create_response(
@@ -93,6 +100,7 @@ class Turn(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
+        # Validate integers and perform casting if they are numeric strings
         values_to_check: Dict[str, int] = {
             "ore": ore,
             "posti": posti,
@@ -115,9 +123,11 @@ class Turn(Resource):
             "aziende": ["id_azienda", id_azienda],
             "indirizzi": ["id_indirizzo", id_indirizzo],
             "tutor": ["id_tutor", id_tutor],
-            "materie": ["materia", materia],
-            "settori": ["settore", settore],
+            "materie": ["materia", materie],
+            "settori": ["settore", settori],
         }
+
+        #TODO add logic to properly check materie and settori list
         for table, (column, value) in pk_to_check.items():
             if value is not None:
                 # Check if the value exists in the database
@@ -127,13 +137,13 @@ class Turn(Resource):
                 if result is None:
                     return create_response(
                         message={
-                            "outcome": f"error, specified row in table {table} does not exist"
+                            "outcome": f"error, specified resource {table} does not exist"
                         },
                         status_code=STATUS_CODES["not_found"],
                     )
 
         # Insert the turn
-        lastrowid: int = execute_query(
+        lastrowid, _ = execute_query(
             "INSERT INTO turni (data_inizio, data_fine, settore, "
             "posti, ore, id_azienda, "
             "id_indirizzo, id_tutor, ora_inizio, ora_fine) "
@@ -141,7 +151,7 @@ class Turn(Resource):
             (
                 data_inizio,
                 data_fine,
-                settore,
+                settori,
                 posti,
                 ore,
                 id_azienda,
@@ -153,17 +163,17 @@ class Turn(Resource):
         )
 
         # Insert row into turnoSettore table
-        if settore is not None:
+        if settori is not None:
             execute_query(
-                "INSERT INTO turnoSettore (id_turno, settore) VALUES (%s, %s)",
-                (lastrowid, settore),
+                "INSERT INTO turno_settore (id_turno, settore) VALUES (%s, %s)",
+                (lastrowid, settori),
             )
 
         # Insert row into turnoMateria table
-        if materia is not None:
+        if materie is not None:
             execute_query(
-                "INSERT INTO turnoMateria (id_turno, materia) VALUES (%s, %s)",
-                (lastrowid, materia),
+                "INSERT INTO turno_materia (id_turno, materia) VALUES (%s, %s)",
+                (lastrowid, materie),
             )
 
         # Log the turn creation

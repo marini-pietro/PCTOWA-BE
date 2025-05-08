@@ -98,7 +98,7 @@ class Subject(Resource):
 
         # Insert the subject
         try:
-            lastrowid: int = execute_query(
+            lastrowid, _ = execute_query(
                 "INSERT INTO materie (materia, descrizione, hex_color) VALUES (%s, %s, %s)",
                 (materia, descrizione, hex),
             )

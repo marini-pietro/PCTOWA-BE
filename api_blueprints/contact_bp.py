@@ -86,7 +86,7 @@ class Contact(Resource):
             )
 
         # Execute query to insert the contact
-        lastrowid: int = execute_query(
+        lastrowid, _ = execute_query(
             """INSERT INTO contatti 
             (nome, cognome, telefono, email, ruolo, id_azienda)
             VALUES (%s, %s, %s, %s, %s, %s)""",

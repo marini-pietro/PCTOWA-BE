@@ -20,6 +20,7 @@ from .blueprints_utils import (
     create_response,
     execute_query,
     fetchone_query,
+    fetchall_query,
     handle_options_request,
     log,
     get_hateos_location_string,
@@ -83,7 +84,7 @@ class Address(Resource):
             )
 
         # Insert the address
-        lastrowid = execute_query(
+        lastrowid, _ = execute_query(
             "INSERT INTO indirizzi (stato, provincia, comune, cap, indirizzo, id_azienda) "
             "VALUES (%s, %s, %s, %s, %s, %s)",
             (stato, provincia, comune, cap, indirizzo, id_azienda),
@@ -211,33 +212,40 @@ class Address(Resource):
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, id_) -> Response:
         """
-        Retrieves an address from the database.
+        Retrieves all the addresses of a company from the database.
         This endpoint requires authentication and authorization.
         The request must contain the id parameter in the URI as a path variable.
         """
 
-        # Check if address exists
-        address = fetchone_query(
-            "SELECT stato FROM indirizzi WHERE id_indirizzo = %s",
+        # Validate id 
+        if id < 0:
+            return create_response(
+                message={"error": "id path variable must be positive integer"},
+                status_code=STATUS_CODES["bad_request"]
+            )
+
+        # Check that the company exists
+        company = fetchone_query(
+            "SELECT fax FROM aziende WHERE id_azienda = %s",
             (id_,),  # Only fetch the state to check existence (could be any field)
         )
-        if address is None:
+        if company is None:
             return create_response(
-                message={"error": "specified address does not exist"},
+                message={"error": "specified company does not exist"},
                 status_code=STATUS_CODES["not_found"],
             )
 
         try:
             # Execute query
-            address = fetchone_query(
-                "SELECT stato, provincia, comune, cap, indirizzo, id_azienda FROM indirizzi WHERE id_indirizzo = %s",
+            addresses = fetchall_query(
+                "SELECT id_indirizzo, stato, provincia, comune, cap, indirizzo FROM indirizzi WHERE id_azienda = %s",
                 params=(id_,),
             )
 
             # Log the read
             log(
                 log_type="info",
-                message=f"User {get_jwt_identity()} read addres {id_}",
+                message=f"User {get_jwt_identity()} read all the addresses of company with id: {id_}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -245,7 +253,8 @@ class Address(Resource):
             )
 
             # Return the results
-            return create_response(message=address, status_code=STATUS_CODES["ok"])
+            return create_response(message=addresses, 
+                                   status_code=STATUS_CODES["ok"])
         except (
             ValueError,
             KeyError,
@@ -267,7 +276,7 @@ class Address(Resource):
 
             # Return a 500 error response
             return create_response(
-                message={"error": "interal server error"},
+                message={"error": "internal server error"},
                 status_code=STATUS_CODES["internal_error"],
             )
 

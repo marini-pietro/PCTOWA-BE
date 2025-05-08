@@ -104,7 +104,7 @@ class User(Resource):
         hashed_password = hash_password(password)
 
         try:
-            lastrowid: int = execute_query(
+            lastrowid, _ = execute_query(
                 "INSERT INTO utenti (email_utente, password, nome, cognome, tipo) "
                 "VALUES (%s, %s, %s, %s, %s)",
                 (email, hashed_password, name, surname, int(user_type)),

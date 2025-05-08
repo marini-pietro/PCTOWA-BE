@@ -63,7 +63,6 @@ class Company(Resource):
         data = request.get_json()
         params: Dict[str, str] = {
             "ragione_sociale": data.get("ragione_sociale"),
-            "nome": data.get("nome"),
             "sito_web": data.get("sito_web"),
             "indirizzo_logo": data.get("indirizzo_logo"),
             "codiceAteco": data.get("codiceAteco"),
@@ -75,7 +74,6 @@ class Company(Resource):
             "forma_giuridica": data.get("forma_giuridica"),
             "data_convenzione": parse_date_string(data.get("data_convenzione")),
             "scadenza_convenzione": parse_date_string(data.get("scadenza_convenzione")),
-            "settore": data.get("settore"),
             "categoria": data.get("categoria"),
         }
 
@@ -88,7 +86,7 @@ class Company(Resource):
 
         # TODO: add regex check to all the other fields
 
-        lastrowid: int = execute_query(
+        lastrowid, _ = execute_query(
             """INSERT INTO aziende 
             (ragione_sociale, nome, sito_web, indirizzo_logo, codiceAteco, 
              partitaIVA, telefono_azienda, fax, email_azienda, pec, 
@@ -348,6 +346,8 @@ class CompanyList(Resource):
         settore: str = request.args.get("settore")
         mese: str = request.args.get("mese")
         materia: str = request.args.get("materia")
+
+        # add limit and offset
 
         # Gather data
 

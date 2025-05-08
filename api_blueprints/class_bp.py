@@ -114,7 +114,7 @@ class Class(Resource):
             )
 
         # Execute query to insert the class
-        lastrowid: int = execute_query(
+        lastrowid, _ = execute_query(
             "INSERT INTO classi (sigla, anno, email_responsabile) VALUES (%s, %s, %s)",
             (sigla, anno, email_responsabile),
         )

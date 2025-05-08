@@ -97,7 +97,7 @@ class Student(Resource):
 
         try:
             # Insert the student
-            lastrowid: int = execute_query(
+            lastrowid, _ = execute_query(
                 "INSERT INTO studenti VALUES (%s, %s, %s, %s)",
                 (matricola, nome, cognome, id_classe),
             )

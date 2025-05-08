@@ -26,7 +26,7 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
-)
+)   
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
@@ -63,12 +63,18 @@ class Tutor(Resource):
         cognome: str = data.get("cognome")
         telefono: str = data.get("telefono")
         email: str = data.get("email")
+        id_turno: int = data.get("id_turno")
+
+        # Validate data TODO
 
         # Insert the tutor
-        lastrowid: int = execute_query(
+        lastrowid, _= execute_query(
             "INSERT INTO tutor (nome, cognome, telefonoTutor, email_tutor) VALUES (%s, %s, %s, %s)",
             (nome, cognome, telefono, email),
         )
+
+        # Insert the turno_tutor row
+        _, _ = execute_query("INSERT INTO turno_tutor (id_tutor, id_turno) VALUES (%s, %s)", (lastrowid, id_turno))
 
         # Log the tutor creation
         log(
@@ -77,7 +83,7 @@ class Tutor(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Tutor.ENDPOINT_PATHS[0], "verb": "POST"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -190,15 +196,16 @@ class Tutor(Resource):
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, id_) -> Response:
         """
-        Get a tutor by ID of its relative turn.
-        The id must be provided as a path variable.
+        Get all the tutors associate to a given company.  
+        The company id must be provided as a path variable.
         """
 
         # Log the read
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested " f"tutor list with turn id {id_}"
+                f"User {get_jwt_identity()} requested " 
+                f"tutor list with company id {id_}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
@@ -232,7 +239,7 @@ class Tutor(Resource):
         # Check if query returned any results
         if tutors is None:
             return create_response(
-                message={"outcome": "no tutors found for specified turn"},
+                message={"outcome": "no tutors found for specified company"},
                 status_code=STATUS_CODES["not_found"],
             )
 

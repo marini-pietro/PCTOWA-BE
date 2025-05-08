@@ -80,7 +80,7 @@ class Sector(Resource):
 
         try:
             # Insert the sector
-            lastrowid: int = execute_query(
+            lastrowid, _ = execute_query(
                 "INSERT INTO settori (settore) VALUES (%s)", (settore,)
             )
         except IntegrityError as ex:
