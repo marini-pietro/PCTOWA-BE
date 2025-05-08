@@ -32,6 +32,7 @@ from config import (
     AUTH_SERVER_PORT,
     STATUS_CODES,
     LOGIN_AVAILABLE_THROUGH_API,
+    ROLES,
 )
 
 from .blueprints_utils import (
@@ -98,16 +99,16 @@ class User(Resource):
         password: str = data.get("password")
         name: str = data.get("nome")
         surname: str = data.get("cognome")
-        user_type: int = data.get("tipo")
+        ruolo: int = data.get("ruolo")
 
         # Hash the password before storing it
         hashed_password = hash_password(password)
 
         try:
             lastrowid, _ = execute_query(
-                "INSERT INTO utenti (email_utente, password, nome, cognome, tipo) "
+                "INSERT INTO utenti (email_utente, password, nome, cognome, ruolo) "
                 "VALUES (%s, %s, %s, %s, %s)",
-                (email, hashed_password, name, surname, int(user_type)),
+                (email, hashed_password, name, surname, ruolo),
             )
 
             # Log the register
@@ -117,7 +118,7 @@ class User(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data=f"[endpoint={User.ENDPOINT_PATHS[0]}' verb='POST']",
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return success message
@@ -140,10 +141,7 @@ class User(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": User.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return error message
@@ -256,8 +254,54 @@ class User(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    # TODO GET method to get all user for an admin page???
+    @jwt_required()
+    @check_authorization(allowed_roles=["admin"])
+    def get(self) -> Response:
+        """
+        Get all users, can be filtered by role.
+        """
 
+        # Gather parameters
+        role: str = request.args.get("ruolo", type=str)
+
+        # Validate parameters
+        if role and role not in ROLES:
+            return create_response(
+                message={"error": "unknown role value"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        # Build query
+        query = "SELECT * FROM utenti"
+        params = ()
+
+        if role:
+            query += " WHERE ruolo = %s"
+            params = (ROLES[role],)
+
+        # Execute query
+        users: List[Dict[str, Any]] = fetchall_query(query, params)
+
+        # Handle empty results
+        if not users:
+            return create_response(
+                message={"error": "no users found"},
+                status_code=STATUS_CODES["not_found"],
+            )
+        
+        # Log the read
+        log(
+            log_type="info",
+            message=f"User {get_jwt_identity()} requested user list",
+            origin_name=API_SERVER_NAME_IN_LOG,
+            origin_host=API_SERVER_HOST,
+            message_id="UserAction",
+            structured_data=f"[endpoint='{request.path} verb='{request.method}']",
+        )
+
+        # Return the list of users
+        return create_response(message=users, status_code=STATUS_CODES["ok"])
+    
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
@@ -322,15 +366,12 @@ class UserLogin(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": UserLogin.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return error response
             return create_response(
-                message={"error": "Authentication service unavailable"},
+                message={"error": "authentication service unavailable"},
                 status_code=STATUS_CODES["internal_error"],
             )
 
@@ -352,10 +393,7 @@ class UserLogin(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": UserLogin.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "Invalid credentials"},
@@ -369,10 +407,7 @@ class UserLogin(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": UserLogin.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "Bad request"},
@@ -386,10 +421,7 @@ class UserLogin(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": UserLogin.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "Internal error"},
@@ -406,7 +438,7 @@ class UserLogin(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data=f"[endpoint='{UserLogin.ENDPOINT_PATHS[0]} verb='POST']",
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "Unexpected error during login"},

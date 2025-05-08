@@ -37,6 +37,7 @@ from config import (
     RATE_LIMIT_FILE_NAME,
     RATE_LIMIT_MAX_REQUESTS,
     RATE_LIMIT_TIME_WINDOW,
+    NOT_AUTHORIZED_MESSAGE,
 )
 
 
@@ -60,15 +61,22 @@ def check_authorization(allowed_roles: List[str]):
             # If not, return an error response
             if user_role is None:
                 return create_response(
-                    {"error": "user role not present in token"},
-                    STATUS_CODES["bad_request"],
+                    message={"error": "user role not present in token"},
+                    status_code=STATUS_CODES["bad_request"],
+                )
+            
+            # Check if the user role is valid
+            if user_role not in ROLES:
+                return create_response(
+                    message={"error": "invalid user role"},
+                    status_code=STATUS_CODES["bad_request"],
                 )
 
             # Check if the user's role is allowed
-            if ROLES.get(user_role) not in allowed_roles:
+            if user_role not in allowed_roles:
                 return create_response(
-                    {"outcome": "not permitted"},
-                    STATUS_CODES["forbidden"],
+                    message=NOT_AUTHORIZED_MESSAGE,
+                    status_code=STATUS_CODES["forbidden"],
                 )
 
             return func(*args, **kwargs)

@@ -32,6 +32,7 @@ from .blueprints_utils import (
 
 # Define constants
 BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+VALID_DAYS: List[str] = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"]
 
 # Create the blueprint and API
 turn_bp = Blueprint(BP_NAME, __name__)
@@ -58,17 +59,18 @@ class Turn(Resource):
         data = request.get_json()
         settori: List[str] = data.get("settori")
         materie: List[str] = data.get("materie")
-        data_inizio = parse_date_string(date_string=data.get("data_inizio"))
-        data_fine = parse_date_string(date_string=data.get("data_fine"))
-        ora_inizio = parse_time_string(time_string=data.get("ora_inizio"))
-        ora_fine = parse_time_string(time_string=data.get("ora_fine"))
-        giorno_inizio = data.get("giorno_inizio")
-        giorno_fine = data.get("giorno_fine")
-        ore = data.get("ore")
-        posti = data.get("posti")
-        id_indirizzo = data.get("id_indirizzo")
-        id_tutor = data.get("id_tutor")
-        id_azienda = data.get("id_azienda")
+        data_inizio = parse_date_string(date_string=data.get("data_inizio", type=str))
+        data_fine = parse_date_string(date_string=data.get("data_fine", type=str))
+        ora_inizio = parse_time_string(time_string=data.get("ora_inizio", type=str))
+        ora_fine = parse_time_string(time_string=data.get("ora_fine", type=str))
+        giorno_inizio = data.get("giorno_inizio", type=str)
+        giorno_fine = data.get("giorno_fine", type=str)
+        ore = data.get("ore", type=int)
+        posti = data.get("posti", type=int)
+        posti_confermati = data.get("posti_confermati", type=bool)
+        id_indirizzo = data.get("id_indirizzo", type=int)
+        id_tutor = data.get("id_tutor", type=int)
+        id_azienda = data.get("id_azienda", type=int)
 
         # Validate lists
         for field_name, field_value in [("settori", settori), ("materie", materie)]:
@@ -78,18 +80,17 @@ class Turn(Resource):
                     status_code=STATUS_CODES["bad_request"],
                 )
 
-        valid_days: List[str] = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"]
-        if giorno_inizio not in valid_days:
+        if giorno_inizio not in VALID_DAYS:
             return create_response(
                 message={"error": "invalid giorno_inizio value"},
                 status_code=STATUS_CODES["bad_request"],
             )
-        if giorno_fine not in valid_days:
+        if giorno_fine not in VALID_DAYS:
             return create_response(
                 message={"error": "invalid giorno_fine value"},
                 status_code=STATUS_CODES["bad_request"],
             )
-        if valid_days.index(giorno_inizio) >= valid_days.index(giorno_fine):
+        if VALID_DAYS.index(giorno_inizio) >= VALID_DAYS.index(giorno_fine):
             return create_response(
                 message={"error": "giorno_inizio must be before giorno_fine"},
                 status_code=STATUS_CODES["bad_request"],
@@ -127,14 +128,13 @@ class Turn(Resource):
             "settori": ["settore", settori],
         }
 
-        #TODO add logic to properly check materie and settori list
         for table, (column, value) in pk_to_check.items():
             if value is not None:
                 # Check if the value exists in the database
                 result: Dict[str, Any] = fetchone_query(
-                    f"SELECT * FROM {table} WHERE {column} = %s", (value,)
+                    f"SELECT COUNT(*) AS count FROM {table} WHERE {column} = %s", (value,)
                 )
-                if result is None:
+                if result["count"] == 0:
                     return create_response(
                         message={
                             "outcome": f"error, specified resource {table} does not exist"
@@ -144,10 +144,12 @@ class Turn(Resource):
 
         # Insert the turn
         lastrowid, _ = execute_query(
-            "INSERT INTO turni (data_inizio, data_fine, settore, "
+            "INSERT INTO turni (" \
+            "data_inizio, data_fine, settore, "
             "posti, ore, id_azienda, "
-            "id_indirizzo, id_tutor, ora_inizio, ora_fine) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            "id_indirizzo, id_tutor, ora_inizio, " \
+            "ora_fine, posti_confermati) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 data_inizio,
                 data_fine,
@@ -159,6 +161,7 @@ class Turn(Resource):
                 id_tutor,
                 ora_inizio,
                 ora_fine,
+                posti_confermati,
             ),
         )
 

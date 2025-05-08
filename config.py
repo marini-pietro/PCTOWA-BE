@@ -9,7 +9,7 @@ This module contains the configuration settings for the API server, including:
 """
 
 import re
-from typing import Dict
+from typing import Dict, Set
 from datetime import timedelta
 
 # Authentication server related settings
@@ -117,7 +117,7 @@ STATUS_CODES: Dict[str, int] = {
     "service_unavailable": 503,
 }
 # | Roles and their corresponding IDs
-ROLES: Dict[int, str] = {0: "admin"}  # TODO figure out if any more roles are needed
+ROLES: Set[str] = {"admin", "tutor", "supertutor", "teacher"}
 
 # | Standard not authorized message
 NOT_AUTHORIZED_MESSAGE: Dict[str, str] = {

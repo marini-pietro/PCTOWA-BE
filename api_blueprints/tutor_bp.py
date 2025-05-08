@@ -227,11 +227,9 @@ class Tutor(Resource):
         # Get the data
         tutors: List[Dict[str, Any]] = fetchall_query(
             """
-            SELECT TU.nome, TU.cognome, TU.emailTutor, TU.telefonoTutor
-            FROM turni AS T
-            JOIN turno_tutor AS TT ON T.id_turno = TT.id_turno
-            JOIN tutor AS TU ON TU.id_tutor = TT.id_tutor
-            WHERE T.id_turno = %s
+            SELECT nome, cognome, email_tutor, telefono_tutor,
+            FROM tutor
+            WHERE id_azienda = %s
             """,
             (id_,),
         )
@@ -244,7 +242,8 @@ class Tutor(Resource):
             )
 
         # Return the data
-        return create_response(message=tutors, status_code=STATUS_CODES["ok"])
+        return create_response(message=tutors, 
+                               status_code=STATUS_CODES["ok"])
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])

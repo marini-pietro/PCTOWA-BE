@@ -220,7 +220,7 @@ def login():
                 origin_name=AUTH_SERVER_NAME_IN_LOG,
                 origin_host=AUTH_SERVER_HOST,
                 message_id="UserAction",
-                structured_data=f"[endpoint='{request.path}' verb='POST']",
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return both tokens
@@ -230,7 +230,7 @@ def login():
             )
 
     # Handle invalid credentials
-    return jsonify({"error": "Invalid credentials"}), STATUS_CODES["unauthorized"]
+    return jsonify({"error": "invalid credentials"}), STATUS_CODES["unauthorized"]
 
 
 @auth_api.route("/auth/refresh", methods=["POST"])
