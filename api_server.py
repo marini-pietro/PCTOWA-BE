@@ -39,31 +39,31 @@ from config import (
 )
 
 # Create a Flask app
-app = Flask(__name__)
+main_api = Flask(__name__)
 
 # Configure JWT validation settings
-app.config["JWT_SECRET_KEY"] = (
+main_api.config["JWT_SECRET_KEY"] = (
     JWT_SECRET_KEY  # Same secret key as the auth microservice
 )
-app.config["JWT_ALGORITHM"] = JWT_ALGORITHM  # Same algorithm as the auth microservice
-app.config["JWT_TOKEN_LOCATION"] = JWT_TOKEN_LOCATION  # Where to look for tokens
-app.config["JWT_QUERY_STRING_NAME"] = JWT_QUERY_STRING_NAME  # Custom query string name
-app.config["JWT_ACCESS_COOKIE_NAME"] = (
+main_api.config["JWT_ALGORITHM"] = JWT_ALGORITHM  # Same algorithm as the auth microservice
+main_api.config["JWT_TOKEN_LOCATION"] = JWT_TOKEN_LOCATION  # Where to look for tokens
+main_api.config["JWT_QUERY_STRING_NAME"] = JWT_QUERY_STRING_NAME  # Custom query string name
+main_api.config["JWT_ACCESS_COOKIE_NAME"] = (
     JWT_ACCESS_COOKIE_NAME  # Custom access cookie name
 )
-app.config["JWT_REFRESH_COOKIE_NAME"] = (
+main_api.config["JWT_REFRESH_COOKIE_NAME"] = (
     JWT_REFRESH_COOKIE_NAME  # Custom refresh cookie name
 )
-app.config["JWT_JSON_KEY"] = JWT_JSON_KEY  # Custom JSON key for access tokens
-app.config["JWT_REFRESH_JSON_KEY"] = (
+main_api.config["JWT_JSON_KEY"] = JWT_JSON_KEY  # Custom JSON key for access tokens
+main_api.config["JWT_REFRESH_JSON_KEY"] = (
     JWT_REFRESH_JSON_KEY  # Custom JSON key for refresh tokens
 )
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = (
+main_api.config["JWT_REFRESH_TOKEN_EXPIRES"] = (
     JWT_REFRESH_TOKEN_EXPIRES  # Refresh token valid duration
 )
 
 # Initialize JWTManager for validation only
-jwt = JWTManager(app)
+jwt = JWTManager(main_api)
 
 # Register the blueprints
 blueprints_dir: str = os_path_join(
@@ -79,11 +79,10 @@ for filename in os_listdir(blueprints_dir):
         # Get the Blueprint object (assumes the object has the same name as the file)
         blueprint = getattr(module, module_name)
 
-        app.register_blueprint(
+        main_api.register_blueprint(
             blueprint, url_prefix=URL_PREFIX
         )  # Remove '_bp' for the URL prefix
         print(f"Registered blueprint: {module_name} with prefix {URL_PREFIX}")
-
 
 def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
     """
@@ -114,7 +113,7 @@ def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
         )
 
 
-@app.before_request
+@main_api.before_request
 def validate_user_data():
     """
     Validate user data for all incoming requests by checking for SQL injection, JSON presence for methods that use them and JSON format.
@@ -170,7 +169,7 @@ def validate_user_data():
             )
 
 
-@app.before_request
+@main_api.before_request
 def enforce_rate_limit():
     """
     Enforce rate limiting for all incoming requests.
@@ -216,40 +215,15 @@ def custom_revoked_token_response(jwt_header, jwt_payload):
     return jsonify({"error": "Token has been revoked"}), STATUS_CODES["unauthorized"]
 
 
-@app.route(f"/api/{API_VERSION}/health", methods=["GET"])
+@main_api.route(f"/api/{API_VERSION}/health", methods=["GET"])
 def health_check():
     """
     Health check endpoint to verify the server is running.
     """
     return jsonify({"status": "ok"}), STATUS_CODES["ok"]
 
-
-@app.route(f"/api/{API_VERSION}/endpoints", methods=["GET"])
-def list_endpoints():
-    """
-    Endpoint to list all available endpoints in the API.
-    Only available in debug mode.
-    """
-    if API_SERVER_DEBUG_MODE is True:
-        endpoints = []
-        for rule in app.url_map.iter_rules():
-            endpoints.append(
-                {
-                    "endpoint": rule.endpoint,
-                    "methods": list(rule.methods),
-                    "url": rule.rule,
-                }
-            )
-        return jsonify({"endpoints": endpoints}), STATUS_CODES["ok"]
-
-    return (
-        jsonify({"error": "Feature not available while server is in production mode"}),
-        STATUS_CODES["forbidden"],
-    )
-
-
 if __name__ == "__main__":
-    app.run(
+    main_api.run(
         host=API_SERVER_HOST,
         port=API_SERVER_PORT,
         debug=API_SERVER_DEBUG_MODE,

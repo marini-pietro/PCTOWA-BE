@@ -39,7 +39,7 @@ from config import (
 )
 
 # Initialize Flask app
-app = Flask(__name__)
+auth_api = Flask(__name__)
 
 # Check JWT secret key length
 PASSWORD_NUM_BITS = len(JWT_SECRET_KEY.encode("utf-8")) * 8
@@ -47,14 +47,14 @@ if PASSWORD_NUM_BITS < 256:
     raise RuntimeWarning("jwt secret key too short")
 
 # Configure JWT
-app.config["JWT_SECRET_KEY"] = (
+auth_api.config["JWT_SECRET_KEY"] = (
     JWT_SECRET_KEY  # Use a secure key (ideally at least 256 bits)
 )
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = JWT_ACCESS_TOKEN_EXPIRES
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = JWT_REFRESH_TOKEN_EXPIRES
-app.config["JWT_ALGORITHM"] = JWT_ALGORITHM
+auth_api.config["JWT_ACCESS_TOKEN_EXPIRES"] = JWT_ACCESS_TOKEN_EXPIRES
+auth_api.config["JWT_REFRESH_TOKEN_EXPIRES"] = JWT_REFRESH_TOKEN_EXPIRES
+auth_api.config["JWT_ALGORITHM"] = JWT_ALGORITHM
 
-jwt = JWTManager(app)
+jwt = JWTManager(auth_api)
 
 def verify_password(stored_password: str, provided_password: str) -> bool:
     # Split the stored password into salt and hash
@@ -105,7 +105,7 @@ def is_input_safe(data: Union[str, List[str], Dict[Any, Any]]) -> bool:
         )
 
 
-@app.before_request
+@auth_api.before_request
 def validate_user_data():
     """
     Validate user data for all incoming requests by checking for SQL injection, JSON presence for methods that use them and JSON format.
@@ -161,7 +161,7 @@ def validate_user_data():
             )
 
 
-@app.before_request
+@auth_api.before_request
 def enforce_rate_limit():
     """
     Enforce rate limiting for all incoming requests.
@@ -175,7 +175,7 @@ def enforce_rate_limit():
             )
 
 
-@app.route("/auth/login", methods=["POST"])
+@auth_api.route("/auth/login", methods=["POST"])
 def login():
     """
     Login endpoint to authenticate users and generate JWT tokens.
@@ -233,7 +233,7 @@ def login():
     return jsonify({"error": "Invalid credentials"}), STATUS_CODES["unauthorized"]
 
 
-@app.route("/auth/refresh", methods=["POST"])
+@auth_api.route("/auth/refresh", methods=["POST"])
 @jwt_required(refresh=True)  # Require a valid refresh token
 def refresh():
     """
@@ -249,7 +249,7 @@ def refresh():
     return jsonify({"access_token": new_access_token}), STATUS_CODES["ok"]
 
 
-@app.route("/health", methods=["GET"])
+@auth_api.route("/health", methods=["GET"])
 def health_check():
     """
     Health check endpoint to verify the server is running.
@@ -258,7 +258,7 @@ def health_check():
 
 
 if __name__ == "__main__":
-    app.run(
+    auth_api.run(
         host=AUTH_SERVER_HOST,
         port=AUTH_SERVER_PORT,
         debug=AUTH_SERVER_DEBUG_MODE,
