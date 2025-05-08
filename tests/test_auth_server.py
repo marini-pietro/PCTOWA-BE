@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 from tests.utils import auth_client
 from config import STATUS_CODES
 
+
 @pytest.fixture
 def mock_fetchone_query():
     """
@@ -13,6 +14,7 @@ def mock_fetchone_query():
     """
     with patch("auth_server.fetchone_query") as mock_query:
         yield mock_query
+
 
 @pytest.fixture
 def mock_is_rate_limited():
@@ -23,6 +25,7 @@ def mock_is_rate_limited():
         mock_rate_limit.return_value = False  # Default to not rate-limited
         yield mock_rate_limit
 
+
 def test_health_check(auth_client: FlaskClient):
     """
     Test the health check endpoint.
@@ -30,6 +33,7 @@ def test_health_check(auth_client: FlaskClient):
     response = auth_client.get("/health")
     assert response.status_code == STATUS_CODES["ok"]
     assert response.json["status"] == "ok"
+
 
 def test_login_success(auth_client: FlaskClient, mock_fetchone_query):
     """
@@ -51,6 +55,7 @@ def test_login_success(auth_client: FlaskClient, mock_fetchone_query):
     assert "access_token" in response.json
     assert "refresh_token" in response.json
 
+
 def test_login_invalid_credentials(auth_client: FlaskClient, mock_fetchone_query):
     """
     Test login with invalid credentials.
@@ -66,6 +71,7 @@ def test_login_invalid_credentials(auth_client: FlaskClient, mock_fetchone_query
     assert response.status_code == STATUS_CODES["unauthorized"]
     assert response.json["error"] == "Invalid credentials"
 
+
 def test_login_missing_fields(auth_client: FlaskClient):
     """
     Test login with missing fields in the request body.
@@ -73,6 +79,7 @@ def test_login_missing_fields(auth_client: FlaskClient):
     response = auth_client.post("/auth/login", json={"email": "test@example.com"})
     assert response.status_code == STATUS_CODES["bad_request"]
     assert response.json["error"] == "Invalid JSON payload"
+
 
 def test_login_rate_limited(auth_client: FlaskClient, mock_is_rate_limited):
     """
@@ -89,6 +96,7 @@ def test_login_rate_limited(auth_client: FlaskClient, mock_is_rate_limited):
     assert response.status_code == STATUS_CODES["too_many_requests"]
     assert response.json["error"] == "Rate limit exceeded"
 
+
 def test_refresh_success(auth_client: FlaskClient):
     """
     Test refreshing an access token with a valid refresh token.
@@ -103,6 +111,7 @@ def test_refresh_success(auth_client: FlaskClient):
 
     assert response.status_code == STATUS_CODES["ok"]
     assert "access_token" in response.json
+
 
 def test_refresh_missing_token(auth_client: FlaskClient):
     """

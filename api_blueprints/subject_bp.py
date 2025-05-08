@@ -5,11 +5,13 @@ This module provides a RESTful API for creating, deleting, updating, and retriev
 
 from os.path import basename as os_path_basename
 from typing import List, Dict, Any
-from re import match as re_match
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import fields, ValidationError
 from mysql.connector import IntegrityError
+from marshmallow.validate import Regexp
+from api_server import ma
 
 from config import (
     API_SERVER_HOST,
@@ -31,11 +33,33 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and API
 subject_bp = Blueprint(BP_NAME, __name__)
 api = Api(subject_bp)
+
+
+# Marshmallow schema for Subject resource
+class SubjectSchema(ma.Schema):
+    descrizione = fields.String(
+        required=True, error_messages={"required": "descrizione is required."}
+    )
+    hex_color = fields.String(
+        required=True,
+        validate=Regexp(
+            r"^#[0-9A-Fa-f]{6}$",
+            error="hex_color must be a valid hex color (e.g. #AABBCC)",
+        ),
+        error_messages={
+            "required": "hex_color is required.",
+            "invalid": "hex_color must be a valid hex color (e.g. #AABBCC).",
+        },
+    )
+
+
+subject_schema = SubjectSchema()
+subject_schema_partial = SubjectSchema(partial=True)
 
 
 class Subject(Resource):
@@ -59,12 +83,19 @@ class Subject(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Gather parameters
-        data = request.get_json()
-        descrizione: str = data.get("descrizione")
-        hex_color: str = data.get("hex_color")
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = subject_schema.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
-        # Validate parameters
+        descrizione: str = data["descrizione"]
+        hex_color: str = data["hex_color"]
+
+        # Additional validation for materia
         if not isinstance(materia, str):
             return create_response(
                 message={"error": "materia must be a string"},
@@ -75,24 +106,9 @@ class Subject(Resource):
                 message={"error": "materia too long"},
                 status_code=STATUS_CODES["bad_request"],
             )
-        if not isinstance(descrizione, str):
-            return create_response(
-                message={"error": "descrizione must be a string"},
-                status_code=STATUS_CODES["bad_request"],
-            )
         if len(descrizione) > 255:
             return create_response(
                 message={"error": "descrizione too long"},
-                status_code=STATUS_CODES["bad_request"],
-            )
-        if not isinstance(hex_color, str):
-            return create_response(
-                message={"error": "hex_color must be a string"},
-                status_code=STATUS_CODES["bad_request"],
-            )
-        if not re_match(r"^#[0-9A-Fa-f]{6}$", hex_color):
-            return create_response(
-                message={"outcome": "invalid hex_color format"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
@@ -100,7 +116,7 @@ class Subject(Resource):
         try:
             lastrowid, _ = execute_query(
                 "INSERT INTO materie (materia, descrizione, hex_color) VALUES (%s, %s, %s)",
-                (materia, descrizione, hex),
+                (materia, descrizione, hex_color),
             )
 
             # Log the subject creation
@@ -110,7 +126,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "POST"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return a success message
@@ -134,7 +150,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "POST"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -150,7 +166,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "POST"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "internal error"},
@@ -184,7 +200,7 @@ class Subject(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "DELETE"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -201,15 +217,19 @@ class Subject(Resource):
         The request must include the subject name as a path variable.
         """
 
-        # Gather parameters
-        data = request.get_json()
+        # Validate and deserialize input using Marshmallow (partial update)
+        try:
+            data = subject_schema_partial.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check that specified subject exists
         subject: Dict[str, Any] = fetchone_query(
             "SELECT descrizione FROM materie WHERE materia = %s",
-            (
-                materia,
-            ),  # Only fetch the description to check existence (could be any field)
+            (materia,),
         )
         if subject is None:
             return create_response(
@@ -243,7 +263,7 @@ class Subject(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "PATCH"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -285,7 +305,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "GET"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return the subjects
@@ -302,7 +322,7 @@ class Subject(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Subject.ENDPOINT_PATHS[0], "verb": "GET"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return an error response

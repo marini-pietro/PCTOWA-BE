@@ -12,6 +12,7 @@ from os.path import abspath as os_path_abspath
 from importlib import import_module
 from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager
+from flask_marshmallow import Marshmallow
 from api_blueprints import __all__  # Import all the blueprints
 from api_blueprints.blueprints_utils import log, is_rate_limited
 from config import (
@@ -45,9 +46,13 @@ main_api = Flask(__name__)
 main_api.config["JWT_SECRET_KEY"] = (
     JWT_SECRET_KEY  # Same secret key as the auth microservice
 )
-main_api.config["JWT_ALGORITHM"] = JWT_ALGORITHM  # Same algorithm as the auth microservice
+main_api.config["JWT_ALGORITHM"] = (
+    JWT_ALGORITHM  # Same algorithm as the auth microservice
+)
 main_api.config["JWT_TOKEN_LOCATION"] = JWT_TOKEN_LOCATION  # Where to look for tokens
-main_api.config["JWT_QUERY_STRING_NAME"] = JWT_QUERY_STRING_NAME  # Custom query string name
+main_api.config["JWT_QUERY_STRING_NAME"] = (
+    JWT_QUERY_STRING_NAME  # Custom query string name
+)
 main_api.config["JWT_ACCESS_COOKIE_NAME"] = (
     JWT_ACCESS_COOKIE_NAME  # Custom access cookie name
 )
@@ -64,6 +69,9 @@ main_api.config["JWT_REFRESH_TOKEN_EXPIRES"] = (
 
 # Initialize JWTManager for validation only
 jwt = JWTManager(main_api)
+
+# Initialize Marshmallow with the app
+ma = Marshmallow(main_api)
 
 # Register the blueprints
 blueprints_dir: str = os_path_join(
@@ -83,6 +91,7 @@ for filename in os_listdir(blueprints_dir):
             blueprint, url_prefix=URL_PREFIX
         )  # Remove '_bp' for the URL prefix
         print(f"Registered blueprint: {module_name} with prefix {URL_PREFIX}")
+
 
 def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
     """
@@ -108,9 +117,7 @@ def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
                 return False
         return True
     else:
-        return (
-            "Input must be a string, list of strings, or dictionary with string keys and values."
-        )
+        return "Input must be a string, list of strings, or dictionary with string keys and values."
 
 
 @main_api.before_request
@@ -221,6 +228,7 @@ def health_check():
     Health check endpoint to verify the server is running.
     """
     return jsonify({"status": "ok"}), STATUS_CODES["ok"]
+
 
 if __name__ == "__main__":
     main_api.run(

@@ -64,7 +64,7 @@ def check_authorization(allowed_roles: List[str]):
                     message={"error": "user role not present in token"},
                     status_code=STATUS_CODES["bad_request"],
                 )
-            
+
             # Check if the user role is valid
             if user_role not in ROLES:
                 return create_response(
@@ -204,43 +204,6 @@ def is_rate_limited(client_ip: str) -> bool:
 
         # Check if the rate limit is exceeded
         return client_data["count"] > RATE_LIMIT_MAX_REQUESTS
-
-
-# Data handling related
-def parse_time_string(time_string: str) -> datetime:
-    """
-    Parse a time string in the format HH:MM and return a datetime object.
-
-    params:
-        time_string - The time string to parse
-
-    returns:
-        A datetime object if the string is in the correct format, None otherwise
-
-    """
-
-    try:
-        return datetime.strptime(time_string, "%H:%M").time()
-    except ValueError:
-        return None
-
-
-def parse_date_string(date_string: str) -> datetime:
-    """
-    Parse a date string in the format YYYY-MM-DD and return a datetime object.
-
-    params:
-        date_string - The date string to parse
-
-    returns:
-        A datetime object if the string is in the correct format, None otherwise
-
-    """
-
-    try:
-        return datetime.strptime(date_string, "%Y-%m-%d").date()
-    except ValueError:
-        return None
 
 
 # Database related

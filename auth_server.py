@@ -56,26 +56,30 @@ auth_api.config["JWT_ALGORITHM"] = JWT_ALGORITHM
 
 jwt = JWTManager(auth_api)
 
+
 def verify_password(stored_password: str, provided_password: str) -> bool:
     # Split the stored password into salt and hash
     salt, hashed_password = stored_password.split(":")
     salt = base64.urlsafe_b64decode(salt)
-    
+
     # Recreate the KDF with the same salt
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
         iterations=100000,
-        backend=default_backend()
+        backend=default_backend(),
     )
-    
+
     # Verify the provided password
     try:
-        kdf.verify(provided_password.encode('utf-8'), base64.urlsafe_b64decode(hashed_password))
+        kdf.verify(
+            provided_password.encode("utf-8"), base64.urlsafe_b64decode(hashed_password)
+        )
         return True
     except Exception:
         return False
+
 
 def is_input_safe(data: Union[str, List[str], Dict[Any, Any]]) -> bool:
     """

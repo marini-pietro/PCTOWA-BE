@@ -3,11 +3,13 @@ Company Blueprint for managing companies in the database.
 """
 
 from os.path import basename as os_path_basename
-from re import match as re_match
 from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import fields, ValidationError
+from marshmallow.validate import Regexp
+from api_server import ma
 
 from config import (
     API_SERVER_HOST,
@@ -23,18 +25,76 @@ from .blueprints_utils import (
     log,
     create_response,
     build_update_query_from_filters,
-    parse_date_string,
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and API
 company_bp = Blueprint(BP_NAME, __name__)
 api = Api(company_bp)
+
+
+# Marshmallow schema for Company resource
+class CompanySchema(ma.Schema):
+    ragione_sociale = fields.String(
+        required=True, error_messages={"required": "ragione_sociale is required."}
+    )
+    codice_ateco = fields.String(
+        required=True, error_messages={"required": "codice_ateco is required."}
+    )
+    partita_iva = fields.String(
+        required=True, error_messages={"required": "partita_iva is required."}
+    )
+    fax = fields.String(required=True, error_messages={"required": "fax is required."})
+    pec = fields.String(required=True, error_messages={"required": "pec is required."})
+    telefono_azienda = fields.String(
+        required=True,
+        validate=Regexp(
+            r"^\+?\d{1,3}\s?\d{4,14}$",
+            error="telefono_azienda must be a valid international phone number",
+        ),
+        error_messages={"required": "telefono_azienda is required."},
+    )
+    email_azienda = fields.String(
+        required=True, error_messages={"required": "email_azienda is required."}
+    )
+    data_convenzione = fields.Date(
+        allow_none=True,
+        error_messages={
+            "invalid": "data_convenzione must be a valid date in YYYY-MM-DD format."
+        },
+    )
+    scadenza_convenzione = fields.Date(
+        allow_none=True,
+        error_messages={
+            "invalid": "scadenza_convenzione must be a valid date in YYYY-MM-DD format."
+        },
+    )
+    categoria = fields.String(
+        required=True, error_messages={"required": "categoria is required."}
+    )
+    indirizzo_logo = fields.String(
+        allow_none=True,
+        validate=Regexp(
+            r"^(\/|https?:\/\/)[\w\-.\/]+$",
+            error="indirizzo_logo must be a valid web URL or a file system path starting with '/'",
+        ),
+        error_messages={"invalid": "indirizzo_logo must be a string."},
+    )
+    sito_web = fields.URL(
+        allow_none=True, error_messages={"invalid": "sito_web must be a valid URL."}
+    )
+    forma_giuridica = fields.String(
+        allow_none=True, error_messages={"invalid": "forma_giuridica must be a string."}
+    )
+
+
+company_schema = CompanySchema()
+company_schema_partial = CompanySchema(partial=True)
 
 
 class Company(Resource):
@@ -55,44 +115,39 @@ class Company(Resource):
     def post(self) -> Response:
         """
         Create a new company in the database.
-        The request body must be a JSON object with application/json content log_type.
+        The request body must be a JSON object with application/json content type.
         """
 
-        # Gather parameters from the request body
-        # (new dictionary is necessary so that user can provide JSON with fields in any order)
-        data = request.get_json()
-        params: Dict[str, str] = {
-            "ragione_sociale": data.get("ragione_sociale"),
-            "sito_web": data.get("sito_web"),
-            "indirizzo_logo": data.get("indirizzo_logo"),
-            "codiceAteco": data.get("codiceAteco"),
-            "partitaIVA": data.get("partitaIVA"),
-            "telefono_azienda": data.get("telefono_azienda"),
-            "fax": data.get("fax"),
-            "email_azienda": data.get("email_azienda"),
-            "pec": data.get("pec"),
-            "forma_giuridica": data.get("forma_giuridica"),
-            "data_convenzione": parse_date_string(data.get("data_convenzione")),
-            "scadenza_convenzione": parse_date_string(data.get("scadenza_convenzione")),
-            "categoria": data.get("categoria"),
-        }
-
-        # Validate parameters
-        if not re_match(r"^\+\d{1,3}\s?\d{4,14}$", params["telefono_azienda"]):
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = company_schema.load(request.get_json())
+        except ValidationError as err:
             return create_response(
-                message={"error": "invalid phone number format"},
+                message={"errors": err.messages},
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # TODO: add regex check to all the other fields
-
+        # Insert the company
         lastrowid, _ = execute_query(
             """INSERT INTO aziende 
-            (ragione_sociale, nome, sito_web, indirizzo_logo, codiceAteco, 
-             partitaIVA, telefono_azienda, fax, email_azienda, pec, 
-             forma_giuridica, data_convenzione, scadenza_convenzione, settore, categoria) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-            params.values(),
+            (ragione_sociale, codice_ateco, partita_iva, fax, pec, telefono_azienda, email_azienda, 
+             data_convenzione, scadenza_convenzione, categoria, indirizzo_logo, sito_web, forma_giuridica) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                data["ragione_sociale"],
+                data["codice_ateco"],
+                data["partita_iva"],
+                data["fax"],
+                data["pec"],
+                data["telefono_azienda"],
+                data["email_azienda"],
+                data["data_convenzione"],
+                data["scadenza_convenzione"],
+                data["categoria"],
+                data.get("indirizzo_logo"),
+                data.get("sito_web"),
+                data.get("forma_giuridica"),
+            ),
         )
 
         # Log the creation of the company
@@ -102,7 +157,7 @@ class Company(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Company.ENDPOINT_PATHS[0]}, "verb": "POST"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -141,7 +196,7 @@ class Company(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Company.ENDPOINT_PATHS[1]}, "verb": "DELETE"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -158,13 +213,19 @@ class Company(Resource):
         The company ID is passed as a path variable.
         """
 
-        # Gather parameters
-        data = request.get_json()
+        # Validate and deserialize input using Marshmallow (partial update)
+        try:
+            data = company_schema_partial.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check if the company exists
         company: Dict[str, Any] = fetchone_query(
             "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s",
-            (id_,),  # Only fetch the province to check existence (could be any field)
+            (id_,),
         )
         if company is None:
             return create_response(
@@ -211,7 +272,7 @@ class Company(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Company.ENDPOINT_PATHS[1]}, "verb": "PATCH"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -273,10 +334,7 @@ class Company(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": {Company.ENDPOINT_PATHS[1]},
-                    "verb": "GET",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return the companies
@@ -285,7 +343,7 @@ class Company(Resource):
             KeyError,
             ValueError,
             TypeError,
-        ) as err:  # Replace with specific exceptions
+        ) as err:
 
             # Log the error
             log(
@@ -294,15 +352,12 @@ class Company(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": {Company.ENDPOINT_PATHS[1]},
-                    "verb": "GET",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return an error response
             return create_response(
-                message={"error": "interal server error"},
+                message={"error": "internal server error"},
                 status_code=STATUS_CODES["internal_error"],
             )
 
@@ -391,10 +446,7 @@ class CompanyList(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": {CompanyList.ENDPOINT_PATHS[0]},
-                    "verb": "GET",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return the companies with the turn information
@@ -468,10 +520,7 @@ class CompanyList(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={
-                "endpoint": {CompanyList.ENDPOINT_PATHS[0]},
-                "verb": "GET",
-            },
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Get company data

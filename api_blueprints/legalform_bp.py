@@ -8,7 +8,9 @@ from typing import Any, Dict, List
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import fields, ValidationError
 from mysql.connector import IntegrityError
+from api_server import ma
 
 from config import (
     API_SERVER_HOST,
@@ -28,11 +30,26 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and API
 legalform_bp = Blueprint(BP_NAME, __name__)
 api = Api(legalform_bp)
+
+
+# Marshmallow schema for LegalForm resource
+class LegalFormSchema(ma.Schema):
+    forma = fields.String(
+        required=True,
+        error_messages={
+            "required": "forma is required.",
+            "invalid": "forma must be a string.",
+        },
+    )
+
+
+legalform_schema = LegalFormSchema()
+legalform_schema_partial = LegalFormSchema(partial=True)
 
 
 class LegalForm(Resource):
@@ -42,7 +59,7 @@ class LegalForm(Resource):
     to create, read, update, and delete legal forms.
     """
 
-    ENDPOINT_PATHS = [f"/{BP_NAME}", f"{BP_NAME}/<string:forma>"]
+    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<string:forma>"]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
@@ -52,16 +69,16 @@ class LegalForm(Resource):
         The request must contain a JSON body with application/json.
         """
 
-        # Gather parameters
-        data = request.get_json()
-        forma: str = data.get("forma")
-
-        # Validate parameters
-        if forma is None or not isinstance(forma, str) or len(forma) == 0:
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = legalform_schema.load(request.get_json())
+        except ValidationError as err:
             return create_response(
-                message={"error": "Invalid legal form value"},
+                message={"errors": err.messages},
                 status_code=STATUS_CODES["bad_request"],
             )
+
+        forma: str = data["forma"]
 
         try:
             # Insert the legal form
@@ -76,10 +93,7 @@ class LegalForm(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": {LegalForm.ENDPOINT_PATHS[0]},
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -95,10 +109,7 @@ class LegalForm(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": {LegalForm.ENDPOINT_PATHS[0]},
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -112,7 +123,7 @@ class LegalForm(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {LegalForm.ENDPOINT_PATHS[0]}, "verb": "POST"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -131,6 +142,15 @@ class LegalForm(Resource):
         Delete a legal form.
         The legal form is passed as a path variable.
         """
+
+        # Validate and deserialize input using Marshmallow (simulate for path param)
+        try:
+            legalform_schema.load({"forma": forma})
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Delete the legal form
         _, rows_affected = execute_query(
@@ -151,10 +171,7 @@ class LegalForm(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={
-                "endpoint": {LegalForm.ENDPOINT_PATHS[1]},
-                "verb": "DELETE",
-            },
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -171,12 +188,26 @@ class LegalForm(Resource):
         The legal form is passed as a path variable.
         """
 
-        # Gather data
-        data = request.get_json()
-        new_value: str = data.get("new_value")
+        # Validate and deserialize input using Marshmallow (simulate for path param)
+        try:
+            legalform_schema.load({"forma": forma})
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
-        # Validate parameters
-        if new_value is None or not isinstance(new_value, str) or len(new_value) == 0:
+        # Validate and deserialize input using Marshmallow (partial for new_value)
+        try:
+            data = legalform_schema_partial.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        new_value: str = data.get("forma")
+        if new_value is None or len(new_value) == 0:
             return create_response(
                 message={"error": "invalid new legal form value"},
                 status_code=STATUS_CODES["bad_request"],
@@ -207,10 +238,7 @@ class LegalForm(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={
-                "endpoint": {LegalForm.ENDPOINT_PATHS[1]},
-                "verb": "PATCH",
-            },
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -240,8 +268,6 @@ class LegalForm(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # This endpoint does not require filters as the table has only one column
-
         try:
             # Execute query
             forms: List[Dict[str, Any]] = fetchall_query(
@@ -256,10 +282,7 @@ class LegalForm(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": {LegalForm.ENDPOINT_PATHS[0]},
-                    "verb": "GET",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return the result
@@ -276,10 +299,7 @@ class LegalForm(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": {LegalForm.ENDPOINT_PATHS[0]},
-                    "verb": "GET",
-                },
+                structured_data=f"[endpoint='{request.path} verb='{request.method}']",
             )
 
             # Return an error response

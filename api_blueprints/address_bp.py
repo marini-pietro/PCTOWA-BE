@@ -8,6 +8,9 @@ from typing import Any, Dict
 from flask import Blueprint, Response, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Api, Resource
+from marshmallow import fields, ValidationError
+from marshmallow.validate import Regexp
+from api_server import ma
 
 from config import (
     API_SERVER_HOST,
@@ -28,11 +31,46 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and API
 address_bp = Blueprint(BP_NAME, __name__)
 api = Api(address_bp)
+
+
+# Marshmallow schema for Address resource
+class AddressSchema(ma.Schema):
+    stato = fields.String(
+        required=True, error_messages={"required": "stato is required."}
+    )
+    provincia = fields.String(
+        required=True, error_messages={"required": "provincia is required."}
+    )
+    comune = fields.String(
+        required=True, error_messages={"required": "comune is required."}
+    )
+    cap = fields.String(
+        required=True,
+        validate=Regexp(r"^\d{5}$", error="CAP must be exactly 5 digits"),
+        error_messages={
+            "required": "cap is required.",
+            "invalid": "cap must be a string of exactly 5 digits.",
+        },
+    )
+    indirizzo = fields.String(
+        required=True, error_messages={"required": "indirizzo is required."}
+    )
+    id_azienda = fields.Integer(
+        required=True,
+        error_messages={
+            "required": "id_azienda is required.",
+            "invalid": "id_azienda must be an integer.",
+        },
+    )
+
+
+address_schema = AddressSchema()
+address_schema_partial = AddressSchema(partial=True)
 
 
 class Address(Resource):
@@ -53,29 +91,21 @@ class Address(Resource):
         The request must contain a JSON in the body and application/json as Content-Type.
         """
 
-        # Gather parameters
-        data = request.get_json()
-        stato = data.get("stato")
-        provincia = data.get("provincia")
-        comune = data.get("comune")
-        cap = data.get("cap")
-        indirizzo: str = data.get("indirizzo")
-        id_azienda: int = data.get("id_azienda")
-
-        # Validate parameters and performing casting if necessary
-        if id_azienda is not None:
-            try:
-                id_azienda = int(id_azienda)
-            except ValueError:
-                return create_response(
-                    message={"error": "invalid id_azienda parameter"},
-                    status_code=STATUS_CODES["bad_request"],
-                )
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = address_schema.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check if id_azienda exists
         company = fetchone_query(
             "SELECT fax FROM aziende WHERE id_azienda = %s",
-            (id_azienda,),  # Only fetch the fax to check existence (could be any field)
+            (
+                data["id_azienda"],
+            ),  # Only fetch the fax to check existence (could be any field)
         )
         if company is None:
             return create_response(
@@ -87,7 +117,14 @@ class Address(Resource):
         lastrowid, _ = execute_query(
             "INSERT INTO indirizzi (stato, provincia, comune, cap, indirizzo, id_azienda) "
             "VALUES (%s, %s, %s, %s, %s, %s)",
-            (stato, provincia, comune, cap, indirizzo, id_azienda),
+            (
+                data["stato"],
+                data["provincia"],
+                data["comune"],
+                data["cap"],
+                data["indirizzo"],
+                data["id_azienda"],
+            ),
         )
 
         # Log the address creation
@@ -97,7 +134,7 @@ class Address(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Address.ENDPOINT_PATHS[0], "verb": "POST"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         return create_response(
@@ -136,7 +173,7 @@ class Address(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "DELETE"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         return create_response(
@@ -153,8 +190,14 @@ class Address(Resource):
         The request must contain the id parameter in the URI as a path variable.
         """
 
-        # Gather data
-        data = request.get_json()
+        # Validate and deserialize input using Marshmallow (partial update)
+        try:
+            data = address_schema_partial.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check if address exists
         address = fetchone_query(
@@ -199,7 +242,7 @@ class Address(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "PATCH"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -217,11 +260,11 @@ class Address(Resource):
         The request must contain the id parameter in the URI as a path variable.
         """
 
-        # Validate id 
-        if id < 0:
+        # Validate id
+        if id_ < 0:
             return create_response(
                 message={"error": "id path variable must be positive integer"},
-                status_code=STATUS_CODES["bad_request"]
+                status_code=STATUS_CODES["bad_request"],
             )
 
         # Check that the company exists
@@ -249,12 +292,11 @@ class Address(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Address.ENDPOINT_PATHS[1], "verb": "GET"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return the results
-            return create_response(message=addresses, 
-                                   status_code=STATUS_CODES["ok"])
+            return create_response(message=addresses, status_code=STATUS_CODES["ok"])
         except (
             ValueError,
             KeyError,
@@ -268,10 +310,7 @@ class Address(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": Address.ENDPOINT_PATHS[1],
-                    "verb": "GET",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return a 500 error response

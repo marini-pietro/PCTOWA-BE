@@ -8,6 +8,9 @@ from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import fields, ValidationError
+from marshmallow.validate import Regexp, Range
+from api_server import ma
 
 from config import (
     API_SERVER_HOST,
@@ -26,14 +29,61 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
-)   
+)
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and API
 tutor_bp = Blueprint(BP_NAME, __name__)
 api = Api(tutor_bp)
+
+
+# Define the schema for the request body using Marshmallow
+class TutorSchema(ma.Schema):
+    nome = fields.Str(
+        required=True,
+        error_messages={
+            "required": "Nome is required.",
+            "invalid": "Nome must be a string.",
+        },
+    )
+    cognome = fields.Str(
+        required=True,
+        error_messages={
+            "required": "Cognome is required.",
+            "invalid": "Cognome must be a string.",
+        },
+    )
+    telefono = fields.Str(
+        required=True,
+        validate=Regexp(
+            r"^\+?\d{1,3}\s?\d{4,14}$",
+            error="Telefono must be a valid international phone number",
+        ),
+        error_messages={
+            "required": "Telefono is required.",
+            "invalid": "Telefono must be a valid international phone number.",
+        },
+    )
+    email = fields.Email(
+        required=True,
+        error_messages={
+            "required": "Email is required.",
+            "invalid": "Email must be a valid email address.",
+        },
+    )
+    id_turno = fields.Int(
+        required=True,
+        validate=Range(min=1, error="ID Turno must be a positive integer"),
+        error_messages={
+            "required": "ID Turno is required.",
+            "invalid": "ID Turno must be a positive integer.",
+        },
+    )
+
+
+tutor_schema = TutorSchema()
 
 
 class Tutor(Resource):
@@ -57,24 +107,32 @@ class Tutor(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Gather parameters
-        data = request.get_json()
-        nome: str = data.get("nome")
-        cognome: str = data.get("cognome")
-        telefono: str = data.get("telefono")
-        email: str = data.get("email")
-        id_turno: int = data.get("id_turno")
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = tutor_schema.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
-        # Validate data TODO
+        nome: str = data["nome"]
+        cognome: str = data["cognome"]
+        telefono: str = data["telefono"]
+        email: str = data["email"]
+        id_turno: int = data["id_turno"]
 
         # Insert the tutor
-        lastrowid, _= execute_query(
+        lastrowid, _ = execute_query(
             "INSERT INTO tutor (nome, cognome, telefonoTutor, email_tutor) VALUES (%s, %s, %s, %s)",
             (nome, cognome, telefono, email),
         )
 
         # Insert the turno_tutor row
-        _, _ = execute_query("INSERT INTO turno_tutor (id_tutor, id_turno) VALUES (%s, %s)", (lastrowid, id_turno))
+        _, _ = execute_query(
+            "INSERT INTO turno_tutor (id_tutor, id_turno) VALUES (%s, %s)",
+            (lastrowid, id_turno),
+        )
 
         # Log the tutor creation
         log(
@@ -122,7 +180,7 @@ class Tutor(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Tutor.ENDPOINT_PATHS[1], "verb": "DELETE"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -139,8 +197,14 @@ class Tutor(Resource):
         The id must be provided as a path variable.
         """
 
-        # Gather parameters
-        data = request.get_json()
+        # Validate and deserialize input using Marshmallow (partial update)
+        try:
+            data = tutor_schema.load(request.get_json(), partial=True)
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check if tutor exists
         tutor: Dict[str, Any] = fetchone_query(
@@ -183,7 +247,7 @@ class Tutor(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Tutor.ENDPOINT_PATHS[1], "verb": "PATCH"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -196,7 +260,7 @@ class Tutor(Resource):
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, id_) -> Response:
         """
-        Get all the tutors associate to a given company.  
+        Get all the tutors associate to a given company.
         The company id must be provided as a path variable.
         """
 
@@ -204,13 +268,13 @@ class Tutor(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested " 
+                f"User {get_jwt_identity()} requested "
                 f"tutor list with company id {id_}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Tutor.ENDPOINT_PATHS[1], "verb": "GET"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Check that the specified company exists
@@ -227,7 +291,7 @@ class Tutor(Resource):
         # Get the data
         tutors: List[Dict[str, Any]] = fetchall_query(
             """
-            SELECT nome, cognome, email_tutor, telefono_tutor,
+            SELECT nome, cognome, email_tutor, telefono_tutor
             FROM tutor
             WHERE id_azienda = %s
             """,
@@ -235,15 +299,14 @@ class Tutor(Resource):
         )
 
         # Check if query returned any results
-        if tutors is None:
+        if not tutors:
             return create_response(
                 message={"outcome": "no tutors found for specified company"},
                 status_code=STATUS_CODES["not_found"],
             )
 
         # Return the data
-        return create_response(message=tutors, 
-                               status_code=STATUS_CODES["ok"])
+        return create_response(message=tutors, status_code=STATUS_CODES["ok"])
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])

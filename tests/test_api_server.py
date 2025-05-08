@@ -3,7 +3,13 @@ import time
 from flask import Flask
 from flask.testing import FlaskClient
 from tests.utils import api_client
-from config import RATE_LIMIT_MAX_REQUESTS, URL_PREFIX, STATUS_CODES, RATE_LIMIT_TIME_WINDOW
+from config import (
+    RATE_LIMIT_MAX_REQUESTS,
+    URL_PREFIX,
+    STATUS_CODES,
+    RATE_LIMIT_TIME_WINDOW,
+)
+
 
 # Test the health endpoint in api_server.py
 def test_health_check(api_client: FlaskClient):
@@ -13,6 +19,7 @@ def test_health_check(api_client: FlaskClient):
     response = api_client.get("/health")
     assert response.status_code == STATUS_CODES["ok"]
     assert response.json["status"] == "ok"
+
 
 # Test the rate limiting in api_server.py
 def test_rate_limit(client: FlaskClient):
@@ -25,7 +32,7 @@ def test_rate_limit(client: FlaskClient):
         assert response.status_code == STATUS_CODES["ok"]
 
     # Wait for the rate limit window to reset before sending another request
-    time.sleep(RATE_LIMIT_TIME_WINDOW + 1) 
+    time.sleep(RATE_LIMIT_TIME_WINDOW + 1)
     response = client.get(f"{URL_PREFIX}health")
     assert response.status_code == STATUS_CODES["ok"]
     assert response.json["status"] == "ok"
@@ -41,6 +48,7 @@ def test_rate_limit(client: FlaskClient):
     assert response.status_code == STATUS_CODES["too_many_requests"]
     assert response.json["error"] == "Rate limit exceeded"
 
+
 def test_health_check_unauthorized(client: FlaskClient):
     """
     Test the health check endpoint without proper authorization.
@@ -48,6 +56,7 @@ def test_health_check_unauthorized(client: FlaskClient):
     response = client.get("/health")
     assert response.status_code == STATUS_CODES["unauthorized"]
     assert "error" in response.json
+
 
 def test_invalid_configuration(client: FlaskClient, mocker):
     """
@@ -57,7 +66,3 @@ def test_invalid_configuration(client: FlaskClient, mocker):
     response = client.get("/health")
     assert response.status_code == STATUS_CODES["internal_server_error"]
     assert "error" in response.json
-
-
-
-

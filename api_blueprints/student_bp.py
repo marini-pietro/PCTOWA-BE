@@ -7,7 +7,10 @@ from typing import List, Dict, Union, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import fields, ValidationError
+from marshmallow.validate import Regexp
 from mysql.connector import IntegrityError
+from api_server import ma
 
 from config import (
     API_SERVER_HOST,
@@ -29,11 +32,42 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and API
 student_bp = Blueprint(BP_NAME, __name__)
 api = Api(student_bp)
+
+
+# Marshmallow schema for Student resource
+class StudentSchema(ma.Schema):
+    matricola = fields.String(
+        required=True,
+        validate=Regexp(
+            r"^\d{5}$", error="matricola must be a string of exactly 5 digits"
+        ),
+        error_messages={
+            "required": "matricola is required.",
+            "invalid": "matricola must be a string of exactly 5 digits.",
+        },
+    )
+    nome = fields.String(
+        required=True, error_messages={"required": "nome is required."}
+    )
+    cognome = fields.String(
+        required=True, error_messages={"required": "cognome is required."}
+    )
+    id_classe = fields.Integer(
+        required=True,
+        error_messages={
+            "required": "id_classe is required.",
+            "invalid": "id_classe must be an integer.",
+        },
+    )
+
+
+student_schema = StudentSchema()
+student_schema_partial = StudentSchema(partial=True)
 
 
 class Student(Resource):
@@ -53,6 +87,20 @@ class Student(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = student_schema.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        matricola: str = data["matricola"]
+        nome: str = data["nome"]
+        cognome: str = data["cognome"]
+        id_classe: int = data["id_classe"]
+
         # Log the student creation
         log(
             log_type="info",
@@ -62,38 +110,6 @@ class Student(Resource):
             message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
-
-        # Gather parameters
-        data = request.get_json()
-        matricola: str = data.get("matricola")
-        nome: str = data.get("nome")
-        cognome: str = data.get("cognome")
-        id_classe: int = data.get("id_classe")
-
-        # Validate parameters
-        if matricola is None or nome is None or cognome is None or id_classe is None:
-            return create_response(
-                message={
-                    "error": "matricola, nome, cognome and id_classe parameters are required"
-                },
-                status_code=STATUS_CODES["bad_request"],
-            )
-        if (
-            not isinstance(matricola, str)
-            or not isinstance(nome, str)
-            or not isinstance(cognome, str)
-        ):
-            return create_response(
-                message={"error": "matricola, nome and cognome must be strings"},
-                status_code=STATUS_CODES["bad_request"],
-            )
-        try:
-            id_classe = int(id_classe)
-        except (ValueError, TypeError):
-            return create_response(
-                message={"error": "id_classe must be an integer"},
-                status_code=STATUS_CODES["bad_request"],
-            )
 
         try:
             # Insert the student
@@ -111,7 +127,7 @@ class Student(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": "POST"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -127,7 +143,7 @@ class Student(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Student.ENDPOINT_PATHS[0], "verb": "POST"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -186,6 +202,15 @@ class Student(Resource):
         The request must include the student matricola as a path variable.
         """
 
+        # Validate and deserialize input using Marshmallow (partial update)
+        try:
+            data = student_schema_partial.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
         # Log the update
         log(
             log_type="info",
@@ -195,9 +220,6 @@ class Student(Resource):
             message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
-
-        # Gather parameters
-        data = request.get_json()
 
         # Check that the specified student exists
         student: Dict[str, Any] = fetchone_query(
@@ -285,6 +307,13 @@ class Student(Resource):
         return handle_options_request(resource_class=self)
 
 
+class BindStudentToTurnSchema(ma.Schema):
+    id_turno = fields.Integer(required=True)
+
+
+bind_student_to_turn_schema = BindStudentToTurnSchema()
+
+
 class BindStudentToTurn(Resource):
     """
     Endpoint to bind a student to a turn.
@@ -300,23 +329,16 @@ class BindStudentToTurn(Resource):
         The request must include the student matricola as a path variable.
         """
 
-        # Gather parameters
-        data = request.get_json()
-        id_turno: Union[str, int] = data.get("id_turno")
-
-        # Validate parameters
-        if id_turno is None:
-            return create_response(
-                message={"error": "id_turno parameter is required"},
-                status_code=STATUS_CODES["bad_request"],
-            )
+        # Validate and deserialize input using Marshmallow
         try:
-            id_turno = int(id_turno)
-        except (ValueError, TypeError):
+            data = bind_student_to_turn_schema.load(request.get_json())
+        except ValidationError as err:
             return create_response(
-                message={"error": "invalid id_turno parameter"},
+                message={"errors": err.messages},
                 status_code=STATUS_CODES["bad_request"],
             )
+
+        id_turno: int = data["id_turno"]
 
         # Check that the student exists
         student: Dict[str, Any] = fetchone_query(
@@ -357,10 +379,7 @@ class BindStudentToTurn(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": BindStudentToTurn.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"outcome": "student successfully bound to turn"},
@@ -376,10 +395,7 @@ class BindStudentToTurn(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": BindStudentToTurn.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -395,10 +411,7 @@ class BindStudentToTurn(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": BindStudentToTurn.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -566,7 +579,7 @@ class StudentListFromTurn(Resource):
 
         # Get all students
         students: List[Dict[str, Any]] = fetchall_query(
-            query="SELECT S.matricola, S.nome, S.cognome, S.comune"
+            query="SELECT S.matricola, S.nome, S.cognome, S.comune "
             "FROM studenti AS S "
             "JOIN studenteTurno AS ST ON S.matricola = ST.matricola "
             "JOIN turni AS T ON ST.id_turno = T.id_turno "

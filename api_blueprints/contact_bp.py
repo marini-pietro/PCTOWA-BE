@@ -8,12 +8,11 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import fields, ValidationError
+from marshmallow.validate import Regexp, OneOf
+from api_server import ma
 
-from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
-    STATUS_CODES,
-)
+from config import API_SERVER_HOST, API_SERVER_NAME_IN_LOG, STATUS_CODES, ROLES
 
 from .blueprints_utils import (
     check_authorization,
@@ -29,11 +28,34 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and the API
 contact_bp = Blueprint(BP_NAME, __name__)
 api = Api(contact_bp)
+
+
+# Marshmallow schema for Contact resource
+class ContactSchema(ma.Schema):
+    nome = fields.String(required=True)
+    cognome = fields.String(required=True)
+    telefono = fields.String(
+        allow_none=True,
+        validate=Regexp(
+            r"^\+?\d{1,3}\s?\d{4,14}$",
+            error="telefono must be a valid international phone number",
+        ),
+    )
+    email = fields.Email(allow_none=True)
+    ruolo = fields.String(
+        allow_none=True,
+        validate=OneOf(ROLES, error="ruolo must be one of the allowed roles"),
+    )
+    id_azienda = fields.Integer(required=True)
+
+
+contact_schema = ContactSchema()
+contact_schema_partial = ContactSchema(partial=True)
 
 
 class Contact(Resource):
@@ -51,33 +73,19 @@ class Contact(Resource):
         The request must contain a JSON body with application/json.
         """
 
-        # Gather parameters
-        data = request.get_json()
-        params: Dict[str, str] = {
-            "nome": data.get("nome"),
-            "cognome": data.get("cognome"),
-            "telefono": data.get("telefono"),
-            "email": data.get("email"),
-            "ruolo": data.get("ruolo"),
-            "id_azienda": data.get("id_azienda"),
-        }
-
-        # Validate parameters
-        if params["id_azienda"] is not None:
-            try:
-                params["id_azienda"] = int(params["id_azienda"])
-            except (ValueError, TypeError):
-                return create_response(
-                    message={"outcome": "invalid company ID"},
-                    status_code=STATUS_CODES["bad_request"],
-                )
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = contact_schema.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check if azienda exists
         company: Dict[str, Any] = fetchone_query(
             "SELECT fax FROM aziende WHERE id_azienda = %s",
-            (
-                params["id_azienda"],
-            ),  # only check existence (select column could be any)
+            (data["id_azienda"],),  # only check existence (select column could be any)
         )
         if company is None:
             return create_response(
@@ -90,7 +98,14 @@ class Contact(Resource):
             """INSERT INTO contatti 
             (nome, cognome, telefono, email, ruolo, id_azienda)
             VALUES (%s, %s, %s, %s, %s, %s)""",
-            tuple(params.values()),
+            (
+                data["nome"],
+                data["cognome"],
+                data.get("telefono"),
+                data.get("email"),
+                data.get("ruolo"),
+                data["id_azienda"],
+            ),
         )
 
         # Log the creation of the contact
@@ -100,7 +115,7 @@ class Contact(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Contact.ENDPOINTS_PATHS[0], "verb": "POST"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -139,7 +154,7 @@ class Contact(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Contact.ENDPOINTS_PATHS[1], "verb": "DELETE"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -156,8 +171,14 @@ class Contact(Resource):
         The id is passed as a path variable.
         """
 
-        # Gather parameters
-        data = request.get_json()
+        # Validate and deserialize input using Marshmallow (partial update)
+        try:
+            data = contact_schema_partial.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check that the specified contact exists
         contact: Dict[str, Any] = fetchone_query(
@@ -202,7 +223,7 @@ class Contact(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Contact.ENDPOINTS_PATHS[1], "verb": "PATCH"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -229,7 +250,7 @@ class Contact(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Contact.ENDPOINTS_PATHS[0], "verb": "GET"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Check that the specified company exists
@@ -250,7 +271,7 @@ class Contact(Resource):
         )
 
         # Check if query returned any results
-        if contact is None:
+        if not contact:
             return create_response(
                 message={"outcome": "no contacts found for the specified company"},
                 status_code=STATUS_CODES["not_found"],

@@ -18,6 +18,8 @@ from typing import List, Dict, Any, Union
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import fields, ValidationError
+from marshmallow.validate import OneOf
 from requests import post as requests_post
 from requests.exceptions import RequestException
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -34,6 +36,7 @@ from config import (
     LOGIN_AVAILABLE_THROUGH_API,
     ROLES,
 )
+from api_server import ma
 
 from .blueprints_utils import (
     check_authorization,
@@ -49,28 +52,56 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and API
 user_bp = Blueprint(BP_NAME, __name__)
 api = Api(user_bp)
 
+
+# Define a Marshmallow schema for user registration
+class UserSchema(ma.Schema):
+    email = fields.Email(
+        required=True,
+        error_messages={
+            "required": "email is required.",
+            "invalid": "email must be a valid email address.",
+        },
+    )
+    password = fields.String(
+        required=True, error_messages={"required": "password is required."}
+    )
+    nome = fields.String(
+        required=True, error_messages={"required": "nome is required."}
+    )
+    cognome = fields.String(
+        required=True, error_messages={"required": "cognome is required."}
+    )
+    ruolo = fields.String(
+        required=True,
+        validate=OneOf(ROLES, error="ruolo must be one of the allowed roles."),
+        error_messages={"required": "ruolo is required."},
+    )
+
+
+user_schema = UserSchema()
+
+
 def hash_password(password: str) -> str:
     # Generate a random salt
     salt = os.urandom(16)
-    
     # Use PBKDF2 to hash the password
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
         iterations=100000,
-        backend=default_backend()
+        backend=default_backend(),
     )
-    hashed_password = base64.urlsafe_b64encode(kdf.derive(password.encode('utf-8')))
-    
+    hashed_password = base64.urlsafe_b64encode(kdf.derive(password.encode("utf-8")))
     # Store the salt and hashed password together
     return f"{base64.urlsafe_b64encode(salt).decode('utf-8')}:{hashed_password.decode('utf-8')}"
+
 
 class User(Resource):
     """
@@ -93,13 +124,20 @@ class User(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Gather parameters
-        data = request.get_json()
-        email: str = data.get("email")
-        password: str = data.get("password")
-        name: str = data.get("nome")
-        surname: str = data.get("cognome")
-        ruolo: int = data.get("ruolo")
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = user_schema.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        email: str = data["email"]
+        password: str = data["password"]
+        name: str = data["nome"]
+        surname: str = data["cognome"]
+        ruolo: int = data["ruolo"]
 
         # Hash the password before storing it
         hashed_password = hash_password(password)
@@ -132,12 +170,13 @@ class User(Resource):
                 status_code=STATUS_CODES["created"],
             )
         except IntegrityError as ex:
-
             # Log the error
             log(
                 log_type="error",
-                message=(f"User {get_jwt_identity()} tried to "
-                         f"register user {email} but it already generated {ex}"),
+                message=(
+                    f"User {get_jwt_identity()} tried to "
+                    f"register user {email} but it already generated {ex}"
+                ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -181,7 +220,7 @@ class User(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": User.ENDPOINT_PATHS[1], "verb": "DELETE"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return success message
@@ -245,7 +284,7 @@ class User(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": User.ENDPOINT_PATHS[1], "verb": "PATCH"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return success message
@@ -288,7 +327,7 @@ class User(Resource):
                 message={"error": "no users found"},
                 status_code=STATUS_CODES["not_found"],
             )
-        
+
         # Log the read
         log(
             log_type="info",
@@ -301,7 +340,7 @@ class User(Resource):
 
         # Return the list of users
         return create_response(message=users, status_code=STATUS_CODES["ok"])
-    
+
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
@@ -311,6 +350,14 @@ class User(Resource):
         """
 
         return handle_options_request(resource_class=self)
+
+
+class UserLoginSchema(ma.Schema):
+    email = fields.Email(required=True)
+    password = fields.String(required=True)
+
+
+user_login_schema = UserLoginSchema()
 
 
 class UserLogin(Resource):
@@ -338,17 +385,17 @@ class UserLogin(Resource):
                 status_code=STATUS_CODES["forbidden"],
             )
 
-        # Gather parameters
-        data = request.get_json()
-        email: str = data.get("email")
-        password: str = data.get("password")
-
-        # Validate parameters
-        if email is None or password is None or email == "" or password == "":
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = user_login_schema.load(request.get_json())
+        except ValidationError as err:
             return create_response(
-                message={"error": "missing email or password"},
+                message={"errors": err.messages},
                 status_code=STATUS_CODES["bad_request"],
             )
+
+        email: str = data["email"]
+        password: str = data["password"]
 
         try:
             # Forward login request to the authentication service
@@ -453,6 +500,13 @@ class UserLogin(Resource):
         return handle_options_request(resource_class=self)
 
 
+class BindUserToCompanySchema(ma.Schema):
+    id_azienda = fields.Integer(required=True)
+
+
+bind_user_to_company_schema = BindUserToCompanySchema()
+
+
 class BindUserToCompany(Resource):
     """
     Bind a user to a company.
@@ -471,25 +525,16 @@ class BindUserToCompany(Resource):
         The id_ is passed as a path variable.
         """
 
-        # Validate parameters TODO add regex check for email format
-
-        # Gather parameters
-        data = request.get_json()
-        company_id: Union[str, int] = data.get("id_azienda")
-
-        # Validate parameters
-        if company_id is None:
-            return create_response(
-                message={"error": "missing company id_"},
-                status_code=STATUS_CODES["bad_request"],
-            )
+        # Validate and deserialize input using Marshmallow
         try:
-            company_id = int(company_id)
-        except ValueError:
+            data = bind_user_to_company_schema.load(request.get_json())
+        except ValidationError as err:
             return create_response(
-                message={"error": "company id_ must be an integer"},
+                message={"errors": err.messages},
                 status_code=STATUS_CODES["bad_request"],
             )
+
+        company_id: int = data["id_azienda"]
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
@@ -531,10 +576,7 @@ class BindUserToCompany(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": BindUserToCompany.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -550,10 +592,7 @@ class BindUserToCompany(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={
-                    "endpoint": BindUserToCompany.ENDPOINT_PATHS[0],
-                    "verb": "POST",
-                },
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -570,10 +609,7 @@ class BindUserToCompany(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={
-                "endpoint": BindUserToCompany.ENDPOINT_PATHS[0],
-                "verb": "POST",
-            },
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return success message
@@ -631,10 +667,7 @@ class ReadBindedUser(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={
-                "endpoint": ReadBindedUser.ENDPOINT_PATHS[0],
-                "verb": "GET",
-            },
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Validate parameters

@@ -11,6 +11,9 @@ from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import fields, ValidationError
+from marshmallow.validate import Regexp
+from api_server import ma
 
 from config import (
     API_SERVER_HOST,
@@ -31,11 +34,41 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and the API
 class_bp = Blueprint(BP_NAME, __name__)
 api = Api(class_bp)
+
+
+# Marshmallow schema for Class resource
+class ClassSchema(ma.Schema):
+    sigla = fields.String(
+        required=True,
+        validate=Regexp(
+            r"^[1-5][A-Za-z]{2}$",
+            error="sigla must be a digit from 1 to 5 followed by two letters (e.g. 4AI, 5BI)",
+        ),
+        error_messages={"required": "sigla is required."},
+    )
+    anno = fields.String(
+        required=True,
+        validate=Regexp(
+            r"^\d{2}-\d{2}$", error="anno must be in the format xx-xx with digits"
+        ),
+        error_messages={"required": "anno is required."},
+    )
+    email_responsabile = fields.Email(
+        required=True,
+        error_messages={
+            "required": "email_responsabile is required.",
+            "invalid": "email_responsabile must be a valid email address.",
+        },
+    )
+
+
+class_schema = ClassSchema()
+class_schema_partial = ClassSchema(partial=True)
 
 
 class Class(Resource):
@@ -58,60 +91,18 @@ class Class(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Gather parameters
-        data = request.get_json()
-        sigla: str = data.get("sigla")
-        anno: str = data.get("anno")
-        email_responsabile: str = data.get("email_responsabile")
-
-        # Validate parameters
-        missing_fields = [
-            key
-            for key, value in {
-                "sigla": sigla,
-                "anno": anno,
-                "email_responsabile": email_responsabile,
-            }.items()
-            if value is None
-        ]
-        if missing_fields:
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = class_schema.load(request.get_json())
+        except ValidationError as err:
             return create_response(
-                message={
-                    "error": (
-                        f'missing required fields: {", ".join(missing_fields)}, '
-                        "check documentation for details"
-                    )
-                },
-                status_code=STATUS_CODES["bad_request"],
-            )
-        if len(anno) != 5:
-            return create_response(
-                message={"error": "anno must be long 5 characters (e.g. 24-25)"},
+                message={"errors": err.messages},
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Check if the year string is in the format 'xx-xx'
-        if not re_match(r"^\d{4}-\d{4}$", anno):
-            return create_response(
-                message={"outcome": "invalid anno format"},
-                status_code=STATUS_CODES["bad_request"],
-            )
-
-        # Check if the class variable is a number between 4 and 5 followed by two characters
-        if not re_match(r"^([4-5]\d{0,1}[a-zA-Z]{2})$", sigla):
-            return create_response(
-                message={"outcome": "invalid sigla format"},
-                status_code=STATUS_CODES["bad_request"],
-            )
-
-        # Check if the email string is a valid email format
-        if not re_match(
-            r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email_responsabile
-        ):
-            return create_response(
-                message={"outcome": "invalid email format"},
-                status_code=STATUS_CODES["bad_request"],
-            )
+        sigla: str = data["sigla"].upper()
+        anno: str = data["anno"]
+        email_responsabile: str = data["email_responsabile"]
 
         # Execute query to insert the class
         lastrowid, _ = execute_query(
@@ -126,7 +117,7 @@ class Class(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[0]}, "verb": "POST"},
+            structured_data=f"[endpoint='{request.path} verb='{request.method}']",
         )
 
         # Return a success message
@@ -151,7 +142,6 @@ class Class(Resource):
             "DELETE FROM classi WHERE id_classe = %s", (id_,)
         )
 
-        # Gather parameters
         if rows_affected == 0:
             return create_response(
                 message={"error": "specified class does not exist"},
@@ -165,7 +155,7 @@ class Class(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": "DELETE"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -181,8 +171,14 @@ class Class(Resource):
         The class ID is passed as a path parameter.
         """
 
-        # Gather parameters
-        data = request.get_json()
+        # Validate and deserialize input using Marshmallow (partial update)
+        try:
+            data = class_schema_partial.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check that class exists
         class_: Dict[str, Any] = fetchone_query(
@@ -221,7 +217,7 @@ class Class(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[1]}, "verb": "PATCH"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -247,14 +243,14 @@ class Class(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {Class.ENDPOINT_PATHS[2]}, "verb": "GET"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Check if user exists
         user: Dict[str, Any] = fetchone_query(
             "SELECT nome FROM utenti WHERE email_utente = %s",
             (
-                email_responsabile
+                email_responsabile,
             ),  # Only fetch the name to check existence (could be any field)
         )
         if user is None:
@@ -266,7 +262,7 @@ class Class(Resource):
         # Get class data
         classes_data: List[Dict[str, Any]] = fetchall_query(
             "SELECT sigla, email_responsabile, anno FROM classi WHERE email_responsabile = %s",
-            (email_responsabile),
+            (email_responsabile,),
         )
 
         # Return the data
@@ -323,10 +319,7 @@ class ClassFuzzySearch(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={
-                "endpoint": {ClassFuzzySearch.ENDPOINT_PATHS[0]},
-                "verb": "GET",
-            },
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Get the data
@@ -369,7 +362,7 @@ class ClassList(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": {ClassList.ENDPOINT_PATHS[0]}, "verb": "GET"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Get data

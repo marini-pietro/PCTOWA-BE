@@ -9,7 +9,9 @@ from typing import Dict, List, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import fields, ValidationError
 from mysql.connector import IntegrityError
+from api_server import ma
 
 from config import (
     API_SERVER_HOST,
@@ -29,11 +31,26 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
+BP_NAME = os_path_basename(__file__).replace("_bp.py")
 
 # Create the blueprint and API
 sector_bp = Blueprint(BP_NAME, __name__)
 api = Api(sector_bp)
+
+
+# Marshmallow schema for Sector resource
+class SectorSchema(ma.Schema):
+    settore = fields.String(
+        required=True,
+        error_messages={
+            "required": "settore is required.",
+            "invalid": "settore must be a string.",
+        },
+    )
+
+
+sector_schema = SectorSchema()
+sector_schema_partial = SectorSchema(partial=True)
 
 
 class Sector(Resource):
@@ -47,7 +64,7 @@ class Sector(Resource):
     - OPTIONS: Get allowed methods for the resource
     """
 
-    ENDPOINT_PATHS = [f"/{BP_NAME}", f"{BP_NAME}/<string:settore>"]
+    ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<string:settore>"]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin"])
@@ -57,24 +74,20 @@ class Sector(Resource):
         The request body must be a JSON object with application/json content type.
         """
 
-        # Gather parameters
-        data = request.get_json()
-        settore: str = data.get("settore")
-
-        # Validate parameters
-        if settore is None or len(settore) == 0:
+        # Validate and deserialize input using Marshmallow
+        try:
+            data = sector_schema.load(request.get_json())
+        except ValidationError as err:
             return create_response(
-                message={"error": "settore parameter is required"},
+                message={"errors": err.messages},
                 status_code=STATUS_CODES["bad_request"],
             )
+
+        settore: str = data["settore"]
+
         if len(settore) > 255:
             return create_response(
                 message={"error": "settore parameter is too long"},
-                status_code=STATUS_CODES["bad_request"],
-            )
-        if not isinstance(settore, str):
-            return create_response(
-                message={"error": "settore parameter must be a string"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
@@ -93,7 +106,7 @@ class Sector(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Sector.ENDPOINT_PATHS[0], "verb": "POST"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "conflict error"},
@@ -109,7 +122,7 @@ class Sector(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Sector.ENDPOINT_PATHS[0], "verb": "POST"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
                 message={"error": "internal server error"},
@@ -123,7 +136,7 @@ class Sector(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Sector.ENDPOINT_PATHS[0], "verb": "POST"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -143,12 +156,15 @@ class Sector(Resource):
         The request must include the sector name as a path variable.
         """
 
-        # Validate parameters
-        if settore is None or len(settore) == 0:
+        # Validate and deserialize input using Marshmallow (simulate for path param)
+        try:
+            sector_schema.load({"settore": settore})
+        except ValidationError as err:
             return create_response(
-                message={"error": "settore parameter is required"},
+                message={"errors": err.messages},
                 status_code=STATUS_CODES["bad_request"],
             )
+
         if len(settore) > 255:
             return create_response(
                 message={"error": "settore parameter is too long"},
@@ -174,7 +190,7 @@ class Sector(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Sector.ENDPOINT_PATHS[1], "verb": "DELETE"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -191,14 +207,33 @@ class Sector(Resource):
         The request must include the sector name as a path variable.
         """
 
-        # Gather JSON data
-        data = request.get_json()
-        new_value: str = data.get("new_value")
-
-        # Validate parameters
-        if new_value is None or len(new_value) == 0 or not isinstance(new_value, str):
+        # Validate and deserialize input using Marshmallow (simulate for path param)
+        try:
+            sector_schema.load({"settore": settore})
+        except ValidationError as err:
             return create_response(
-                message={"error": "new_value parameter is required"},
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        # Validate and deserialize input using Marshmallow (partial for new_value)
+        try:
+            data = sector_schema_partial.load(request.get_json())
+        except ValidationError as err:
+            return create_response(
+                message={"errors": err.messages},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        new_value: str = data.get("settore")
+        if new_value is None or len(new_value) == 0:
+            return create_response(
+                message={"error": "settore parameter is required"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+        if len(new_value) > 255:
+            return create_response(
+                message={"error": "settore parameter is too long"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
@@ -224,7 +259,7 @@ class Sector(Resource):
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
-            structured_data={"endpoint": Sector.ENDPOINT_PATHS[1], "verb": "PATCH"},
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
         # Return a success message
@@ -255,8 +290,6 @@ class Sector(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # This endpoint does not require filters as the table has only one column
-
         try:
             # Execute query
             sectors: List[Dict[str, Any]] = fetchall_query(
@@ -270,7 +303,7 @@ class Sector(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Sector.ENDPOINT_PATHS[0], "verb": "GET"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return result
@@ -287,7 +320,7 @@ class Sector(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data={"endpoint": Sector.ENDPOINT_PATHS[0], "verb": "GET"},
+                structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
             # Return error response

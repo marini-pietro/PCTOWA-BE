@@ -23,6 +23,7 @@ INVALID_SYSLOG_MESSAGE = "Invalid message format"
 DELAYED_MESSAGE = "<34>1 2025-05-05T12:00:00Z host app procid msgid - Delayed message"
 SOURCE_IP = "127.0.0.1"
 
+
 @pytest.fixture
 def mock_logger():
     """
@@ -30,6 +31,7 @@ def mock_logger():
     """
     with patch("log_server.Logger") as MockLogger:
         yield MockLogger.return_value
+
 
 @pytest.fixture
 def mock_rate_limit_file(tmp_path):
@@ -40,6 +42,7 @@ def mock_rate_limit_file(tmp_path):
     rate_limit_file.write_text(json.dumps({}))
     with patch("log_server.RATE_LIMIT_FILE_NAME", str(rate_limit_file)):
         yield rate_limit_file
+
 
 def test_process_syslog_message_within_rate_limit(mock_logger, mock_rate_limit_file):
     """
@@ -57,6 +60,7 @@ def test_process_syslog_message_within_rate_limit(mock_logger, mock_rate_limit_f
         "sourceIP-127.0.0.1",
     )
 
+
 def test_process_syslog_message_exceeds_rate_limit(mock_logger, mock_rate_limit_file):
     """
     Test processing a syslog message that exceeds the rate limit.
@@ -67,7 +71,10 @@ def test_process_syslog_message_exceeds_rate_limit(mock_logger, mock_rate_limit_
     # Simulate exceeding the rate limit
     with rate_limit_lock:
         with open(mock_rate_limit_file, "w") as file:
-            json.dump({SOURCE_IP: {"count": RATE_LIMIT_MAX_REQUESTS + 1, "timestamp": 0}}, file)
+            json.dump(
+                {SOURCE_IP: {"count": RATE_LIMIT_MAX_REQUESTS + 1, "timestamp": 0}},
+                file,
+            )
 
     process_syslog_message(message, addr)
 
@@ -82,6 +89,7 @@ def test_process_syslog_message_exceeds_rate_limit(mock_logger, mock_rate_limit_
         "Syslog-127.0.0.1",
     )
 
+
 def test_process_invalid_syslog_message(mock_logger):
     """
     Test processing an invalid syslog message.
@@ -95,6 +103,7 @@ def test_process_invalid_syslog_message(mock_logger):
     mock_logger.log.assert_called_once_with(
         "warning", f"Invalid syslog message: {message}", "Syslog-127.0.0.1"
     )
+
 
 def test_process_delayed_logs(mock_logger):
     """
@@ -115,6 +124,7 @@ def test_process_delayed_logs(mock_logger):
         "2025-05-05T12:00:00Z host app procid msgid - Delayed message",
         "sourceIP-127.0.0.1",
     )
+
 
 def test_syslog_pattern_matching():
     """
