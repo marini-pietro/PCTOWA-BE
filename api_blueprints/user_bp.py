@@ -11,6 +11,8 @@ It includes the following functionalities:
 - Fetching the list of users associated with a given company or class
 """
 
+import os
+import base64
 from os.path import basename as os_path_basename
 from typing import List, Dict, Any, Union
 from flask import Blueprint, request, Response
@@ -18,6 +20,9 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from requests import post as requests_post
 from requests.exceptions import RequestException
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
 from mysql.connector import IntegrityError
 
 from config import (
@@ -49,6 +54,22 @@ BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 user_bp = Blueprint(BP_NAME, __name__)
 api = Api(user_bp)
 
+def hash_password(password: str) -> str:
+    # Generate a random salt
+    salt = os.urandom(16)
+    
+    # Use PBKDF2 to hash the password
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    hashed_password = base64.urlsafe_b64encode(kdf.derive(password.encode('utf-8')))
+    
+    # Store the salt and hashed password together
+    return f"{base64.urlsafe_b64encode(salt).decode('utf-8')}:{hashed_password.decode('utf-8')}"
 
 class User(Resource):
     """
@@ -79,11 +100,14 @@ class User(Resource):
         surname: str = data.get("cognome")
         user_type: int = data.get("tipo")
 
+        # Hash the password before storing it
+        hashed_password = hash_password(password)
+
         try:
             lastrowid: int = execute_query(
                 "INSERT INTO utenti (email_utente, password, nome, cognome, tipo) "
                 "VALUES (%s, %s, %s, %s, %s)",
-                (email, password, name, surname, int(user_type)),
+                (email, hashed_password, name, surname, int(user_type)),
             )
 
             # Log the register
@@ -93,7 +117,7 @@ class User(Resource):
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
-                structured_data=f"[endpoint={User.ENDPOINT_PATHS[0]} verb='POST']",
+                structured_data=f"[endpoint={User.ENDPOINT_PATHS[0]}' verb='POST']",
             )
 
             # Return success message
@@ -111,10 +135,8 @@ class User(Resource):
             # Log the error
             log(
                 log_type="error",
-                message=(
-                    f"User {get_jwt_identity()} tried to "
-                    f"register user {email} but it already generated {ex}"
-                ),
+                message=(f"User {get_jwt_identity()} tried to "
+                         f"register user {email} but it already generated {ex}"),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
