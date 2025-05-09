@@ -237,20 +237,18 @@ class User(Resource):
         The id_ is passed as a path variable.
         """
 
-        # Validate parameters TODO add regex check for email format
-
         # Gather parameters
         data = request.get_json()
 
-        # Check if user exists
-        user: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM utente WHERE email_utente = %s",
-            (email,),  # Only check for existence (SELECT column could be any field)
-        )
-        if user is None:
+        # Check if user exists using EXISTS keyword
+        user_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM utente WHERE email_utente = %s) AS exists",
+            (email,),
+        )["exists"]
+        if not user_exists:
             return create_response(
-                message={"outcome": "error, user with provided email does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "error, user with provided email does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -536,28 +534,26 @@ class BindUserToCompany(Resource):
 
         company_id: int = data["id_azienda"]
 
-        # Check if user exists
-        user: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM utenti WHERE email_utente = %s",
-            (email,),  # Only check for existence (SELECT column could be any field)
-        )
-        if user is None:
+        # Check if user exists using EXISTS keyword
+        user_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM utenti WHERE email_utente = %s) AS exists",
+            (email,),
+        )["exists"]
+        if not user_exists:
             return create_response(
-                message={"outcome": "error, user with provided email does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "error, user with provided email does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
-        # Check if company exists
-        company: Dict[str, Any] = fetchone_query(
-            "SELECT fax FROM aziende WHERE id_azienda = %s",
-            (
-                company_id,
-            ),  # Only check for existence (SELECT column could be any field)
-        )
-        if company is None:
+        # Check if company exists using EXISTS keyword
+        company_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            (company_id,),
+        )["exists"]
+        if not company_exists:
             return create_response(
-                message={"outcome": "error, company with provided id_ does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "error, company with provided id_ does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Bind the user to the company
@@ -684,11 +680,11 @@ class ReadBindedUser(Resource):
 
         # Check that the specified resource exist
         if id_type == "company":
-            company: Dict[str, Any] = fetchone_query(
-                "SELECT fax FROM aziende WHERE id_azienda = %s",
-                (id_,),  # Only check for existence (SELECT column could be any field)
-            )
-            if company is None:
+            company_exists: bool = fetchone_query(
+                "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+                (id_,),
+            )["exists"]
+            if not company_exists:
                 return create_response(
                     message={"outcome": "error, specified company does not exist"},
                     status_code=STATUS_CODES["not_found"],
@@ -704,11 +700,11 @@ class ReadBindedUser(Resource):
 
         # Check that the specified resource exist
         elif id_type == "class":
-            class_: Dict[str, Any] = fetchone_query(
-                "SELECT sigla FROM classi WHERE id_classe = %s",
-                (id_,),  # Only check for existence (SELECT column could be any field)
-            )
-            if class_ is None:
+            class_exists: bool = fetchone_query(
+                "SELECT EXISTS(SELECT 1 FROM classi WHERE id_classe = %s) AS exists",
+                (id_,),
+            )["exists"]
+            if not class_exists:
                 return create_response(
                     message={"outcome": "error, specified class does not exist"},
                     status_code=STATUS_CODES["not_found"],

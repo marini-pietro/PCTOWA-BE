@@ -180,15 +180,15 @@ class Class(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Check that class exists
-        class_: Dict[str, Any] = fetchone_query(
-            "SELECT sigla FROM classi WHERE id_classe = %s",
-            (id_,),  # Only fetch the sigla to check existence (could be any field)
+        # Check that class exists using EXISTS
+        class_exists = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM classi WHERE id_classe = %s) AS class_exists",
+            (id_,),
         )
-        if class_ is None:
+        if not class_exists["class_exists"]:
             return create_response(
-                message={"outcome": "error, specified class does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "error, specified class does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -246,14 +246,12 @@ class Class(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Check if user exists
-        user: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM utenti WHERE email_utente = %s",
-            (
-                email_responsabile,
-            ),  # Only fetch the name to check existence (could be any field)
+        # Check if user exists using EXISTS
+        user_exists = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM utenti WHERE email_utente = %s) AS user_exists",
+            (email_responsabile,),
         )
-        if user is None:
+        if not user_exists["user_exists"]:
             return create_response(
                 message={"outcome": "no user found with provided email"},
                 status_code=STATUS_CODES["not_found"],

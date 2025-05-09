@@ -206,15 +206,15 @@ class Tutor(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Check if tutor exists
-        tutor: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM tutor WHERE id_tutor = %s",
-            (id_,),  # Only check for existence (select column could be any field)
-        )
-        if tutor is None:
+        # Check if tutor exists using EXISTS keyword
+        tutor_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM tutor WHERE id_tutor = %s) AS exists",
+            (id_,),
+        )["exists"]
+        if not tutor_exists:
             return create_response(
-                message={"outcome": "error, specified tutor does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "error, specified tutor does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -277,15 +277,15 @@ class Tutor(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Check that the specified company exists
-        company: Dict[str, Any] = fetchone_query(
-            "SELECT fax FROM aziende WHERE id_azienda = %s",
-            (id_,),  # only check for existence (select column could be any field)
-        )
-        if company is None:
+        # Check that the specified company exists using EXISTS keyword
+        company_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            (id_,),
+        )["exists"]
+        if not company_exists:
             return create_response(
-                message={"outcome": "specified company not_found"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "specified company not_found"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Get the data

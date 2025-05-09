@@ -221,17 +221,15 @@ class Student(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Check that the specified student exists
-        student: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM studenti WHERE matricola = %s",
-            (
-                matricola,
-            ),  # Only fetch the province to check existence (could be any field)
-        )
-        if student is None:
+        # Check that the specified student exists using EXISTS keyword
+        student_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM studenti WHERE matricola = %s) AS exists",
+            (matricola,),
+        )["exists"]
+        if not student_exists:
             return create_response(
-                message={"outcome": "error, specified student does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "error, specified student does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -340,26 +338,26 @@ class BindStudentToTurn(Resource):
 
         id_turno: int = data["id_turno"]
 
-        # Check that the student exists
-        student: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM studenti WHERE matricola = %s",
-            (matricola,),  # Only check for existence (select column could be any field)
-        )
-        if student is None:
+        # Check that the student exists using EXISTS keyword
+        student_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM studenti WHERE matricola = %s) AS exists",
+            (matricola,),
+        )["exists"]
+        if not student_exists:
             return create_response(
-                message={"error": "student not_found"},
-                status_code=STATUS_CODES["not_found"],
+            message={"error": "student not_found"},
+            status_code=STATUS_CODES["not_found"],
             )
 
-        # Check that the turn exists
-        turn: Dict[str, Any] = fetchone_query(
-            "SELECT ore FROM turni WHERE id_turno = %s",
-            (id_turno,),  # Only check for existence (select column could be any field)
-        )
-        if turn is None:
+        # Check that the turn exists using EXISTS keyword
+        turn_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM turni WHERE id_turno = %s) AS exists",
+            (id_turno,),
+        )["exists"]
+        if not turn_exists:
             return create_response(
-                message={"error": "turn not_found"},
-                status_code=STATUS_CODES["not_found"],
+            message={"error": "turn not_found"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Bind the student to the turn
@@ -455,15 +453,15 @@ class StudentListFromClass(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Check if the class exists
-        class_: Dict[str, Any] = fetchone_query(
-            "SELECT sigla FROM classi WHERE id_classe = %s",
-            (class_id,),  # Only check for existence (select column could be any field)
-        )
-        if class_ is None:
+        # Check if the class exists using EXISTS keyword
+        class_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM classi WHERE id_classe = %s) AS exists",
+            (class_id,),
+        )["exists"]
+        if not class_exists:
             return create_response(
-                message={"outcome": "no class found with the provided id"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "no class found with the provided id"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Get student data
@@ -566,15 +564,15 @@ class StudentListFromTurn(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Check if the turn exists
-        turn: Dict[str, Any] = fetchone_query(
-            "SELECT ore FROM turni WHERE id_turno = %s",
-            (turn_id,),  # Only check for existence (select column could be any field)
-        )
-        if turn is None:
+        # Check if the turn exists using EXISTS keyword
+        turn_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM turni WHERE id_turno = %s) AS exists",
+            (turn_id,),
+        )["exists"]
+        if not turn_exists:
             return create_response(
-                message={"outcome": "no turn found with the provided id_"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "no turn found with the provided id_"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Get all students

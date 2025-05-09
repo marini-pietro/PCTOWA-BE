@@ -82,15 +82,15 @@ class Contact(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Check if azienda exists
-        company: Dict[str, Any] = fetchone_query(
-            "SELECT fax FROM aziende WHERE id_azienda = %s",
-            (data["id_azienda"],),  # only check existence (select column could be any)
-        )
-        if company is None:
+        # Check if azienda exists using EXISTS keyword
+        company_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            (data["id_azienda"],),
+        )["exists"]
+        if not company_exists:
             return create_response(
-                message={"outcome": "specified company does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "specified company does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Execute query to insert the contact
@@ -180,15 +180,15 @@ class Contact(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Check that the specified contact exists
-        contact: Dict[str, Any] = fetchone_query(
-            "SELECT nome FROM contatti WHERE idContatto = %s",
-            (id_,),  # Only fetch the province to check existence (could be any field)
-        )
-        if contact is None:
+        # Check that the specified contact exists using EXISTS keyword
+        contact_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM contatti WHERE idContatto = %s) AS exists",
+            (id_,),
+        )["exists"]
+        if not contact_exists:
             return create_response(
-                message={"outcome": "specified contact not_found"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "specified contact not_found"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -253,15 +253,15 @@ class Contact(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Check that the specified company exists
-        company: Dict[str, Any] = fetchone_query(
-            "SELECT fax FROM aziende WHERE id_azienda = %s",
-            (id_,),  # Only fetch the name to check existence (could be any field)
-        )
-        if company is None:
+        # Check that the specified company exists using EXISTS keyword
+        company_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            (id_,),
+        )["exists"]
+        if not company_exists:
             return create_response(
-                message={"outcome": "specified company not_found"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "specified company not_found"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Get the data

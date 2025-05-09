@@ -365,15 +365,15 @@ class Turn(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Check that the specified class exists
-        turn: Dict[str, Any] = fetchone_query(
-            "SELECT ore FROM turni WHERE id_turno = %s",
-            (id_,),  # Only fetch the ore to check existence (could be any field)
-        )
-        if turn is None:
+        # Check that the specified class exists using EXISTS keyword
+        class_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM turni WHERE id_turno = %s) AS exists",
+            (id_,),
+        )["exists"]
+        if not class_exists:
             return create_response(
-                message={"outcome": "specified turn does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "specified turn does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -444,15 +444,15 @@ class Turn(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Check that the specified company exists
-        company: Dict[str, Any] = fetchone_query(
-            "SELECT ragione_sociale FROM aziende WHERE id_azienda = %s",
-            (id_,),  # Only check existence (SELECT field could be any)
-        )
-        if company is None:
+        # Check that the specified company exists using EXISTS keyword
+        company_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            (id_,),
+        )["exists"]
+        if not company_exists:
             return create_response(
-                message={"outcome": "specified company not_found"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "specified company not_found"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Get the data

@@ -100,17 +100,15 @@ class Address(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Check if id_azienda exists
-        company = fetchone_query(
-            "SELECT fax FROM aziende WHERE id_azienda = %s",
-            (
-                data["id_azienda"],
-            ),  # Only fetch the fax to check existence (could be any field)
-        )
-        if company is None:
+        # Check if id_azienda exists using EXISTS keyword
+        company_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) as exists",
+            (data["id_azienda"],),
+        )["exists"]
+        if not company_exists:
             return create_response(
-                message={"outcome": "error, specified company does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "error, specified company does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Insert the address
@@ -199,15 +197,15 @@ class Address(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Check if address exists
-        address = fetchone_query(
-            "SELECT stato FROM indirizzi WHERE id_indirizzo = %s",
-            (id_,),  # Only fetch the state to check existence (could be any field)
-        )
-        if address is None:
+        # Check if address exists using EXISTS keyword
+        address_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM indirizzi WHERE id_indirizzo = %s) AS exists",
+            (id_,),
+        )["exists"]
+        if not address_exists:
             return create_response(
-                message={"outcome": "error, specified address does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"outcome": "error, specified address does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -267,15 +265,15 @@ class Address(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Check that the company exists
-        company = fetchone_query(
-            "SELECT fax FROM aziende WHERE id_azienda = %s",
-            (id_,),  # Only fetch the state to check existence (could be any field)
-        )
-        if company is None:
+        # Check that the company exists using EXISTS keyword
+        company_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            (id_,),
+        )["exists"]
+        if not company_exists:
             return create_response(
-                message={"error": "specified company does not exist"},
-                status_code=STATUS_CODES["not_found"],
+            message={"error": "specified company does not exist"},
+            status_code=STATUS_CODES["not_found"],
             )
 
         try:
