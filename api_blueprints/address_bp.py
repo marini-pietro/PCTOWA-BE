@@ -31,7 +31,7 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py")
+BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 
 # Create the blueprint and API
 address_bp = Blueprint(BP_NAME, __name__)
@@ -107,8 +107,8 @@ class Address(Resource):
         )["exists"]
         if not company_exists:
             return create_response(
-            message={"outcome": "error, specified company does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "error, specified company does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Insert the address
@@ -204,8 +204,8 @@ class Address(Resource):
         )["exists"]
         if not address_exists:
             return create_response(
-            message={"outcome": "error, specified address does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "error, specified address does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -272,8 +272,8 @@ class Address(Resource):
         )["exists"]
         if not company_exists:
             return create_response(
-            message={"error": "specified company does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"error": "specified company does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         try:

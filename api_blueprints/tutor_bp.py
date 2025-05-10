@@ -32,7 +32,7 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py")
+BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 
 # Create the blueprint and API
 tutor_bp = Blueprint(BP_NAME, __name__)
@@ -213,8 +213,8 @@ class Tutor(Resource):
         )["exists"]
         if not tutor_exists:
             return create_response(
-            message={"outcome": "error, specified tutor does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "error, specified tutor does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -284,8 +284,8 @@ class Tutor(Resource):
         )["exists"]
         if not company_exists:
             return create_response(
-            message={"outcome": "specified company not_found"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "specified company not_found"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Get the data

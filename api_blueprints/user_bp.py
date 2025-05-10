@@ -52,7 +52,7 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py")
+BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 
 # Create the blueprint and API
 user_bp = Blueprint(BP_NAME, __name__)
@@ -247,8 +247,8 @@ class User(Resource):
         )["exists"]
         if not user_exists:
             return create_response(
-            message={"outcome": "error, user with provided email does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "error, user with provided email does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -541,8 +541,8 @@ class BindUserToCompany(Resource):
         )["exists"]
         if not user_exists:
             return create_response(
-            message={"outcome": "error, user with provided email does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "error, user with provided email does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Check if company exists using EXISTS keyword
@@ -552,8 +552,8 @@ class BindUserToCompany(Resource):
         )["exists"]
         if not company_exists:
             return create_response(
-            message={"outcome": "error, company with provided id_ does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "error, company with provided id_ does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Bind the user to the company

@@ -28,7 +28,7 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py")
+BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 
 # Create the blueprint and the API
 contact_bp = Blueprint(BP_NAME, __name__)
@@ -89,8 +89,8 @@ class Contact(Resource):
         )["exists"]
         if not company_exists:
             return create_response(
-            message={"outcome": "specified company does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "specified company does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Execute query to insert the contact
@@ -187,8 +187,8 @@ class Contact(Resource):
         )["exists"]
         if not contact_exists:
             return create_response(
-            message={"outcome": "specified contact not_found"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "specified contact not_found"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -260,8 +260,8 @@ class Contact(Resource):
         )["exists"]
         if not company_exists:
             return create_response(
-            message={"outcome": "specified company not_found"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "specified company not_found"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Get the data

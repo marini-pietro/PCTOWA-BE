@@ -32,7 +32,7 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py")
+BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 
 # Create the blueprint and API
 student_bp = Blueprint(BP_NAME, __name__)
@@ -228,8 +228,8 @@ class Student(Resource):
         )["exists"]
         if not student_exists:
             return create_response(
-            message={"outcome": "error, specified student does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "error, specified student does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -345,8 +345,8 @@ class BindStudentToTurn(Resource):
         )["exists"]
         if not student_exists:
             return create_response(
-            message={"error": "student not_found"},
-            status_code=STATUS_CODES["not_found"],
+                message={"error": "student not_found"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the turn exists using EXISTS keyword
@@ -356,8 +356,8 @@ class BindStudentToTurn(Resource):
         )["exists"]
         if not turn_exists:
             return create_response(
-            message={"error": "turn not_found"},
-            status_code=STATUS_CODES["not_found"],
+                message={"error": "turn not_found"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Bind the student to the turn
@@ -460,8 +460,8 @@ class StudentListFromClass(Resource):
         )["exists"]
         if not class_exists:
             return create_response(
-            message={"outcome": "no class found with the provided id"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "no class found with the provided id"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Get student data
@@ -571,8 +571,8 @@ class StudentListFromTurn(Resource):
         )["exists"]
         if not turn_exists:
             return create_response(
-            message={"outcome": "no turn found with the provided id_"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "no turn found with the provided id_"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Get all students

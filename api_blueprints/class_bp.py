@@ -34,7 +34,7 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py")
+BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 
 # Create the blueprint and the API
 class_bp = Blueprint(BP_NAME, __name__)
@@ -80,7 +80,7 @@ class Class(Resource):
     ENDPOINT_PATHS = [
         f"/{BP_NAME}",
         f"/{BP_NAME}/<int:id_>",
-        f"/{BP_NAME}/<string:email_responsabile>",
+        f"/{BP_NAME}/<string:class_year>",
     ]
 
     @jwt_required()
@@ -187,8 +187,8 @@ class Class(Resource):
         )
         if not class_exists["class_exists"]:
             return create_response(
-            message={"outcome": "error, specified class does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "error, specified class does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -225,6 +225,99 @@ class Class(Resource):
             message={"outcome": "class successfully updated"},
             status_code=STATUS_CODES["ok"],
         )
+
+    @jwt_required()
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
+    def get(self, class_year) -> Response:
+        """
+        Get all the students that belong to a class in a given year (e.g. 5BI 24-25).
+        """
+
+        # Log the read
+        log(
+            log_type="info",
+            message=(
+                f"User {get_jwt_identity()} requested "
+                f"to read classes with string {class_year}"
+            ),
+            origin_name=API_SERVER_NAME_IN_LOG,
+            origin_host=API_SERVER_HOST,
+            message_id="UserAction",
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
+
+        # Check if class_year is valid
+        try:
+            class_, year = class_year.split(" ")
+            class_ = class_.upper()
+        except ValueError:
+            return create_response(
+                message={
+                    "error": "class_year must be in the format '<class> <year>' "
+                    "(e.g., '5BI 24-25')"
+                },
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        # Validate class and year
+        if not re_match(r"^[1-5][A-Za-z]{2}$", class_):
+            return create_response(
+                message={
+                    "error": "class must be a digit from 1 to 5 followed by two letters (e.g. 4AI, 5BI)"
+                },
+                status_code=STATUS_CODES["bad_request"],
+            )
+        if not re_match(r"^\d{2}-\d{2}$", year):
+            return create_response(
+                message={"error": "year must be in the format xx-xx with digits"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        # Get class data
+        id_class: Dict[str, Any] = fetchone_query(
+            "SELECT id_classe FROM classi WHERE sigla = %s AND anno = %s",
+            (class_, year),
+        )["id_classe"]
+
+        # Check if class exists
+        if id_class is None:
+            return create_response(
+                message={"error": "class not found"},
+                status_code=STATUS_CODES["not_found"],
+            )
+
+        # Get students in the class
+        students: List[Dict[str, Any]] = fetchall_query(
+            "SELECT matricola, nome, cognome, comune "
+            "FROM studenti "
+            "JOIN classi ON studenti.id_classe = classi.id_classe "
+            "WHERE classi.sigla = %s AND classi.anno = %s",
+            (class_, year),
+        )
+
+        # Return the data
+        return create_response(message=students, status_code=STATUS_CODES["ok"])
+
+    @jwt_required()
+    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
+    def options(self) -> Response:
+        """
+        Handle OPTIONS request.
+        This method is used to check which HTTP methods are allowed for this endpoint.
+        """
+        return handle_options_request(resource_class=self)
+
+
+class ClassFromResponsible(Resource):
+    """
+    Class for managing classes based on the email of the responsible teacher.
+    It includes endpoints for retrieving class data based on the email of the responsible teacher.
+    """
+
+    ENDPOINT_PATHS = [
+        f"/{BP_NAME}",
+        f"/{BP_NAME}/<string:email_responsabile>",
+    ]
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
@@ -285,22 +378,14 @@ class ClassFuzzySearch(Resource):
 
     @jwt_required()
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, input_str) -> Response:
+    def get(self, input_str="") -> Response:
         """
         Execute fuzzy search for class names in database.
         """
 
         # Gather parameters
-        if not input_str:
-            return create_response(
-                message={"error": "missing required field fnome"},
-                status_code=STATUS_CODES["bad_request"],
-            )
-        if not isinstance(input_str, str):
-            return create_response(
-                message={"error": "fnome must be a string"},
-                status_code=STATUS_CODES["bad_request"],
-            )
+        if input_str is None:
+            input_str = ""
         if "%" in input_str or "_" in input_str:
             return create_response(
                 message={"error": "fnome cannot contain % or _ characters"},
@@ -322,7 +407,7 @@ class ClassFuzzySearch(Resource):
 
         # Get the data
         data: List[Dict[str, Any]] = fetchall_query(
-            query="SELECT sigla FROM classi WHERE sigla LIKE %s",
+            query="SELECT sigla FROM classi WHERE sigla LIKE %s ORDER BY sigla DESC",
             params=(f"%{input_str}%",),
         )
 
@@ -339,47 +424,6 @@ class ClassFuzzySearch(Resource):
         return handle_options_request(resource_class=self)
 
 
-class ClassList(Resource):
-    """
-    Class for listing all classes in the database.
-    """
-
-    ENDPOINT_PATHS = [f"/{BP_NAME}/list"]
-
-    @jwt_required()
-    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self) -> Response:
-        """
-        Get the names of all classes.
-        """
-
-        # Log the read operation
-        log(
-            log_type="info",
-            message=f"User {get_jwt_identity()} read class list",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
-            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
-        )
-
-        # Get data
-        class_names: List[Dict[str, Any]] = fetchall_query(
-            "SELECT sigla FROM classi ORDER BY sigla DESC", ()
-        )
-
-        return create_response(message=class_names, status_code=STATUS_CODES["ok"])
-
-    @jwt_required()
-    @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def options(self) -> Response:
-        """
-        Handle OPTIONS request.
-        This method is used to check which HTTP methods are allowed for this endpoint.
-        """
-        return handle_options_request(resource_class=self)
-
-
 api.add_resource(Class, *Class.ENDPOINT_PATHS)
+api.add_resource(ClassFromResponsible, *ClassFromResponsible.ENDPOINT_PATHS)
 api.add_resource(ClassFuzzySearch, *ClassFuzzySearch.ENDPOINT_PATHS)
-api.add_resource(ClassList, *ClassList.ENDPOINT_PATHS)

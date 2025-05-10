@@ -31,7 +31,7 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py")
+BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 
 # Create the blueprint and API
 company_bp = Blueprint(BP_NAME, __name__)
@@ -308,7 +308,7 @@ class Company(Resource):
 
             # Gather turn data
             turns: List[Dict[str, Any]] = fetchall_query(
-                "SELECT data_inizio, data_fine, posti, posti_occupati, "
+                "SELECT data_inizio, data_fine, posti, posti_occupati, posti_confermati, "
                 "ore, id_indirizzo, ora_inizio, ora_fine, giorno_inizio, giorno_fine "
                 "FROM turni "
                 "WHERE id_azienda = %s",

@@ -33,7 +33,7 @@ from .blueprints_utils import (
 )
 
 # Define constants
-BP_NAME = os_path_basename(__file__).replace("_bp.py")
+BP_NAME = os_path_basename(__file__).replace("_bp.py", "")
 VALID_DAYS: List[str] = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"]
 
 # Create the blueprint and API
@@ -225,10 +225,11 @@ class Turn(Resource):
 
         # Check materie and settori existence
         for materia in materie:
-            result = fetchone_query(
-                "SELECT COUNT(*) AS count FROM materie WHERE materia = %s", (materia,)
-            )
-            if result["count"] == 0:
+            exists: bool = fetchone_query(
+                "SELECT EXISTS(SELECT 1 FROM materie WHERE materia = %s) AS exists",
+                (materia,),
+            )["exists"]
+            if not exists:
                 return create_response(
                     message={
                         "outcome": f"error, specified materia '{materia}' does not exist"
@@ -236,10 +237,11 @@ class Turn(Resource):
                     status_code=STATUS_CODES["not_found"],
                 )
         for settore in settori:
-            result = fetchone_query(
-                "SELECT COUNT(*) AS count FROM settori WHERE settore = %s", (settore,)
-            )
-            if result["count"] == 0:
+            exists: bool = fetchone_query(
+                "SELECT EXISTS(SELECT 1 FROM settori WHERE settore = %s) AS exists",
+                (settore,),
+            )["exists"]
+            if not exists:
                 return create_response(
                     message={
                         "outcome": f"error, specified settore '{settore}' does not exist"
@@ -250,15 +252,13 @@ class Turn(Resource):
         # Insert the turn
         lastrowid, _ = execute_query(
             "INSERT INTO turni ("
-            "data_inizio, data_fine, settore, "
-            "posti, ore, id_azienda, "
-            "id_indirizzo, id_tutor, ora_inizio, "
+            "data_inizio, data_fine, posti, ore, "
+            "id_azienda, id_indirizzo, id_tutor, ora_inizio, "
             "ora_fine, posti_confermati, giorno_inizio, giorno_fine) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 data_inizio,
                 data_fine,
-                ",".join(settori),
                 posti,
                 ore,
                 id_azienda,
@@ -372,8 +372,8 @@ class Turn(Resource):
         )["exists"]
         if not class_exists:
             return create_response(
-            message={"outcome": "specified turn does not exist"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "specified turn does not exist"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Check that the specified fields actually exist in the database
@@ -451,15 +451,15 @@ class Turn(Resource):
         )["exists"]
         if not company_exists:
             return create_response(
-            message={"outcome": "specified company not_found"},
-            status_code=STATUS_CODES["not_found"],
+                message={"outcome": "specified company not_found"},
+                status_code=STATUS_CODES["not_found"],
             )
 
         # Get the data
         turns: List[Dict[str, Any]] = fetchall_query(
             "SELECT data_inizio, data_fine, posti, "
             "posti_occupati, ore, id_azienda, "
-            "ora_inizio, "
+            "ora_inizio, posti_confermati,"
             "ora_fine, giorno_inizio, giorno_fine "
             "FROM turni WHERE id_azienda = %s",
             (id_,),

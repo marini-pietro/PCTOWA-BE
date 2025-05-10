@@ -70,27 +70,8 @@ main_api.config["JWT_REFRESH_TOKEN_EXPIRES"] = (
 # Initialize JWTManager for validation only
 jwt = JWTManager(main_api)
 
-# Initialize Marshmallow with the app
+# Initialize Marshmallow
 ma = Marshmallow(main_api)
-
-# Register the blueprints
-blueprints_dir: str = os_path_join(
-    os_path_dirname(os_path_abspath(__file__)), "api_blueprints"
-)
-for filename in os_listdir(blueprints_dir):
-    if filename.endswith("_bp.py"):  # Look for files ending with '_bp.py'
-
-        # Import the module dynamically
-        module_name: str = filename[:-3]  # Remove the .py extension
-        module = import_module(f"api_blueprints.{module_name}")
-
-        # Get the Blueprint object (assumes the object has the same name as the file)
-        blueprint = getattr(module, module_name)
-
-        main_api.register_blueprint(
-            blueprint, url_prefix=URL_PREFIX
-        )  # Remove '_bp' for the URL prefix
-        print(f"Registered blueprint: {module_name} with prefix {URL_PREFIX}")
 
 
 def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
@@ -231,6 +212,26 @@ def health_check():
 
 
 if __name__ == "__main__":
+    # Register the blueprints
+    blueprints_dir: str = os_path_join(
+        os_path_dirname(os_path_abspath(__file__)), "api_blueprints"
+    )
+    for filename in os_listdir(blueprints_dir):
+        if filename.endswith("_bp.py"):  # Look for files ending with '_bp.py'
+
+            # Import the module dynamically
+            module_name: str = filename[:-3]  # Remove the .py extension
+            module = import_module(f"api_blueprints.{module_name}")
+
+            # Get the Blueprint object (assumes the object has the same name as the file)
+            blueprint = getattr(module, module_name)
+
+            main_api.register_blueprint(
+                blueprint, url_prefix=URL_PREFIX
+            )  # Remove '_bp' for the URL prefix
+            print(f"Registered blueprint: {module_name} with prefix {URL_PREFIX}")
+
+    # Start the server
     main_api.run(
         host=API_SERVER_HOST,
         port=API_SERVER_PORT,
@@ -239,6 +240,8 @@ if __name__ == "__main__":
             (API_SERVER_SSL_CERT, API_SERVER_SSL_KEY) if API_SERVER_SSL else None
         ),
     )
+
+    # Log the server start
     log(
         log_type="info",
         message="API server started",
