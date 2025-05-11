@@ -14,7 +14,7 @@ It includes the following functionalities:
 import os
 import base64
 from os.path import basename as os_path_basename
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from marshmallow import fields, ValidationError
@@ -25,15 +25,13 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from mysql.connector import IntegrityError
-from flask_jwt_extended import get_jwt_identity
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     AUTH_SERVER_HOST,
     AUTH_SERVER_PORT,
     STATUS_CODES,
     LOGIN_AVAILABLE_THROUGH_API,
+    AUTH_SERVER_SSL,
     ROLES,
 )
 from api_server import ma
@@ -62,6 +60,9 @@ api = Api(user_bp)
 
 # Define a Marshmallow schema for user registration
 class UserSchema(ma.Schema):
+    """
+    Schema for validating and deserializing user data.
+    """
     email = fields.Email(
         required=True,
         error_messages={
@@ -89,11 +90,18 @@ user_schema = UserSchema()
 
 
 def hash_password(password: str) -> str:
+    """
+    Hash a password using PBKDF2 with SHA-256.
+    Args:
+        password (str): The password to hash.
+    Returns:
+        str: The hashed password.
+    """
     # Generate a random salt
-    salt = os.urandom(16)
+    salt = os.urandom(16)  # 16 bytes (128 bits)
     # Use PBKDF2 to hash the password
     kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
+        algorithm=hashes.SHA256(), # 256 bits (32 byte)
         length=32,
         salt=salt,
         iterations=100000,
@@ -154,9 +162,6 @@ class User(Resource):
             log(
                 log_type="info",
                 message=f"User {identity} registered user {email}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -176,9 +181,6 @@ class User(Resource):
                     f"User {identity} tried to "
                     f"register user {email} but it already generated {ex}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -216,9 +218,6 @@ class User(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted user {email}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -278,9 +277,6 @@ class User(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated user {email}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -313,7 +309,7 @@ class User(Resource):
 
         if role:
             query += " WHERE ruolo = %s"
-            params = (ROLES[role],)
+            params = (role,)
 
         # Execute query
         users: List[Dict[str, Any]] = fetchall_query(query, params)
@@ -329,9 +325,6 @@ class User(Resource):
         log(
             log_type="info",
             message=f"User {identity} requested user list",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path} verb='{request.method}']",
         )
 
@@ -350,6 +343,9 @@ class User(Resource):
 
 
 class UserLoginSchema(ma.Schema):
+    """
+    Schema for validating and deserializing user login data.
+    """
     email = fields.Email(required=True)
     password = fields.String(required=True)
 
@@ -377,7 +373,8 @@ class UserLogin(Resource):
         if not LOGIN_AVAILABLE_THROUGH_API:
             return create_response(
                 message={
-                    "error": "login not available through API server, contact authentication service directly"
+                    "error": "login not available through API server, "
+                    "contact authentication service directly"
                 },
                 status_code=STATUS_CODES["forbidden"],
             )
@@ -397,7 +394,7 @@ class UserLogin(Resource):
         try:
             # Forward login request to the authentication service
             response = requests_post(
-                f"http://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/login",
+                f"{'https' if AUTH_SERVER_SSL else 'http'}://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/login",
                 json={"email": email, "password": password},
                 timeout=5,
             )
@@ -407,9 +404,6 @@ class UserLogin(Resource):
             log(
                 log_type="error",
                 message=f"Authentication service unavailable: {str(ex)}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -434,9 +428,6 @@ class UserLogin(Resource):
             log(
                 log_type="warning",
                 message=f"Failed login attempt for email: {email}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -448,9 +439,6 @@ class UserLogin(Resource):
             log(
                 log_type="error",
                 message=f"Bad request during login for email: {email}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -462,9 +450,6 @@ class UserLogin(Resource):
             log(
                 log_type="error",
                 message=f"Internal error during login for email: {email}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -479,9 +464,6 @@ class UserLogin(Resource):
                     f"Unexpected error during login for email: {email} "
                     f"with status code: {response.status_code}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -498,7 +480,14 @@ class UserLogin(Resource):
 
 
 class BindUserToCompanySchema(ma.Schema):
-    id_azienda = fields.Integer(required=True)
+    """
+    Schema for validating and deserializing user binding data.
+    """
+    id_azienda = fields.Integer(
+        required=True,
+        validate=lambda x: x > 0,
+        error_messages={"invalid": "id_azienda must be a positive integer."},
+    )
 
 
 bind_user_to_company_schema = BindUserToCompanySchema()
@@ -568,9 +557,6 @@ class BindUserToCompany(Resource):
                     f"User {identity.get('email')} tried to bind user {email} "
                     f"to company {company_id} but it already generated {ex}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -584,9 +570,6 @@ class BindUserToCompany(Resource):
                     f"User {identity} failed to bind user {email} "
                     f"to company {company_id} with error: {str(ex)}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -598,9 +581,6 @@ class BindUserToCompany(Resource):
         log(
             log_type="info",
             message=(f"User {identity} bound " f"user {email} to company {company_id}"),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -656,9 +636,6 @@ class ReadBindedUser(Resource):
                 f"User {identity} requested reference "
                 f"teacher list with {id_type} and id_ {id_}"
             ),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 

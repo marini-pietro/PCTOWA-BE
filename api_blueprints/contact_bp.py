@@ -8,10 +8,10 @@ from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from marshmallow import fields, ValidationError
-from marshmallow.validate import Regexp, OneOf
+from marshmallow.validate import Regexp
 from api_server import ma
 
-from config import API_SERVER_HOST, API_SERVER_NAME_IN_LOG, STATUS_CODES, ROLES
+from config import STATUS_CODES
 
 from .blueprints_utils import (
     check_authorization,
@@ -37,6 +37,9 @@ api = Api(contact_bp)
 
 # Marshmallow schema for Contact resource
 class ContactSchema(ma.Schema):
+    """
+    Schema for validating and deserializing contact data.
+    """
     nome = fields.String(required=True)
     cognome = fields.String(required=True)
     telefono = fields.String(
@@ -49,7 +52,6 @@ class ContactSchema(ma.Schema):
     email = fields.Email(allow_none=True)
     ruolo = fields.String(
         allow_none=True,
-        validate=OneOf(ROLES, error="ruolo must be one of the allowed roles"),
     )
     id_azienda = fields.Integer(required=True)
 
@@ -112,9 +114,6 @@ class Contact(Resource):
         log(
             log_type="info",
             message=f"User {identity} created contact with id_ {lastrowid}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -151,9 +150,6 @@ class Contact(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted contact {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -220,9 +216,6 @@ class Contact(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated contact {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -246,9 +239,6 @@ class Contact(Resource):
             message=(
                 f"User {identity} requested " f"contact list for company with id {id_}"
             ),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 

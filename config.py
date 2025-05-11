@@ -76,17 +76,12 @@ API_SERVER_SSL: bool = not (
 JWT_SECRET_KEY: str = "Lorem ipsum dolor sit amet eget."
 JWT_ALGORITHM: str = "HS256"  # The algorithm used to sign the JWT token
 JWT_QUERY_STRING_NAME = "jwt_token"  # Custom name for the query string parameter
-JWT_ACCESS_COOKIE_NAME = "jwt_access_cookie"  # Custom name for the access token cookie
-JWT_REFRESH_COOKIE_NAME = (
-    "jwt_refresh_cookie"  # Custom name for the refresh token cookie
-)
 JWT_JSON_KEY = "jwt_token"  # Custom key for the access token in JSON payloads
 JWT_REFRESH_JSON_KEY = (
     "jwt_refresh_token"  # Custom key for the refresh token in JSON payloads
 )
 JWT_TOKEN_LOCATION = [
     "headers",
-    "cookies",
     "query_string",
     "json",
 ]  # Where to look for the JWT token
@@ -114,6 +109,7 @@ STATUS_CODES: Dict[str, int] = {
     "precondition_failed": 412,
     "unprocessable_entity": 422,
     "too_many_requests": 429,
+    "gateway_timeout": 504,
     "bad_request": 400,
     "created": 201,
     "ok": 200,

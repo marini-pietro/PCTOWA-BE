@@ -26,8 +26,6 @@ from config import (
     JWT_SECRET_KEY,
     JWT_ALGORITHM,
     JWT_QUERY_STRING_NAME,
-    JWT_ACCESS_COOKIE_NAME,
-    JWT_REFRESH_COOKIE_NAME,
     JWT_JSON_KEY,
     JWT_REFRESH_JSON_KEY,
     JWT_TOKEN_LOCATION,
@@ -52,12 +50,6 @@ main_api.config["JWT_ALGORITHM"] = (
 main_api.config["JWT_TOKEN_LOCATION"] = JWT_TOKEN_LOCATION  # Where to look for tokens
 main_api.config["JWT_QUERY_STRING_NAME"] = (
     JWT_QUERY_STRING_NAME  # Custom query string name
-)
-main_api.config["JWT_ACCESS_COOKIE_NAME"] = (
-    JWT_ACCESS_COOKIE_NAME  # Custom access cookie name
-)
-main_api.config["JWT_REFRESH_COOKIE_NAME"] = (
-    JWT_REFRESH_COOKIE_NAME  # Custom refresh cookie name
 )
 main_api.config["JWT_JSON_KEY"] = JWT_JSON_KEY  # Custom JSON key for access tokens
 main_api.config["JWT_REFRESH_JSON_KEY"] = (
@@ -104,8 +96,10 @@ def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
 @main_api.before_request
 def validate_user_data():
     """
-    Validate user data for all incoming requests by checking for SQL injection, JSON presence for methods that use them and JSON format.
-    This function is called before each request to ensure that the data is safe and valid.
+    Validate user data for all incoming requests by checking for SQL injection, 
+    JSON presence for methods that use them and JSON format.  
+    This function is called before each request to ensure 
+    that the data is safe and valid.  
     This does check for any endpoint specific validation, which should be done in the respective blueprint.
     """
     # Validate JSON body for POST, PUT, PATCH methods
@@ -147,14 +141,15 @@ def validate_user_data():
                 )
 
     # Validate path variables (if needed)
-    for key, value in request.view_args.items():
-        if not is_input_safe(value):
-            return (
-                jsonify(
-                    {"error": f"Invalid path variable: {key} suspected SQL injection"}
-                ),
-                STATUS_CODES["bad_request"],
-            )
+    if request.view_args:  # Check if view_args is not None
+        for key, value in request.view_args.items():
+            if not is_input_safe(value):
+                return (
+                    jsonify(
+                        {"error": f"Invalid path variable: {key} suspected SQL injection"}
+                    ),
+                    STATUS_CODES["bad_request"],
+                )
 
 
 @main_api.before_request

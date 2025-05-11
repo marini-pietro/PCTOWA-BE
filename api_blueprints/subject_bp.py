@@ -8,13 +8,11 @@ from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from marshmallow import fields, ValidationError
-from mysql.connector import IntegrityError
 from marshmallow.validate import Regexp
+from mysql.connector import IntegrityError
 from api_server import ma
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
 
@@ -42,6 +40,9 @@ api = Api(subject_bp)
 
 # Marshmallow schema for Subject resource
 class SubjectSchema(ma.Schema):
+    """
+    Schema for validating and deserializing subject data.
+    """
     descrizione = fields.String(
         required=True, error_messages={"required": "descrizione is required."}
     )
@@ -123,9 +124,6 @@ class Subject(Resource):
             log(
                 log_type="info",
                 message=f"User {identity} created subject {materia}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -147,9 +145,6 @@ class Subject(Resource):
                     f"User {identity} tried to "
                     f"create subject {materia} but it already generated {ex}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -163,9 +158,6 @@ class Subject(Resource):
                     f"User {identity.get('email')} encountered an error "
                     f"while creating subject {materia}: {str(ex)}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -197,9 +189,6 @@ class Subject(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted subject {materia}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -260,9 +249,6 @@ class Subject(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated subject {materia}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -293,7 +279,7 @@ class Subject(Resource):
 
         try:
             # Execute query
-            subjects = fetchall_query(
+            subjects: List[Dict[str, Any]] = fetchall_query(
                 "SELECT materia, descrizione, hex_color FROM materie LIMIT %s OFFSET %s",
                 params=(limit, offset),
             )
@@ -302,9 +288,6 @@ class Subject(Resource):
             log(
                 log_type="info",
                 message=f"User {identity} read all subjects",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -319,9 +302,6 @@ class Subject(Resource):
                     f"User {identity.get('email')} encountered an error "
                     f"while reading subjects: {str(err)}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 

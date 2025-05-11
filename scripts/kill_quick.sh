@@ -21,12 +21,3 @@ for PROGRAM_NAME in "${PROGRAM_NAMES[@]}"; do
 
     echo "All processes with name $PROGRAM_NAME have been terminated."
 done
-
-# Delete the rate_limit.json file if it exists
-RATE_LIMIT_FILE="../rate_limit.json"
-if [ -f "$RATE_LIMIT_FILE" ]; then
-    rm -f "$RATE_LIMIT_FILE"
-    echo "rate_limit.json file deleted."
-else
-    echo "rate_limit.json file not found."
-fi

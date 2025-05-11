@@ -13,8 +13,6 @@ from marshmallow.validate import Regexp, Range
 from api_server import ma
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
 
@@ -43,6 +41,9 @@ api = Api(turn_bp)
 
 # Marshmallow schema for Turn resource
 class TurnSchema(ma.Schema):
+    """
+    Schema for validating and deserializing Turn data.
+    """
     settori = fields.List(fields.String(), required=True)
     materie = fields.List(fields.String(), required=True)
     data_inizio = fields.Date(
@@ -79,7 +80,8 @@ class TurnSchema(ma.Schema):
         required=True,
         validate=Regexp(
             r"^(lunedì|martedì|mercoledì|giovedì|venerdì)$",
-            error="giorno_inizio must be a valid weekday (lunedì, martedì, mercoledì, giovedì, venerdì)",
+            error="giorno_inizio must be a valid weekday "
+                  "(lunedì, martedì, mercoledì, giovedì, venerdì)",
         ),
         error_messages={"required": "giorno_inizio is required."},
     )
@@ -87,7 +89,8 @@ class TurnSchema(ma.Schema):
         required=True,
         validate=Regexp(
             r"^(lunedì|martedì|mercoledì|giovedì|venerdì)$",
-            error="giorno_fine must be a valid weekday (lunedì, martedì, mercoledì, giovedì, venerdì)",
+            error="giorno_fine must be a valid weekday "
+                  "(lunedì, martedì, mercoledì, giovedì, venerdì)",
         ),
         error_messages={"required": "giorno_fine is required."},
     )
@@ -119,7 +122,11 @@ class TurnSchema(ma.Schema):
     )
 
     @validates_schema
-    def validate_giorni(self, data, **kwargs):
+    def validate_giorni(self, data):
+        """
+        Validate that giorno_inizio and giorno_fine are valid weekdays
+        and that giorno_fine is after giorno_inizio.
+        """
         giorno_inizio = data.get("giorno_inizio")
         giorno_fine = data.get("giorno_fine")
         if giorno_inizio and giorno_fine:
@@ -290,9 +297,6 @@ class Turn(Resource):
         log(
             log_type="info",
             message=f"User {identity} created turn {lastrowid}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -336,9 +340,6 @@ class Turn(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted turn {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -411,9 +412,6 @@ class Turn(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated turn {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -435,9 +433,6 @@ class Turn(Resource):
         log(
             log_type="info",
             message=(f"User {identity} requested " f"turn list with company id {id_}"),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
