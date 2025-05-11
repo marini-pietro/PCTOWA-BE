@@ -4,14 +4,13 @@ These functions include data validation, authorization checks, response creation
 database connection handling, logging, and token validation.
 """
 
-import inspect
-import sys
 import socket
-import queue
-import json
-import time
+from cachetools import TTLCache
 from datetime import datetime, timezone
 from os import getpid
+from sys import exit as sys_exit
+from queue import Queue
+from inspect import isclass as inspect_isclass
 from typing import Dict, List, Tuple, Any, Union
 from functools import wraps
 from contextlib import contextmanager
@@ -34,10 +33,10 @@ from config import (
     API_SERVER_PORT,
     URL_PREFIX,
     API_SERVER_SSL,
-    RATE_LIMIT_FILE_NAME,
     RATE_LIMIT_MAX_REQUESTS,
     RATE_LIMIT_TIME_WINDOW,
     NOT_AUTHORIZED_MESSAGE,
+    RATE_LIMIT_CACHE_SIZE,
 )
 
 
@@ -134,7 +133,7 @@ def handle_options_request(resource_class) -> Response:
     """
 
     # Ensure the input is a class
-    if not inspect.isclass(resource_class):
+    if not inspect_isclass(resource_class):
         raise TypeError(
             f"resource_class must be a class, not an instance. Got {resource_class} instead."
         )
@@ -168,42 +167,27 @@ def handle_options_request(resource_class) -> Response:
     return response
 
 
-rate_limit_lock = Lock()  # Lock for thread-safe file access
+# Create a thread-safe cache with TTL (Time-To-Live)
+rate_limit_cache = TTLCache(maxsize=RATE_LIMIT_CACHE_SIZE, ttl=RATE_LIMIT_TIME_WINDOW)
+rate_limit_lock = Lock()
 
 
-def is_rate_limited(client_ip: str) -> bool:
+def is_rate_limited(source_ip: str) -> bool:
     """
-    Check if the client IP is rate-limited.
+    Enforce rate limiting for a given source IP using an in-memory cache.
+    Returns True if the rate limit is exceeded, otherwise False.
     """
     with rate_limit_lock:
-        try:
-            # Load the rate limit data
-            with open(RATE_LIMIT_FILE_NAME, "r") as file:
-                rate_limit_data = json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError):
-            rate_limit_data = {}
+        # Get the current request count for the IP
+        request_count = rate_limit_cache.get(source_ip, 0)
 
-        current_time = time.time()
-        client_data = rate_limit_data.get(
-            client_ip, {"count": 0, "timestamp": current_time}
-        )
+        if request_count >= RATE_LIMIT_MAX_REQUESTS:
+            # Rate limit exceeded
+            return True
 
-        # Reset the count if the time window has passed
-        if current_time - client_data["timestamp"] > RATE_LIMIT_TIME_WINDOW:
-            client_data = {"count": 0, "timestamp": current_time}
-
-        # Increment the request count
-        client_data["count"] += 1
-
-        # Update the rate limit data
-        rate_limit_data[client_ip] = client_data
-
-        # Save the updated data back to the file
-        with open(RATE_LIMIT_FILE_NAME, "w") as file:
-            json.dump(rate_limit_data, file)
-
-        # Check if the rate limit is exceeded
-        return client_data["count"] > RATE_LIMIT_MAX_REQUESTS
+        # Increment the request count and update the cache
+        rate_limit_cache[source_ip] = request_count + 1
+        return False
 
 
 # Database related
@@ -237,7 +221,7 @@ def get_db_pool():
                 f"host: {DB_HOST}, dbname: {DB_NAME}, user: {DB_USER}, password: {DB_PASSWORD}\n"
                 f"Make sure to shutdown all microservices with the provided kill_quick script, change the configuration and try again.\n"
             )
-            sys.exit(1)
+            sys_exit(1)
     return _DB_POOL
 
 
@@ -376,7 +360,7 @@ def execute_query(query: str, params: Tuple[Any]) -> Tuple[int, int]:
 
 # Log server related
 # Create a queue for log messages
-log_queue = queue.Queue()
+log_queue = Queue()
 
 
 def log_worker():

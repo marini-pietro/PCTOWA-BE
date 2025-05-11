@@ -58,9 +58,10 @@ API_VERSION: str = "v1"  # The version of the API
 URL_PREFIX: str = f"/api/{API_VERSION}/"  # The prefix for all API endpoints
 API_SERVER_DEBUG_MODE: bool = True  # Whether the API server is in debug mode or not
 API_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the API server
-LOGIN_AVAILABLE_THROUGH_API: bool = (
-    AUTH_SERVER_HOST in {"localhost", "127.0.0.1"}
-)  # Determines if login is allowed through the API server (False if the authentication server is running locally)
+LOGIN_AVAILABLE_THROUGH_API: bool = AUTH_SERVER_HOST in {
+    "localhost",
+    "127.0.0.1",
+}  # Determines if login is allowed through the API server (False if the authentication server is running locally)
 API_SERVER_SSL_CERT: str = ""  # The path to the SSL/TLS certificate file
 API_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
 API_SERVER_SSL: bool = not (
@@ -99,7 +100,7 @@ CONNECTION_POOL_SIZE: int = 20  # The maximum number of connections in the pool
 # | Rate limiting settings
 RATE_LIMIT_MAX_REQUESTS: int = 50  # Maximum messages per source
 RATE_LIMIT_TIME_WINDOW: int = 1  # Time window in seconds
-RATE_LIMIT_FILE_NAME: str = "rate_limit.json"  # File name for rate limiting data
+RATE_LIMIT_CACHE_SIZE: int = 1000  # Size of the cache for rate limiting
 # | HTTP status codes
 STATUS_CODES: Dict[str, int] = {
     "not_found": 404,

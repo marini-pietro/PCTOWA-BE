@@ -7,13 +7,13 @@ It also handles delayed logs when the rate limit is exceeded.
 
 # Import necessary libraries
 import socket
-import re
 import logging
 import time
-import threading
-import json
+from cachetools import TTLCache
+from threading import Lock
+from re import compile as re_compile
 from collections import defaultdict, deque
-from threading import Thread, Lock
+from threading import Thread, Lock, Event as threading_Event
 from os.path import abspath as os_path_abspath
 from os.path import dirname as os_path_dirname
 from os.path import join as os_path_join
@@ -23,12 +23,12 @@ from config import (
     LOG_FILE_NAME,
     LOGGER_NAME,
     RATE_LIMIT_MAX_REQUESTS,
-    RATE_LIMIT_TIME_WINDOW,
     DELAYED_LOGS_QUEUE_SIZE,
-    RATE_LIMIT_FILE_NAME,
-    RATE_LIMIT_TIME_WINDOW,
-    RATE_LIMIT_MAX_REQUESTS,
     LOG_SERVER_RATE_LIMIT,
+)
+from api_blueprints.blueprints_utils import (
+    rate_limit_cache,
+    rate_limit_lock,
 )
 
 
@@ -95,7 +95,7 @@ logger = Logger(
 )
 
 # Add a shutdown flag
-shutdown_flag = threading.Event()
+shutdown_flag = threading_Event()  # Event to signal shutdown
 
 
 def start_syslog_server(host, port):
@@ -126,7 +126,7 @@ def start_syslog_server(host, port):
 
 
 # Compile the RFC 5424 syslog message regex pattern once
-SYSLOG_PATTERN = re.compile(
+SYSLOG_PATTERN = re_compile(
     r"<(\d+)>"  # PRI
     r"(\d{1,2}) "  # VERSION
     r"(\S+) "  # TIMESTAMP
@@ -147,46 +147,48 @@ delayed_logs = deque(
 )  # Limit the size of the queue to avoid memory issues
 queue_lock = Lock()  # Lock to ensure thread-safe access to the queue
 
-rate_limit_lock = Lock()  # Lock for thread-safe file access
 
-
-def enforce_rate_limit(source_ip, current_time):
+# Create a thread-safe cache with TTL (Time-To-Live)
+def enforce_rate_limit(source_ip: str) -> bool:
     """
-    Enforce rate limiting for a given source IP.
+    Enforce rate limiting for a given source IP using an in-memory cache.
     Returns True if the rate limit is exceeded, otherwise False.
     """
-    # Load the rate limit data from the shared file
-    try:
-        with rate_limit_lock:
-            with open(RATE_LIMIT_FILE_NAME, "r") as file:
-                rate_limit_data = json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        rate_limit_data = (
-            {}
-        )  # Return an empty dictionary if the file doesn't exist or is invalid
-
-    # Get the client data or initialize it
-    client_data = rate_limit_data.get(
-        source_ip, {"count": 0, "timestamp": current_time}
-    )
-
-    # Check and reset the count if the time window has passed
-    if current_time - client_data["timestamp"] > RATE_LIMIT_TIME_WINDOW:
-        client_data = {"count": 0, "timestamp": current_time}
-
-    # Increment the request count
-    client_data["count"] += 1
-
-    # Update the rate limit data
-    rate_limit_data[source_ip] = client_data
-
-    # Save the updated rate limit data back to the shared file
     with rate_limit_lock:
-        with open(RATE_LIMIT_FILE_NAME, "w") as file:
-            json.dump(rate_limit_data, file)
+        # Get the current request count for the IP
+        request_count = rate_limit_cache.get(source_ip, 0)
 
-    # Return True if the rate limit is exceeded
-    return client_data["count"] > RATE_LIMIT_MAX_REQUESTS
+        if request_count >= RATE_LIMIT_MAX_REQUESTS:
+            # Rate limit exceeded
+            return True
+
+        # Increment the request count and update the cache
+        rate_limit_cache[source_ip] = request_count + 1
+        return False
+
+
+def process_syslog_message(message, addr):
+    """
+    Process and log a syslog message according to RFC 5424 with shared rate limiting.
+    """
+    source_ip = addr[0]
+    current_time = time.time()
+
+    # Enforce rate limit
+    if LOG_SERVER_RATE_LIMIT is True:
+        if enforce_rate_limit(source_ip, current_time):
+            # Add the log to the delayed queue instead of dropping it
+            with queue_lock:
+                delayed_logs.append((message, addr))
+            logger.log(
+                "warning",
+                f"Rate limit exceeded for {source_ip}. Delaying message: {message}",
+                f"Syslog-{source_ip}",
+            )
+            return  # Do not process the message immediately
+
+    # Process the syslog message as usual
+    _process_message(message, addr)
 
 
 def process_syslog_message(message, addr):
