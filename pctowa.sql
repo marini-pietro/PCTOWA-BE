@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.1.0
+-- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: localhost
--- Creato il: Mag 08, 2025 alle 19:00
--- Versione del server: 8.0.27
--- Versione PHP: 7.3.31-1~deb10u7
+-- Host: 127.0.0.1
+-- Creato il: Mag 11, 2025 alle 16:15
+-- Versione del server: 10.4.32-MariaDB
+-- Versione PHP: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -28,21 +28,21 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `aziende` (
-  `id_azienda` int NOT NULL,
-  `ragione_sociale` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `codice_ateco` varchar(10) COLLATE utf8_unicode_ci NOT NULL,
-  `partita_iva` char(11) COLLATE utf8_unicode_ci NOT NULL,
-  `fax` varchar(50) COLLATE utf8_unicode_ci NOT NULL,
-  `pec` varchar(50) COLLATE utf8_unicode_ci NOT NULL,
-  `telefono_azienda` varchar(13) COLLATE utf8_unicode_ci NOT NULL COMMENT 'con prefisso',
-  `email_azienda` varchar(50) COLLATE utf8_unicode_ci NOT NULL,
+  `id_azienda` int(11) NOT NULL,
+  `ragione_sociale` varchar(255) NOT NULL,
+  `codice_ateco` varchar(10) NOT NULL,
+  `partita_iva` char(11) NOT NULL,
+  `fax` varchar(50) NOT NULL,
+  `pec` varchar(50) NOT NULL,
+  `telefono_azienda` varchar(13) NOT NULL COMMENT 'con prefisso',
+  `email_azienda` varchar(50) NOT NULL,
   `data_convenzione` date DEFAULT NULL,
   `scadenza_convenzione` date DEFAULT NULL,
-  `categoria` varchar(25) COLLATE utf8_unicode_ci NOT NULL,
-  `indirizzo_logo` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `sito_web` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `forma_giuridica` varchar(25) COLLATE utf8_unicode_ci DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `categoria` varchar(25) NOT NULL,
+  `indirizzo_logo` varchar(255) DEFAULT NULL,
+  `sito_web` varchar(255) DEFAULT NULL,
+  `forma_giuridica` varchar(25) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `aziende`
@@ -60,7 +60,7 @@ INSERT INTO `aziende` (`id_azienda`, `ragione_sociale`, `codice_ateco`, `partita
 --
 
 CREATE TABLE `classi` (
-  `id_classe` int NOT NULL,
+  `id_classe` int(11) NOT NULL,
   `sigla` char(3) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'sigla della classe (e.g. 5BI)',
   `email_responsabile` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `anno` char(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'anno scolastico (e.g. 24-25)'
@@ -82,14 +82,14 @@ INSERT INTO `classi` (`id_classe`, `sigla`, `email_responsabile`, `anno`) VALUES
 --
 
 CREATE TABLE `contatti` (
-  `id_contatto` int NOT NULL,
-  `nome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `cognome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `telefono` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `email` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `ruolo` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `id_azienda` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `id_contatto` int(11) NOT NULL,
+  `nome` varchar(255) NOT NULL,
+  `cognome` varchar(255) NOT NULL,
+  `telefono` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `ruolo` varchar(255) DEFAULT NULL,
+  `id_azienda` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `contatti`
@@ -107,10 +107,10 @@ INSERT INTO `contatti` (`id_contatto`, `nome`, `cognome`, `telefono`, `email`, `
 --
 
 CREATE TABLE `docente_referente` (
-  `email_docente` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `anno` char(4) COLLATE utf8_unicode_ci NOT NULL,
-  `id_azienda` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `email_docente` varchar(255) NOT NULL,
+  `anno` char(4) NOT NULL,
+  `id_azienda` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `docente_referente`
@@ -128,8 +128,8 @@ INSERT INTO `docente_referente` (`email_docente`, `anno`, `id_azienda`) VALUES
 --
 
 CREATE TABLE `forma_giuridica` (
-  `forma` varchar(25) COLLATE utf8_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `forma` varchar(25) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `forma_giuridica`
@@ -147,13 +147,13 @@ INSERT INTO `forma_giuridica` (`forma`) VALUES
 --
 
 CREATE TABLE `indirizzi` (
-  `id_indirizzo` int NOT NULL,
+  `id_indirizzo` int(11) NOT NULL,
   `stato` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `provincia` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `comune` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cap` char(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `indirizzo` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `id_azienda` int NOT NULL
+  `id_azienda` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -193,8 +193,8 @@ INSERT INTO `materie` (`materia`, `descrizione`, `hex_color`) VALUES
 --
 
 CREATE TABLE `settori` (
-  `settore` varchar(255) COLLATE utf8_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `settore` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `settori`
@@ -215,9 +215,9 @@ INSERT INTO `settori` (`settore`) VALUES
 --
 
 CREATE TABLE `studente_turno` (
-  `matricola` int NOT NULL,
-  `id_turno` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `matricola` int(11) NOT NULL,
+  `id_turno` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `studente_turno`
@@ -235,12 +235,12 @@ INSERT INTO `studente_turno` (`matricola`, `id_turno`) VALUES
 --
 
 CREATE TABLE `studenti` (
-  `matricola` int NOT NULL,
-  `nome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `cognome` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `id_classe` int NOT NULL,
-  `comune` varchar(255) COLLATE utf8_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `matricola` int(11) NOT NULL,
+  `nome` varchar(255) NOT NULL,
+  `cognome` varchar(255) NOT NULL,
+  `id_classe` int(11) NOT NULL,
+  `comune` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `studenti`
@@ -258,19 +258,19 @@ INSERT INTO `studenti` (`matricola`, `nome`, `cognome`, `id_classe`, `comune`) V
 --
 
 CREATE TABLE `turni` (
-  `id_turno` int NOT NULL,
+  `id_turno` int(11) NOT NULL,
   `data_inizio` date DEFAULT NULL,
   `data_fine` date DEFAULT NULL,
   `giorno_inizio` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
-  `id_azienda` int NOT NULL,
-  `id_indirizzo` int DEFAULT NULL,
+  `id_azienda` int(11) NOT NULL,
+  `id_indirizzo` int(11) DEFAULT NULL,
   `giorno_fine` enum('lunedì','martedì','mercoledì','giovedì','venerdì') CHARACTER SET utf8 COLLATE utf8_unicode_ci DEFAULT NULL,
   `ora_inizio` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `ora_fine` varchar(5) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `posti` int DEFAULT NULL,
-  `posti_occupati` int DEFAULT '0',
+  `posti` int(11) DEFAULT NULL,
+  `posti_occupati` int(11) DEFAULT 0,
   `posti_confermati` tinyint(1) NOT NULL COMMENT 'se il numero dei posti è stato confermato o meno',
-  `ore` int DEFAULT NULL
+  `ore` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -289,18 +289,18 @@ INSERT INTO `turni` (`id_turno`, `data_inizio`, `data_fine`, `giorno_inizio`, `i
 --
 
 CREATE TABLE `turno_materia` (
-  `materia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `id_turno` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `materia` varchar(255) NOT NULL,
+  `id_turno` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `turno_materia`
 --
 
 INSERT INTO `turno_materia` (`materia`, `id_turno`) VALUES
+('Android App', 3),
 ('Sistemista', 1),
-('Sistemista', 2),
-('Android App', 3);
+('Sistemista', 2);
 
 -- --------------------------------------------------------
 
@@ -309,17 +309,17 @@ INSERT INTO `turno_materia` (`materia`, `id_turno`) VALUES
 --
 
 CREATE TABLE `turno_settore` (
-  `settore` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `id_turno` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `settore` varchar(255) NOT NULL,
+  `id_turno` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Dump dei dati per la tabella `turno_settore`
 --
 
 INSERT INTO `turno_settore` (`settore`, `id_turno`) VALUES
-('Informatica', 1),
-('Elettronica', 3);
+('Elettronica', 3),
+('Informatica', 1);
 
 -- --------------------------------------------------------
 
@@ -328,9 +328,9 @@ INSERT INTO `turno_settore` (`settore`, `id_turno`) VALUES
 --
 
 CREATE TABLE `turno_tutor` (
-  `id_tutor` int NOT NULL,
-  `id_turno` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+  `id_tutor` int(11) NOT NULL,
+  `id_turno` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -339,12 +339,12 @@ CREATE TABLE `turno_tutor` (
 --
 
 CREATE TABLE `tutor` (
-  `id_tutor` int NOT NULL,
+  `id_tutor` int(11) NOT NULL,
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `email_tutor` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `telefono_tutor` varchar(13) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `id_azienda` int NOT NULL
+  `id_azienda` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -367,7 +367,7 @@ CREATE TABLE `utenti` (
   `password` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `nome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `cognome` varchar(25) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `ruolo` enum('admin','tutor','supertutor','teacher') COLLATE utf8mb4_general_ci NOT NULL
+  `ruolo` enum('admin','tutor','supertutor','teacher') NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -377,7 +377,8 @@ CREATE TABLE `utenti` (
 INSERT INTO `utenti` (`email_utente`, `password`, `nome`, `cognome`, `ruolo`) VALUES
 ('cinzia.decarli@marconiverona.edu.it', 'hashed_pwd3', 'Giorgio', 'Rosa', 'supertutor'),
 ('irene.decarli@marconiverona.edu.it', 'hashed_pwd2', 'Anna', 'Verdi', 'tutor'),
-('lorenzo.decarli@marconiverona.edu.it', 'hashed_pwd1', 'Luca', 'Bianchi', 'admin');
+('lorenzo.decarli@marconiverona.edu.it', 'hashed_pwd1', 'Luca', 'Bianchi', 'admin'),
+('mora.isabella@marconiverona.edu.it', 'OHkeFKslajLuQ1o3S1Arig==:gwDqaeKnTJiys6FAPza6M0w1pWMzDKvLa83HVpVLaPA=', 'marco', 'cirrito', 'admin');
 
 --
 -- Indici per le tabelle scaricate
@@ -501,37 +502,37 @@ ALTER TABLE `utenti`
 -- AUTO_INCREMENT per la tabella `aziende`
 --
 ALTER TABLE `aziende`
-  MODIFY `id_azienda` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_azienda` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `classi`
 --
 ALTER TABLE `classi`
-  MODIFY `id_classe` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_classe` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `contatti`
 --
 ALTER TABLE `contatti`
-  MODIFY `id_contatto` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_contatto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `indirizzi`
 --
 ALTER TABLE `indirizzi`
-  MODIFY `id_indirizzo` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_indirizzo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `turni`
 --
 ALTER TABLE `turni`
-  MODIFY `id_turno` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_turno` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT per la tabella `tutor`
 --
 ALTER TABLE `tutor`
-  MODIFY `id_tutor` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_tutor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Limiti per le tabelle scaricate
