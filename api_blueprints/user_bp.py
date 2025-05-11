@@ -17,7 +17,6 @@ from os.path import basename as os_path_basename
 from typing import List, Dict, Any, Union
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from marshmallow.validate import OneOf
 from requests import post as requests_post
@@ -26,6 +25,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from mysql.connector import IntegrityError
+from flask_jwt_extended import get_jwt_identity
 
 from config import (
     API_SERVER_HOST,
@@ -49,6 +49,7 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -116,9 +117,9 @@ class User(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<string:email>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Register a new user.
         The request body must be a JSON object with application/json content type.
@@ -152,7 +153,7 @@ class User(Resource):
             # Log the register
             log(
                 log_type="info",
-                message=f"User {get_jwt_identity()} registered user {email}",
+                message=f"User {identity} registered user {email}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -163,9 +164,7 @@ class User(Resource):
             return create_response(
                 message={
                     "outcome": "user successfully created",
-                    "location": get_hateos_location_string(
-                        bp_name=BP_NAME, id_=lastrowid
-                    ),
+                    "location": get_hateos_location_string(bp_name=BP_NAME, id_=email),
                 },
                 status_code=STATUS_CODES["created"],
             )
@@ -174,7 +173,7 @@ class User(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} tried to "
+                    f"User {identity} tried to "
                     f"register user {email} but it already generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -191,9 +190,9 @@ class User(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def delete(self, email) -> Response:
+    def delete(self, email, identity) -> Response:
         """
         Delete an existing user.
         The id_ is passed as a path variable.
@@ -216,7 +215,7 @@ class User(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted user {email}",
+            message=f"User {identity} deleted user {email}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -229,9 +228,9 @@ class User(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def patch(self, email) -> Response:
+    def patch(self, email, identity) -> Response:
         """
         Update an existing user.
         The id_ is passed as a path variable.
@@ -278,7 +277,7 @@ class User(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated user {email}",
+            message=f"User {identity} updated user {email}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -291,9 +290,9 @@ class User(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def get(self) -> Response:
+    def get(self, identity) -> Response:
         """
         Get all users, can be filtered by role.
         """
@@ -320,7 +319,7 @@ class User(Resource):
         users: List[Dict[str, Any]] = fetchall_query(query, params)
 
         # Handle empty results
-        if not users:
+        if users is None:
             return create_response(
                 message={"error": "no users found"},
                 status_code=STATUS_CODES["not_found"],
@@ -329,7 +328,7 @@ class User(Resource):
         # Log the read
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} requested user list",
+            message=f"User {identity} requested user list",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -339,7 +338,7 @@ class User(Resource):
         # Return the list of users
         return create_response(message=users, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -515,9 +514,9 @@ class BindUserToCompany(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/bind/<string:email>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def post(self, email) -> Response:
+    def post(self, email, identity) -> Response:
         """
         Bind a user to a company.
         The id_ is passed as a path variable.
@@ -566,7 +565,7 @@ class BindUserToCompany(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get('email')} tried to bind user {email} "
+                    f"User {identity.get('email')} tried to bind user {email} "
                     f"to company {company_id} but it already generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -582,7 +581,7 @@ class BindUserToCompany(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} failed to bind user {email} "
+                    f"User {identity} failed to bind user {email} "
                     f"to company {company_id} with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -598,10 +597,7 @@ class BindUserToCompany(Resource):
         # Log the binding
         log(
             log_type="info",
-            message=(
-                f"User {get_jwt_identity()} bound "
-                f"user {email} to company {company_id}"
-            ),
+            message=(f"User {identity} bound " f"user {email} to company {company_id}"),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -614,7 +610,7 @@ class BindUserToCompany(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -633,9 +629,9 @@ class ReadBindedUser(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/binded/<string:id_>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, id_) -> Response:
+    def get(self, id_, identity) -> Response:
         """
         Get the list of the reference teachers associated with a given company or class.
         The company or class is passed as a path variable id_.
@@ -657,7 +653,7 @@ class ReadBindedUser(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested reference "
+                f"User {identity} requested reference "
                 f"teacher list with {id_type} and id_ {id_}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -722,7 +718,7 @@ class ReadBindedUser(Resource):
         # Return the list of users
         return create_response(message=resources, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

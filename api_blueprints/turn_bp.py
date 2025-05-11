@@ -7,7 +7,6 @@ from os.path import basename as os_path_basename
 from typing import List, Dict, Union, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from marshmallow import validates_schema
 from marshmallow.validate import Regexp, Range
@@ -30,6 +29,7 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -149,9 +149,9 @@ class Turn(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Create a new turn.
         The request body must be a JSON object with application/json content type.
@@ -289,7 +289,7 @@ class Turn(Resource):
         # Log the turn creation
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} created turn {lastrowid}",
+            message=f"User {identity} created turn {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -305,9 +305,9 @@ class Turn(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def delete(self, id_) -> Response:
+    def delete(self, id_, identity) -> Response:
         """
         Delete a turn.
         The request must include the turn ID as a path variable.
@@ -335,7 +335,7 @@ class Turn(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted turn {id_}",
+            message=f"User {identity} deleted turn {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -348,9 +348,9 @@ class Turn(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def patch(self, id_) -> Response:
+    def patch(self, id_, identity) -> Response:
         """
         Update a turn.
         The request must include the turn ID as a path variable.
@@ -410,7 +410,7 @@ class Turn(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated turn {id_}",
+            message=f"User {identity} updated turn {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -423,9 +423,9 @@ class Turn(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, id_) -> Response:
+    def get(self, id_, identity) -> Response:
         """
         Get a turn by ID of its relative company.
         The request must include the turn ID as a path variable.
@@ -434,10 +434,7 @@ class Turn(Resource):
         # Log the read
         log(
             log_type="info",
-            message=(
-                f"User {get_jwt_identity()} requested "
-                f"turn list with company id {id_}"
-            ),
+            message=(f"User {identity} requested " f"turn list with company id {id_}"),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -475,7 +472,7 @@ class Turn(Resource):
         # Return the turn data
         return create_response(message=turns, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

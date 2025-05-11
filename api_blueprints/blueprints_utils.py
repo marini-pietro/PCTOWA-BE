@@ -5,19 +5,23 @@ database connection handling, logging, and token validation.
 """
 
 import socket
-from cachetools import TTLCache
+import json
+from time import time as epoch_time
+from requests import RequestException, post as requests_post
+from threading import Lock
 from datetime import datetime, timezone
 from os import getpid
 from sys import exit as sys_exit
 from queue import Queue
-from inspect import isclass as inspect_isclass
+from cachetools import TTLCache
+from inspect import isclass as inspect_isclass, signature as inspect_signature
 from typing import Dict, List, Tuple, Any, Union
 from functools import wraps
 from contextlib import contextmanager
-from flask import jsonify, make_response, Response
-from flask_jwt_extended import get_jwt
+from flask import jsonify, make_response, Response, request
 from mysql.connector.pooling import MySQLConnectionPool
 from threading import Lock, Thread
+import requests
 from config import (
     DB_HOST,
     DB_USER,
@@ -31,13 +35,94 @@ from config import (
     SYSLOG_SEVERITY_MAP,
     API_SERVER_HOST,
     API_SERVER_PORT,
+    API_SERVER_NAME_IN_LOG,
     URL_PREFIX,
     API_SERVER_SSL,
     RATE_LIMIT_MAX_REQUESTS,
-    RATE_LIMIT_TIME_WINDOW,
+    RATE_LIMIT_CACHE_TTL,
     NOT_AUTHORIZED_MESSAGE,
+    RATE_LIMIT_MAX_REQUESTS,
+    RATE_LIMIT_CACHE_TTL,
+    JWT_VALIDATION_CACHE_TTL,
+    JWT_VALIDATION_CACHE_SIZE,
+    AUTH_SERVER_SSL,
+    AUTH_SERVER_PORT,
     RATE_LIMIT_CACHE_SIZE,
 )
+
+# Authentication related
+# Cache for token validation results
+token_validation_cache = TTLCache(
+    maxsize=JWT_VALIDATION_CACHE_SIZE, ttl=JWT_VALIDATION_CACHE_TTL
+)
+
+
+def jwt_validation_required(func):
+    """
+    Decorator to validate the JWT token before executing the endpoint function.
+
+    If the token is invalid, it returns a 401 Unauthorized response.
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Extract the token from the Authorization header
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header.replace("Bearer ", "")
+
+        # Validate the token
+        if auth_header in ["", "Bearer ", "Bearer"]:
+            return {"error": "missing token"}, STATUS_CODES["unauthorized"]
+
+        # Check if the token is already validated in the cache
+        if token in token_validation_cache:
+            if token_validation_cache[token] is False:
+                return {"error": "invalid token"}, STATUS_CODES["unauthorized"]
+        else:
+            # Contact the authentication microservice to validate the token
+            try:
+                protocol = "https" if AUTH_SERVER_SSL else "http"
+
+                # Send a request to the authentication server to validate the token
+                # Proper json body and headers are not needed
+                response: Response = requests.post(
+                    f"{protocol}://{API_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate",
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=5,
+                )
+
+                # Check if the response status is OK
+                is_valid = response.status_code == STATUS_CODES["ok"]
+
+                # Extract the identity from the response JSON if valid
+                if is_valid:
+                    response_json = response.json()
+                    identity = response_json.get("identity")
+                    role = response_json.get("role")
+            except requests.RequestException as ex:
+                log(
+                    log_type="error",
+                    message=f"Error validating token: {ex}",
+                    origin_name="JWTValidation",
+                    origin_host=API_SERVER_HOST,
+                )
+                is_valid = False
+
+            # Cache the result
+            token_validation_cache[token] = is_valid
+
+            if is_valid is False:
+                return {"error": "Invalid token"}, STATUS_CODES["unauthorized"]
+
+        # Pass the extracted identity to the wrapped function
+        # Only if the function accepts it (OPTIONS endpoint do not use it)
+        if "identity" in inspect_signature(func).parameters:
+            kwargs["identity"] = identity
+
+        kwargs["role"] = role  # Add role to kwargs for the next wrapper
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 # Authorization related
@@ -52,12 +137,10 @@ def check_authorization(allowed_roles: List[str]):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # Extract the role from the additional claims
-            claims = get_jwt()
-            user_role = claims.get("role")
+            # Extract the role from kwargs (passed by jwt_validation_required)
+            user_role = kwargs.pop("role", None)  # Remove 'role' after retrieving it
 
-            # Check if the user role is present in the token
-            # If not, return an error response
+            # Check if the user role is present
             if user_role is None:
                 return create_response(
                     message={"error": "user role not present in token"},
@@ -167,27 +250,29 @@ def handle_options_request(resource_class) -> Response:
     return response
 
 
-# Create a thread-safe cache with TTL (Time-To-Live)
-rate_limit_cache = TTLCache(maxsize=RATE_LIMIT_CACHE_SIZE, ttl=RATE_LIMIT_TIME_WINDOW)
-rate_limit_lock = Lock()
+# Replace file-based rate-limiting with TTLCache
+rate_limit_cache = TTLCache(
+    maxsize=RATE_LIMIT_CACHE_SIZE, ttl=RATE_LIMIT_CACHE_TTL
+)  # Cache with a TTL equal to the time window
+rate_limit_lock = Lock()  # Lock for thread-safe file access
 
 
-def is_rate_limited(source_ip: str) -> bool:
+def is_rate_limited(client_ip: str) -> bool:
     """
-    Enforce rate limiting for a given source IP using an in-memory cache.
-    Returns True if the rate limit is exceeded, otherwise False.
+    Check if the client IP is rate-limited using an in-memory TTLCache.
     """
     with rate_limit_lock:
-        # Get the current request count for the IP
-        request_count = rate_limit_cache.get(source_ip, 0)
+        # Retrieve or initialize client data
+        client_data = rate_limit_cache.get(client_ip, {"count": 0})
 
-        if request_count >= RATE_LIMIT_MAX_REQUESTS:
-            # Rate limit exceeded
-            return True
+        # Increment the request count
+        client_data["count"] += 1
 
-        # Increment the request count and update the cache
-        rate_limit_cache[source_ip] = request_count + 1
-        return False
+        # Update the cache with the new client data
+        rate_limit_cache[client_ip] = client_data
+
+        # Check if the rate limit is exceeded
+        return client_data["count"] > RATE_LIMIT_MAX_REQUESTS
 
 
 # Database related
@@ -309,7 +394,7 @@ def check_column_existence(
 
 
 # Database query related
-def fetchone_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:
+def fetchone_query(query: str, params: Tuple[Any]) -> Union[Dict[str, Any], None]:
     """
     Execute a query on the database and return the result.
 
@@ -321,13 +406,14 @@ def fetchone_query(query: str, params: Tuple[Any]) -> Dict[str, Any]:
         The result of the query
     """
 
-    with get_db_connection() as connection:  # Use a context manager to ensure the connection is closed after use
+    # Use a context manager to ensure the connection is closed after use
+    with get_db_connection() as connection:
         with connection.cursor(dictionary=True) as cursor:
             cursor.execute(query, params)
             return cursor.fetchone()
 
 
-def fetchall_query(query: str, params: Tuple[Any]) -> List[Dict[str, Any]]:
+def fetchall_query(query: str, params: Tuple[Any]) -> Union[List[Dict[str, Any]], None]:
     """
     Execute a query on the database and return the result.
     """

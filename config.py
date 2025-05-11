@@ -8,7 +8,7 @@ This module contains the configuration settings for the API server, including:
 - Authorization settings
 """
 
-import re
+from re import IGNORECASE as RE_IGNORECASE, compile as re_compile
 from typing import Dict, Set
 from datetime import timedelta
 
@@ -25,6 +25,10 @@ AUTH_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
 AUTH_SERVER_SSL: bool = not (
     AUTH_SERVER_SSL_CERT == "" and AUTH_SERVER_SSL_KEY == ""
 )  # Whether the authentication server uses SSL/TLS or not
+JWT_VALIDATION_CACHE_SIZE: int = 1000  # The size of the cache for token validation
+JWT_VALIDATION_CACHE_TTL: int = (
+    3600  # The time-to-live for the token validation cache (seconds)
+)
 
 # Log server related settings
 LOG_SERVER_HOST: str = "localhost"  # The host of the log server
@@ -61,7 +65,7 @@ API_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the API
 LOGIN_AVAILABLE_THROUGH_API: bool = AUTH_SERVER_HOST in {
     "localhost",
     "127.0.0.1",
-}  # Determines if login is allowed through the API server (False if the authentication server is running locally)
+}  # Determines if login is allowed through the API server (True if the authentication server is running locally)
 API_SERVER_SSL_CERT: str = ""  # The path to the SSL/TLS certificate file
 API_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
 API_SERVER_SSL: bool = not (
@@ -99,8 +103,8 @@ CONNECTION_POOL_SIZE: int = 20  # The maximum number of connections in the pool
 # Miscellaneous settings
 # | Rate limiting settings
 RATE_LIMIT_MAX_REQUESTS: int = 50  # Maximum messages per source
-RATE_LIMIT_TIME_WINDOW: int = 1  # Time window in seconds
-RATE_LIMIT_CACHE_SIZE: int = 1000  # Size of the cache for rate limiting
+RATE_LIMIT_CACHE_SIZE: int = 1000  # The size of the cache for rate limiting
+RATE_LIMIT_CACHE_TTL: int = 10  # Time window in seconds
 # | HTTP status codes
 STATUS_CODES: Dict[str, int] = {
     "not_found": 404,
@@ -129,7 +133,7 @@ NOT_AUTHORIZED_MESSAGE: Dict[str, str] = {
 # This regex pattern is used to detect SQL injection attempts in user input.
 # It matches common SQL keywords and commands that are often used in SQL injection attacks.
 # Precompile the regex pattern once
-SQL_PATTERN = re.compile(
+SQL_PATTERN = re_compile(
     r"\b("
     + "|".join(
         [
@@ -185,5 +189,5 @@ SQL_PATTERN = re.compile(
     )
     + r")\b"
     + r"|(--|#|;)",  # Match special characters without word boundaries
-    re.IGNORECASE,
+    RE_IGNORECASE,
 )

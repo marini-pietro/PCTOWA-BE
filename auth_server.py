@@ -15,6 +15,7 @@ from flask_jwt_extended import (
     create_refresh_token,
     get_jwt_identity,
     jwt_required,
+    get_jwt,
 )
 from api_blueprints.blueprints_utils import (
     log,
@@ -110,62 +111,6 @@ def is_input_safe(data: Union[str, List[str], Dict[Any, Any]]) -> bool:
 
 
 @auth_api.before_request
-def validate_user_data():
-    """
-    Validate user data for all incoming requests by checking for SQL injection, JSON presence for methods that use them and JSON format.
-    This function is called before each request to ensure that the data is safe and valid.
-    This does check for any endpoint specific validation, which should be done in the respective blueprint.
-    """
-    # Validate JSON body for POST, PUT, PATCH methods
-    if request.method in ["POST", "PUT", "PATCH"]:
-        if not request.is_json or request.json is None:
-            return (
-                jsonify(
-                    "Request body must be valid JSON with Content-Type: application/json"
-                ),
-                STATUS_CODES["bad_request"],
-            )
-        try:
-            data = request.get_json(silent=False)
-            if data == {}:
-                return (
-                    jsonify("Request body must not be empty"),
-                    STATUS_CODES["bad_request"],
-                )
-        except (ValueError, Exception):
-            return (jsonify("Invalid JSON format"), STATUS_CODES["bad_request"])
-
-        # Validate JSON keys and values for SQL injection
-        for key, value in data.items():
-            if not is_input_safe(key):
-                return (
-                    jsonify(
-                        {"error": f"Invalid JSON key: {key} suspected SQL injection"}
-                    ),
-                    STATUS_CODES["bad_request"],
-                )
-            if isinstance(value, str) and not is_input_safe(value):
-                return (
-                    jsonify(
-                        {
-                            "error": f"Invalid JSON value for key '{key}': suspected SQL injection"
-                        }
-                    ),
-                    STATUS_CODES["bad_request"],
-                )
-
-    # Validate path variables (if needed)
-    for key, value in request.view_args.items():
-        if not is_input_safe(value):
-            return (
-                jsonify(
-                    {"error": f"Invalid path variable: {key} suspected SQL injection"}
-                ),
-                STATUS_CODES["bad_request"],
-            )
-
-
-@auth_api.before_request
 def enforce_rate_limit():
     """
     Enforce rate limiting for all incoming requests.
@@ -184,6 +129,43 @@ def login():
     """
     Login endpoint to authenticate users and generate JWT tokens.
     """
+
+    if not request.is_json or request.json is None:
+        return (
+            jsonify(
+                "Request body must be valid JSON with Content-Type: application/json"
+            ),
+            STATUS_CODES["bad_request"],
+        )
+    try:
+        data = request.get_json(silent=False)
+        if data == {}:
+            return (
+                jsonify("Request body must not be empty"),
+                STATUS_CODES["bad_request"],
+            )
+    except (ValueError, Exception):
+        return (jsonify("Invalid JSON format"), STATUS_CODES["bad_request"])
+
+    # Validate JSON keys and values for SQL injection
+    for key, value in data.items():
+        if not is_input_safe(key):
+            return (
+                jsonify({"error": f"Invalid JSON key: {key} suspected SQL injection"}),
+                STATUS_CODES["bad_request"],
+            )
+        if isinstance(value, str):
+            # Separate if statements for optimization
+            # (heavy regex search will be done only if value is a string)
+            if not is_input_safe(value):
+                return (
+                    jsonify(
+                        {
+                            "error": f"Invalid JSON value for key '{key}': suspected SQL injection"
+                        }
+                    ),
+                    STATUS_CODES["bad_request"],
+                )
 
     # Gather parameters
     data = request.get_json()
@@ -235,6 +217,23 @@ def login():
 
     # Handle invalid credentials
     return jsonify({"error": "invalid credentials"}), STATUS_CODES["unauthorized"]
+
+
+@auth_api.route("/auth/validate", methods=["POST"])
+@jwt_required()  # Require a valid access token
+def validate_token():
+    """
+    Validate endpoint to check the validity of a JWT token.
+    """
+    # Get the identity from the access token
+    identity = get_jwt_identity()
+    user_role = get_jwt().get("role")
+
+    # Return the identity and a success message
+    return (
+        jsonify({"identity": identity, "role": user_role}),
+        STATUS_CODES["ok"],
+    )
 
 
 @auth_api.route("/auth/refresh", methods=["POST"])

@@ -7,7 +7,6 @@ from os.path import basename as os_path_basename
 from typing import Any, Dict, List
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from mysql.connector import IntegrityError
 from api_server import ma
@@ -27,6 +26,7 @@ from .blueprints_utils import (
     create_response,
     handle_options_request,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -61,9 +61,9 @@ class LegalForm(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<string:forma>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Create a new legal form.
         The request must contain a JSON body with application/json.
@@ -87,7 +87,7 @@ class LegalForm(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} tried to "
+                    f"User {identity} tried to "
                     f"create legal form {forma} but it generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -103,7 +103,7 @@ class LegalForm(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} failed to "
+                    f"User {identity} failed to "
                     f"create legal form {forma} with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -119,7 +119,7 @@ class LegalForm(Resource):
         # Log the legal form creation
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} created legal form {forma}",
+            message=f"User {identity} created legal form {forma}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -135,9 +135,9 @@ class LegalForm(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def delete(self, forma) -> Response:
+    def delete(self, forma, identity) -> Response:
         """
         Delete a legal form.
         The legal form is passed as a path variable.
@@ -167,7 +167,7 @@ class LegalForm(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted legal form {forma}",
+            message=f"User {identity} deleted legal form {forma}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -180,9 +180,9 @@ class LegalForm(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def patch(self, forma) -> Response:
+    def patch(self, forma, identity) -> Response:
         """
         Update a legal form.
         The legal form is passed as a path variable.
@@ -231,10 +231,7 @@ class LegalForm(Resource):
         # Log the update
         log(
             log_type="info",
-            message=(
-                f"User {get_jwt_identity()} updated "
-                f"legal form {forma} to {new_value}"
-            ),
+            message=(f"User {identity} updated " f"legal form {forma} to {new_value}"),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -247,9 +244,9 @@ class LegalForm(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self) -> Response:
+    def get(self, identity) -> Response:
         """
         Get all legal forms.
         The results are paginated with limit and offset parameters.
@@ -278,7 +275,7 @@ class LegalForm(Resource):
             # Log the read
             log(
                 log_type="info",
-                message=f"User {get_jwt_identity()} read all legal forms",
+                message=f"User {identity} read all legal forms",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -293,7 +290,7 @@ class LegalForm(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} failed "
+                    f"User {identity} failed "
                     f"to read legal forms with error: {str(err)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -308,7 +305,7 @@ class LegalForm(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

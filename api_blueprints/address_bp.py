@@ -6,7 +6,6 @@ from os.path import basename as os_path_basename
 from typing import Any, Dict
 
 from flask import Blueprint, Response, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Api, Resource
 from marshmallow import fields, ValidationError
 from marshmallow.validate import Regexp
@@ -28,6 +27,7 @@ from .blueprints_utils import (
     log,
     get_hateos_location_string,
     check_column_existence,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -82,9 +82,9 @@ class Address(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Creates a new address in the database.
         This endpoint requires authentication and authorization.
@@ -128,7 +128,7 @@ class Address(Resource):
         # Log the address creation
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} created address {lastrowid}",
+            message=f"User {identity} created address {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -143,9 +143,9 @@ class Address(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def delete(self, id_) -> Response:
+    def delete(self, id_, identity) -> Response:
         """
         Deletes an address from the database.
         This endpoint requires authentication and authorization.
@@ -167,7 +167,7 @@ class Address(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted address {id_}",
+            message=f"User {identity} deleted address {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -179,9 +179,9 @@ class Address(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def patch(self, id_) -> Response:
+    def patch(self, id_, identity) -> Response:
         """
         Updates an address in the database.
         This endpoint requires authentication and authorization.
@@ -236,7 +236,7 @@ class Address(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated address {id_}",
+            message=f"User {identity} updated address {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -249,9 +249,9 @@ class Address(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, id_) -> Response:
+    def get(self, id_, identity) -> Response:
         """
         Retrieves all the addresses of a company from the database.
         This endpoint requires authentication and authorization.
@@ -286,7 +286,7 @@ class Address(Resource):
             # Log the read
             log(
                 log_type="info",
-                message=f"User {get_jwt_identity()} read all the addresses of company with id: {id_}",
+                message=f"User {identity} read all the addresses of company with id: {id_}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -317,7 +317,7 @@ class Address(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

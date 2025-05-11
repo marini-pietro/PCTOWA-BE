@@ -8,7 +8,6 @@ from os.path import basename as os_path_basename
 from typing import Dict, List, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from mysql.connector import IntegrityError
 from api_server import ma
@@ -28,6 +27,7 @@ from .blueprints_utils import (
     create_response,
     handle_options_request,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -66,9 +66,9 @@ class Sector(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<string:settore>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Create a new sector.
         The request body must be a JSON object with application/json content type.
@@ -100,7 +100,7 @@ class Sector(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} tried "
+                    f"User {identity} tried "
                     f"to create sector {settore} but it generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -116,7 +116,7 @@ class Sector(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} failed to "
+                    f"User {identity} failed to "
                     f"create sector {settore} with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -132,7 +132,7 @@ class Sector(Resource):
         # Log the sector creation
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} created sector {settore}",
+            message=f"User {identity} created sector {settore}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -148,9 +148,9 @@ class Sector(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def delete(self, settore) -> Response:
+    def delete(self, settore, identity) -> Response:
         """
         Delete a sector.
         The request must include the sector name as a path variable.
@@ -186,7 +186,7 @@ class Sector(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted sector {settore}",
+            message=f"User {identity} deleted sector {settore}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -199,9 +199,9 @@ class Sector(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def patch(self, settore) -> Response:
+    def patch(self, settore, identity) -> Response:
         """
         Update a sector.
         The request must include the sector name as a path variable.
@@ -255,7 +255,7 @@ class Sector(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated sector {settore}",
+            message=f"User {identity} updated sector {settore}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -268,9 +268,9 @@ class Sector(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self) -> Response:
+    def get(self, identity) -> Response:
         """
         Get all sectors with pagination.
         The request can include limit and offset as query parameters.
@@ -299,7 +299,7 @@ class Sector(Resource):
             # Log the read
             log(
                 log_type="info",
-                message=f"User {get_jwt_identity()} read all sectors",
+                message=f"User {identity} read all sectors",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -314,8 +314,7 @@ class Sector(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} failed to "
-                    f"read sectors with error: {str(err)}"
+                    f"User {identity} failed to " f"read sectors with error: {str(err)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
@@ -329,7 +328,7 @@ class Sector(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

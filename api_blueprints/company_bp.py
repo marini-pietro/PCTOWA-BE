@@ -6,7 +6,6 @@ from os.path import basename as os_path_basename
 from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from marshmallow.validate import Regexp
 from api_server import ma
@@ -28,6 +27,7 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -110,9 +110,9 @@ class Company(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Create a new company in the database.
         The request body must be a JSON object with application/json content type.
@@ -153,7 +153,7 @@ class Company(Resource):
         # Log the creation of the company
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} created company {lastrowid}",
+            message=f"User {identity} created company {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -169,9 +169,9 @@ class Company(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def delete(self, id_) -> Response:
+    def delete(self, id_, identity) -> Response:
         """
         Delete a company from the database.
         The company ID is passed as a path variable.
@@ -192,7 +192,7 @@ class Company(Resource):
         # Log the deletion of the company
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted company {id_}",
+            message=f"User {identity} deleted company {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -205,9 +205,9 @@ class Company(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def patch(self, id_) -> Response:
+    def patch(self, id_, identity) -> Response:
         """
         Update a company in the database.
         The company ID is passed as a path variable.
@@ -268,7 +268,7 @@ class Company(Resource):
         # Log the update of the company
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated company {id_}",
+            message=f"User {identity} updated company {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -281,9 +281,9 @@ class Company(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, id_) -> Response:
+    def get(self, id_, identity) -> Response:
         """
         Retrieve a company from the database.
         The company ID is passed as a path variable.
@@ -330,7 +330,7 @@ class Company(Resource):
             # Log the read operation
             log(
                 log_type="info",
-                message=f"User {get_jwt_identity()} read company with id {id_}",
+                message=f"User {identity} read company with id {id_}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -361,7 +361,7 @@ class Company(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -382,9 +382,9 @@ class CompanyList(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/list"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self) -> Response:
+    def get(self, identity) -> Response:
         """
         Retrieve a list of companies from the database.
         The request can include filters for the following fields:
@@ -442,7 +442,7 @@ class CompanyList(Resource):
             # Log the read operation
             log(
                 log_type="info",
-                message=(f"User {get_jwt_identity()} read all companies"),
+                message=(f"User {identity} read all companies"),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -514,7 +514,7 @@ class CompanyList(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} read all companies with filters:"
+                f"User {identity} read all companies with filters:"
                 f"{anno}, {comune}, {settore}, {mese}, {materia}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -544,7 +544,7 @@ class CompanyList(Resource):
         # Return data
         return create_response(message=companies, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

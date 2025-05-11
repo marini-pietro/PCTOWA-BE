@@ -6,7 +6,6 @@ from os.path import basename as os_path_basename
 from typing import List, Dict, Union, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from marshmallow.validate import Regexp
 from mysql.connector import IntegrityError
@@ -29,6 +28,7 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -79,9 +79,9 @@ class Student(Resource):
         f"/{BP_NAME}/<int:matricola>",  # For endpoints like DELETE or PATCH
     ]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Create a new student.
         The request body must be a JSON object with application/json content type.
@@ -104,7 +104,7 @@ class Student(Resource):
         # Log the student creation
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} created student {matricola}",
+            message=f"User {identity} created student {matricola}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -121,7 +121,7 @@ class Student(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} tried to create student {matricola} "
+                    f"User {identity} tried to create student {matricola} "
                     f"but it already generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -137,7 +137,7 @@ class Student(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} failed to create student {matricola} "
+                    f"User {identity} failed to create student {matricola} "
                     f"with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -158,9 +158,9 @@ class Student(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def delete(self, matricola) -> Response:
+    def delete(self, matricola, identity) -> Response:
         """
         Delete a student.
         The request must include the student matricola as a path variable.
@@ -181,7 +181,7 @@ class Student(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted student {matricola}",
+            message=f"User {identity} deleted student {matricola}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -194,9 +194,9 @@ class Student(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def patch(self, matricola) -> Response:
+    def patch(self, matricola, identity) -> Response:
         """
         Update a student.
         The request must include the student matricola as a path variable.
@@ -214,7 +214,7 @@ class Student(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated student {matricola}",
+            message=f"User {identity} updated student {matricola}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -257,9 +257,9 @@ class Student(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, matricola) -> Response:
+    def get(self, matricola, identity) -> Response:
         """
         Get students data by matricola.
         The request must include the student matricola as a path variable.
@@ -268,7 +268,7 @@ class Student(Resource):
         # Log the request
         log(
             log_type="info",
-            message=(f"User {get_jwt_identity()} requested student {matricola}"),
+            message=(f"User {identity} requested student {matricola}"),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -295,7 +295,7 @@ class Student(Resource):
         # Return the response
         return create_response(message=student, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -319,9 +319,9 @@ class BindStudentToTurn(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/bind/<int:matricola>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def post(self, matricola) -> Response:
+    def post(self, matricola, identity) -> Response:
         """
         Bind a student to a turn.
         The request must include the student matricola as a path variable.
@@ -371,8 +371,7 @@ class BindStudentToTurn(Resource):
             log(
                 log_type="info",
                 message=(
-                    f"User {get_jwt_identity()} bound student {matricola} "
-                    f"to turn {id_turno}"
+                    f"User {identity} bound student {matricola} " f"to turn {id_turno}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
@@ -387,7 +386,7 @@ class BindStudentToTurn(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} tried to bind student {matricola} "
+                    f"User {identity} tried to bind student {matricola} "
                     f"to turn {id_turno} but it already generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -403,7 +402,7 @@ class BindStudentToTurn(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} failed to bind student {matricola} "
+                    f"User {identity} failed to bind student {matricola} "
                     f"to turn {id_turno} with error: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -416,7 +415,7 @@ class BindStudentToTurn(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -432,9 +431,9 @@ class StudentListFromClass(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/class_list/<int:class_id>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, class_id) -> Response:
+    def get(self, class_id, identity) -> Response:
         """
         Get a list of all students that are associated
         to a class passed by its id_ as a path variable.
@@ -444,7 +443,7 @@ class StudentListFromClass(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested student list "
+                f"User {identity} requested student list "
                 f"that are associated to class {class_id}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -527,7 +526,7 @@ class StudentListFromClass(Resource):
         # Return the response
         return create_response(message=students, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -544,9 +543,9 @@ class StudentListFromTurn(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/list/<int:turn_id>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, turn_id) -> Response:
+    def get(self, turn_id, identity) -> Response:
         """
         Get a list of all students that are associated
         to a turn passed by its id_ as a path variable.
@@ -555,7 +554,7 @@ class StudentListFromTurn(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested student list "
+                f"User {identity} requested student list "
                 f"that are associated to turn {turn_id}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -588,7 +587,7 @@ class StudentListFromTurn(Resource):
         # Return the response
         return create_response(message=students, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

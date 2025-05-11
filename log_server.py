@@ -7,13 +7,12 @@ It also handles delayed logs when the rate limit is exceeded.
 
 # Import necessary libraries
 import socket
+import re
 import logging
 import time
-from cachetools import TTLCache
-from threading import Lock
-from re import compile as re_compile
+import threading
 from collections import defaultdict, deque
-from threading import Thread, Lock, Event as threading_Event
+from threading import Thread, Lock
 from os.path import abspath as os_path_abspath
 from os.path import dirname as os_path_dirname
 from os.path import join as os_path_join
@@ -95,7 +94,7 @@ logger = Logger(
 )
 
 # Add a shutdown flag
-shutdown_flag = threading_Event()  # Event to signal shutdown
+shutdown_flag = threading.Event()
 
 
 def start_syslog_server(host, port):
@@ -126,7 +125,7 @@ def start_syslog_server(host, port):
 
 
 # Compile the RFC 5424 syslog message regex pattern once
-SYSLOG_PATTERN = re_compile(
+SYSLOG_PATTERN = re.compile(
     r"<(\d+)>"  # PRI
     r"(\d{1,2}) "  # VERSION
     r"(\S+) "  # TIMESTAMP
@@ -148,47 +147,22 @@ delayed_logs = deque(
 queue_lock = Lock()  # Lock to ensure thread-safe access to the queue
 
 
-# Create a thread-safe cache with TTL (Time-To-Live)
-def enforce_rate_limit(source_ip: str) -> bool:
+def enforce_rate_limit(client_ip: str) -> bool:
     """
-    Enforce rate limiting for a given source IP using an in-memory cache.
-    Returns True if the rate limit is exceeded, otherwise False.
+    Check if the client IP is rate-limited using an in-memory TTLCache.
     """
     with rate_limit_lock:
-        # Get the current request count for the IP
-        request_count = rate_limit_cache.get(source_ip, 0)
+        # Retrieve or initialize client data
+        client_data = rate_limit_cache.get(client_ip, {"count": 0})
 
-        if request_count >= RATE_LIMIT_MAX_REQUESTS:
-            # Rate limit exceeded
-            return True
+        # Increment the request count
+        client_data["count"] += 1
 
-        # Increment the request count and update the cache
-        rate_limit_cache[source_ip] = request_count + 1
-        return False
+        # Update the cache with the new client data
+        rate_limit_cache[client_ip] = client_data
 
-
-def process_syslog_message(message, addr):
-    """
-    Process and log a syslog message according to RFC 5424 with shared rate limiting.
-    """
-    source_ip = addr[0]
-    current_time = time.time()
-
-    # Enforce rate limit
-    if LOG_SERVER_RATE_LIMIT is True:
-        if enforce_rate_limit(source_ip, current_time):
-            # Add the log to the delayed queue instead of dropping it
-            with queue_lock:
-                delayed_logs.append((message, addr))
-            logger.log(
-                "warning",
-                f"Rate limit exceeded for {source_ip}. Delaying message: {message}",
-                f"Syslog-{source_ip}",
-            )
-            return  # Do not process the message immediately
-
-    # Process the syslog message as usual
-    _process_message(message, addr)
+        # Check if the rate limit is exceeded
+        return client_data["count"] > RATE_LIMIT_MAX_REQUESTS
 
 
 def process_syslog_message(message, addr):
@@ -196,11 +170,10 @@ def process_syslog_message(message, addr):
     Process and log a syslog message according to RFC 5424 with shared rate limiting.
     """
     source_ip = addr[0]
-    current_time = time.time()
 
     # Enforce rate limit
     if LOG_SERVER_RATE_LIMIT is True:
-        if enforce_rate_limit(source_ip, current_time):
+        if enforce_rate_limit(source_ip):
             # Add the log to the delayed queue instead of dropping it
             with queue_lock:
                 delayed_logs.append((message, addr))

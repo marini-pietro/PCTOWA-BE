@@ -7,7 +7,6 @@ from os.path import basename as os_path_basename
 from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from mysql.connector import IntegrityError
 from marshmallow.validate import Regexp
@@ -30,6 +29,7 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -75,9 +75,9 @@ class Subject(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/<string:materia>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def post(self, materia) -> Response:
+    def post(self, materia, identity) -> Response:
         """
         Create a new subject.
         The request body must be a JSON object with application/json content type.
@@ -122,7 +122,7 @@ class Subject(Resource):
             # Log the subject creation
             log(
                 log_type="info",
-                message=f"User {get_jwt_identity()} created subject {materia}",
+                message=f"User {identity} created subject {materia}",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -144,7 +144,7 @@ class Subject(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity()} tried to "
+                    f"User {identity} tried to "
                     f"create subject {materia} but it already generated {ex}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -160,7 +160,7 @@ class Subject(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get('email')} encountered an error "
+                    f"User {identity.get('email')} encountered an error "
                     f"while creating subject {materia}: {str(ex)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -173,9 +173,9 @@ class Subject(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def delete(self, materia) -> Response:
+    def delete(self, materia, identity) -> Response:
         """
         Delete a subject.
         The request must include the subject name as a path variable.
@@ -196,7 +196,7 @@ class Subject(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted subject {materia}",
+            message=f"User {identity} deleted subject {materia}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -209,9 +209,9 @@ class Subject(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin"])
-    def patch(self, materia) -> Response:
+    def patch(self, materia, identity) -> Response:
         """
         Update a subject.
         The request must include the subject name as a path variable.
@@ -259,7 +259,7 @@ class Subject(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated subject {materia}",
+            message=f"User {identity} updated subject {materia}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -272,9 +272,9 @@ class Subject(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self) -> Response:
+    def get(self, identity) -> Response:
         """
         Get all subjects with pagination.
         The request can include limit and offset as query parameters.
@@ -301,7 +301,7 @@ class Subject(Resource):
             # Log the read
             log(
                 log_type="info",
-                message=f"User {get_jwt_identity()} read all subjects",
+                message=f"User {identity} read all subjects",
                 origin_name=API_SERVER_NAME_IN_LOG,
                 origin_host=API_SERVER_HOST,
                 message_id="UserAction",
@@ -316,7 +316,7 @@ class Subject(Resource):
             log(
                 log_type="error",
                 message=(
-                    f"User {get_jwt_identity().get('email')} encountered an error "
+                    f"User {identity.get('email')} encountered an error "
                     f"while reading subjects: {str(err)}"
                 ),
                 origin_name=API_SERVER_NAME_IN_LOG,
@@ -331,7 +331,7 @@ class Subject(Resource):
                 status_code=STATUS_CODES["internal_error"],
             )
 
-    @jwt_required()
+    @jwt_validation_required
     def options(self) -> Response:
         """
         Handle OPTIONS requests to provide allowed methods for the endpoint.

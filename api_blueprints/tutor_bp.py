@@ -7,7 +7,6 @@ from os.path import basename as os_path_basename
 from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from marshmallow.validate import Regexp, Range
 from api_server import ma
@@ -29,6 +28,7 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -99,9 +99,9 @@ class Tutor(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Create a new tutor.
         The request body must be a JSON object with application/json content type.
@@ -137,7 +137,7 @@ class Tutor(Resource):
         # Log the tutor creation
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} created tutor {lastrowid}",
+            message=f"User {identity} created tutor {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -153,9 +153,9 @@ class Tutor(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def delete(self, id_) -> Response:
+    def delete(self, id_, identity) -> Response:
         """
         Delete a tutor by ID.
         The id must be provided as a path variable.
@@ -176,7 +176,7 @@ class Tutor(Resource):
         # Log the deletion
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted tutor {id_}",
+            message=f"User {identity} deleted tutor {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -189,9 +189,9 @@ class Tutor(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def patch(self, id_) -> Response:
+    def patch(self, id_, identity) -> Response:
         """
         Update a tutor by ID.
         The id must be provided as a path variable.
@@ -243,7 +243,7 @@ class Tutor(Resource):
         # Log the update
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated tutor {id_}",
+            message=f"User {identity} updated tutor {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -256,9 +256,9 @@ class Tutor(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, id_) -> Response:
+    def get(self, id_, identity) -> Response:
         """
         Get all the tutors associate to a given company.
         The company id must be provided as a path variable.
@@ -267,10 +267,7 @@ class Tutor(Resource):
         # Log the read
         log(
             log_type="info",
-            message=(
-                f"User {get_jwt_identity()} requested "
-                f"tutor list with company id {id_}"
-            ),
+            message=(f"User {identity} requested " f"tutor list with company id {id_}"),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -308,7 +305,7 @@ class Tutor(Resource):
         # Return the data
         return create_response(message=tutors, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

@@ -7,7 +7,6 @@ from typing import List, Dict, Any
 from os.path import basename as os_path_basename
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from marshmallow.validate import Regexp, OneOf
 from api_server import ma
@@ -25,6 +24,7 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -65,9 +65,9 @@ class Contact(Resource):
 
     ENDPOINTS_PATHS = [f"/{BP_NAME}", f"/{BP_NAME}/<int:id_>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Create a new contact.
         The request must contain a JSON body with application/json.
@@ -111,7 +111,7 @@ class Contact(Resource):
         # Log the creation of the contact
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} created contact with id_ {lastrowid}",
+            message=f"User {identity} created contact with id_ {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -127,9 +127,9 @@ class Contact(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def delete(self, id_) -> Response:
+    def delete(self, id_, identity) -> Response:
         """
         Delete a contact.
         The id is passed as a path variable.
@@ -150,7 +150,7 @@ class Contact(Resource):
         # Log the deletion of the contact
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted contact {id_}",
+            message=f"User {identity} deleted contact {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -163,9 +163,9 @@ class Contact(Resource):
             status_code=STATUS_CODES["no_content"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor"])
-    def patch(self, id_) -> Response:
+    def patch(self, id_, identity) -> Response:
         """
         Update a contact.
         The id is passed as a path variable.
@@ -219,7 +219,7 @@ class Contact(Resource):
         # Log the update of the contact
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated contact {id_}",
+            message=f"User {identity} updated contact {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -232,9 +232,9 @@ class Contact(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, id_) -> Response:
+    def get(self, id_, identity) -> Response:
         """
         Get a contact by the ID of its company.
         The id is passed as a path variable.
@@ -244,8 +244,7 @@ class Contact(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested "
-                f"contact list for company with id {id_}"
+                f"User {identity} requested " f"contact list for company with id {id_}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
@@ -280,7 +279,7 @@ class Contact(Resource):
         # Return the contact data
         return create_response(message=contact, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """

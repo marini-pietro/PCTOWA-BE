@@ -12,12 +12,3 @@ foreach ($process in $processesToKill) {
         }
     }
 }
-
-# Delete the rate_limit.json file if it exists
-$rateLimitFile = "..\rate_limit.json"
-if (Test-Path $rateLimitFile) {
-    Remove-Item $rateLimitFile -Force
-    Write-Host "rate_limit.json file deleted." -ForegroundColor Green
-} else {
-    Write-Host "rate_limit.json file not found." -ForegroundColor Yellow
-}

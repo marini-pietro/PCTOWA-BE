@@ -10,7 +10,6 @@ from typing import List, Dict, Any
 
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import fields, ValidationError
 from marshmallow.validate import Regexp
 from api_server import ma
@@ -31,6 +30,7 @@ from .blueprints_utils import (
     handle_options_request,
     check_column_existence,
     get_hateos_location_string,
+    jwt_validation_required,
 )
 
 # Define constants
@@ -83,9 +83,9 @@ class Class(Resource):
         f"/{BP_NAME}/<string:class_year>",
     ]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def post(self) -> Response:
+    def post(self, identity) -> Response:
         """
         Create a new class in the database.
         The request body must be a JSON object with application/json content type.
@@ -113,7 +113,7 @@ class Class(Resource):
         # Log the creation of the class
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} created class {lastrowid}",
+            message=f"User {identity} created class {lastrowid}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -129,9 +129,9 @@ class Class(Resource):
             status_code=STATUS_CODES["created"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def delete(self, id_) -> Response:
+    def delete(self, id_, identity) -> Response:
         """
         Delete a class from the database.
         The class ID is passed as a path parameter.
@@ -151,7 +151,7 @@ class Class(Resource):
         # Log the deletion of the class
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} deleted class {id_}",
+            message=f"User {identity} deleted class {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -163,9 +163,9 @@ class Class(Resource):
             message={"outcome": "class deleted"}, status_code=STATUS_CODES["no_content"]
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
-    def patch(self, id_) -> Response:
+    def patch(self, id_, identity) -> Response:
         """
         Update a class in the database.
         The class ID is passed as a path parameter.
@@ -213,7 +213,7 @@ class Class(Resource):
         # Log the update of the class
         log(
             log_type="info",
-            message=f"User {get_jwt_identity()} updated class {id_}",
+            message=f"User {identity} updated class {id_}",
             origin_name=API_SERVER_NAME_IN_LOG,
             origin_host=API_SERVER_HOST,
             message_id="UserAction",
@@ -226,9 +226,9 @@ class Class(Resource):
             status_code=STATUS_CODES["ok"],
         )
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, class_year) -> Response:
+    def get(self, class_year, identity) -> Response:
         """
         Get all the students that belong to a class in a given year (e.g. 5BI 24-25).
         """
@@ -237,7 +237,7 @@ class Class(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested "
+                f"User {identity} requested "
                 f"to read classes with string {class_year}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -298,7 +298,7 @@ class Class(Resource):
         # Return the data
         return create_response(message=students, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -319,9 +319,9 @@ class ClassFromResponsible(Resource):
         f"/{BP_NAME}/<string:email_responsabile>",
     ]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, email_responsabile) -> Response:
+    def get(self, email_responsabile, identity) -> Response:
         """
         Get class data based on the email of the responsible teacher.
         """
@@ -330,7 +330,7 @@ class ClassFromResponsible(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested "
+                f"User {identity} requested "
                 f"to read class with email {email_responsabile}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -359,7 +359,7 @@ class ClassFromResponsible(Resource):
         # Return the data
         return create_response(message=classes_data, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
@@ -376,9 +376,9 @@ class ClassFuzzySearch(Resource):
 
     ENDPOINT_PATHS = [f"/{BP_NAME}/fsearch/<string:input_str>"]
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
-    def get(self, input_str="") -> Response:
+    def get(self, identity, input_str="") -> Response:
         """
         Execute fuzzy search for class names in database.
         """
@@ -396,7 +396,7 @@ class ClassFuzzySearch(Resource):
         log(
             log_type="info",
             message=(
-                f"User {get_jwt_identity()} requested fuzzy "
+                f"User {identity} requested fuzzy "
                 f"search in classes with string {input_str}"
             ),
             origin_name=API_SERVER_NAME_IN_LOG,
@@ -414,7 +414,7 @@ class ClassFuzzySearch(Resource):
         # Return the data
         return create_response(message=data, status_code=STATUS_CODES["ok"])
 
-    @jwt_required()
+    @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def options(self) -> Response:
         """
