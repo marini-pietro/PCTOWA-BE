@@ -12,8 +12,6 @@ from marshmallow.validate import Regexp, Range
 from api_server import ma
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
 
@@ -41,6 +39,10 @@ api = Api(tutor_bp)
 
 # Define the schema for the request body using Marshmallow
 class TutorSchema(ma.Schema):
+    """
+    Schema for validating and deserializing tutor data.
+    This schema is used for both creating and updating tutor records.
+    """
     nome = fields.Str(
         required=True,
         error_messages={
@@ -138,9 +140,6 @@ class Tutor(Resource):
         log(
             log_type="info",
             message=f"User {identity} created tutor {lastrowid}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -177,9 +176,6 @@ class Tutor(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted tutor {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -244,9 +240,6 @@ class Tutor(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated tutor {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -268,9 +261,6 @@ class Tutor(Resource):
         log(
             log_type="info",
             message=(f"User {identity} requested " f"tutor list with company id {id_}"),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 

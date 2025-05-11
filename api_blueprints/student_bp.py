@@ -3,7 +3,7 @@ Student API Blueprint
 """
 
 from os.path import basename as os_path_basename
-from typing import List, Dict, Union, Any
+from typing import List, Dict, Any
 from flask import Blueprint, request, Response
 from flask_restful import Api, Resource
 from marshmallow import fields, ValidationError
@@ -12,8 +12,6 @@ from mysql.connector import IntegrityError
 from api_server import ma
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
 
@@ -41,6 +39,9 @@ api = Api(student_bp)
 
 # Marshmallow schema for Student resource
 class StudentSchema(ma.Schema):
+    """
+    Schema for validating and deserializing student data.
+    """
     matricola = fields.String(
         required=True,
         validate=Regexp(
@@ -105,9 +106,6 @@ class Student(Resource):
         log(
             log_type="info",
             message=f"User {identity} created student {matricola}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -124,9 +122,6 @@ class Student(Resource):
                     f"User {identity} tried to create student {matricola} "
                     f"but it already generated {ex}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -140,9 +135,6 @@ class Student(Resource):
                     f"User {identity} failed to create student {matricola} "
                     f"with error: {str(ex)}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -182,9 +174,6 @@ class Student(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted student {matricola}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -215,9 +204,6 @@ class Student(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated student {matricola}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -269,9 +255,6 @@ class Student(Resource):
         log(
             log_type="info",
             message=(f"User {identity} requested student {matricola}"),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -306,6 +289,9 @@ class Student(Resource):
 
 
 class BindStudentToTurnSchema(ma.Schema):
+    """
+    Schema for validating and deserializing data for binding a student to a turn.
+    """
     id_turno = fields.Integer(required=True)
 
 
@@ -373,9 +359,6 @@ class BindStudentToTurn(Resource):
                 message=(
                     f"User {identity} bound student {matricola} " f"to turn {id_turno}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -389,9 +372,6 @@ class BindStudentToTurn(Resource):
                     f"User {identity} tried to bind student {matricola} "
                     f"to turn {id_turno} but it already generated {ex}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -405,9 +385,6 @@ class BindStudentToTurn(Resource):
                     f"User {identity} failed to bind student {matricola} "
                     f"to turn {id_turno} with error: {str(ex)}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -446,9 +423,6 @@ class StudentListFromClass(Resource):
                 f"User {identity} requested student list "
                 f"that are associated to class {class_id}"
             ),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -470,9 +444,8 @@ class StudentListFromClass(Resource):
                 S.comune, T.id_turno, T.data_inizio, 
                 T.data_fine, T.giorno_inizio, T.giorno_fine, 
                 T.ora_inizio, T.ora_fine, T.ore,
-                A.ragione_sociale, A.cap, 
-                A.comune AS comuneAzienda, A.provincia, A.stato, 
-                I.indirizzo AS indirizzoAzienda
+                A.ragione_sociale, I.stato, I.provincia, I.comune AS comuneAzienda,
+                I.cap, I.indirizzo AS indirizzoAzienda
             FROM studenti AS S
             LEFT JOIN studente_turno AS ST ON S.matricola = ST.matricola
             LEFT JOIN turni AS T ON ST.id_turno = T.id_turno
@@ -491,37 +464,40 @@ class StudentListFromClass(Resource):
             )
 
         # Build the output JSON
-        students = {}
+        students = []
+        student_map = {}
         for row in student_data:
             matricola = row.get("matricola")
-            if matricola not in students:
-                students[matricola] = {
+            if matricola not in student_map:
+                student = {
+                    "matricola": matricola,
                     "nome": row.get("nome"),
                     "cognome": row.get("cognome"),
                     "comune": row.get("comune"),
-                    "turni": [],
+                    "turn": None,
                 }
+                students.append(student)
+                student_map[matricola] = student
+
             if row.get("id_turno"):
-                students[matricola]["turni"].append(
-                    {
-                        "ragione_sociale": row.get("ragione_sociale"),
-                        "data_inizio": row.get("data_inizio"),
-                        "data_fine": row.get("data_fine"),
-                        "giorno_inizio": row.get("giorno_inizio"),
-                        "giorno_fine": row.get("giorno_fine"),
-                        "ora_inizio": row.get("ora_inizio"),
-                        "ora_fine": row.get("ora_fine"),
-                        "ore": row.get("ore"),
-                        "turnoPK": row.get("id_turno"),
-                        "indirizzo": {
-                            "stato": row.get("stato"),
-                            "provincia": row.get("provincia"),
-                            "comune": row.get("comuneAzienda"),
-                            "cap": row.get("cap"),
-                            "indirizzo": row.get("indirizzoAzienda"),
-                        },
-                    }
-                )
+                student_map[matricola]["turn"] = {
+                    "ragione_sociale": row.get("ragione_sociale"),
+                    "data_inizio": row.get("data_inizio"),
+                    "data_fine": row.get("data_fine"),
+                    "giorno_inizio": row.get("giorno_inizio"),
+                    "giorno_fine": row.get("giorno_fine"),
+                    "ora_inizio": row.get("ora_inizio"),
+                    "ora_fine": row.get("ora_fine"),
+                    "ore": row.get("ore"),
+                    "turnoPK": row.get("id_turno"),
+                    "indirizzo": {
+                        "stato": row.get("stato"),
+                        "provincia": row.get("provincia"),
+                        "comune": row.get("comuneAzienda"),
+                        "cap": row.get("cap"),
+                        "indirizzo": row.get("indirizzoAzienda"),
+                    },
+                }
 
         # Return the response
         return create_response(message=students, status_code=STATUS_CODES["ok"])
@@ -557,9 +533,6 @@ class StudentListFromTurn(Resource):
                 f"User {identity} requested student list "
                 f"that are associated to turn {turn_id}"
             ),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 

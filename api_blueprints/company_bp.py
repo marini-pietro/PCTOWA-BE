@@ -11,8 +11,6 @@ from marshmallow.validate import Regexp
 from api_server import ma
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
 
@@ -40,6 +38,9 @@ api = Api(company_bp)
 
 # Marshmallow schema for Company resource
 class CompanySchema(ma.Schema):
+    """
+    Marshmallow schema for validating and deserializing company data.
+    """
     ragione_sociale = fields.String(
         required=True, error_messages={"required": "ragione_sociale is required."}
     )
@@ -130,8 +131,10 @@ class Company(Resource):
         # Insert the company
         lastrowid, _ = execute_query(
             """INSERT INTO aziende 
-            (ragione_sociale, codice_ateco, partita_iva, fax, pec, telefono_azienda, email_azienda, 
-             data_convenzione, scadenza_convenzione, categoria, indirizzo_logo, sito_web, forma_giuridica) 
+            (ragione_sociale, codice_ateco, partita_iva, 
+            fax, pec, telefono_azienda, email_azienda, 
+            data_convenzione, scadenza_convenzione, 
+            categoria, indirizzo_logo, sito_web, forma_giuridica) 
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (
                 data["ragione_sociale"],
@@ -154,9 +157,6 @@ class Company(Resource):
         log(
             log_type="info",
             message=f"User {identity} created company {lastrowid}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -193,9 +193,6 @@ class Company(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted company {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -269,9 +266,6 @@ class Company(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated company {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -319,21 +313,20 @@ class Company(Resource):
             company["turns"] = turns
 
             # Gather address data
-            addresses: List[Dict[str, Any]] = fetchall_query(
-                "SELECT stato,provincia,comune,cap,indirizzo FROM indirizzi WHERE id_azienda = %s",
-                (id_,),
-            )
+            address_ids = [
+                address["id_indirizzo"]
+                for address in fetchall_query(
+                    "SELECT id_indirizzo FROM indirizzi WHERE id_azienda = %s", (id_,)
+                )
+            ]
 
             # Add the address data to company dictionary
-            company["addresses"] = addresses
+            company["address_ids"] = address_ids
 
             # Log the read operation
             log(
                 log_type="info",
                 message=f"User {identity} read company with id {id_}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -349,9 +342,6 @@ class Company(Resource):
             log(
                 log_type="error",
                 message=f"Error while reading company {id_}: {str(err)}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -443,9 +433,6 @@ class CompanyList(Resource):
             log(
                 log_type="info",
                 message=(f"User {identity} read all companies"),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -517,9 +504,6 @@ class CompanyList(Resource):
                 f"User {identity} read all companies with filters:"
                 f"{anno}, {comune}, {settore}, {mese}, {materia}"
             ),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 

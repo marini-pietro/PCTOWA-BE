@@ -12,8 +12,6 @@ from mysql.connector import IntegrityError
 from api_server import ma
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
 
@@ -39,6 +37,9 @@ api = Api(legalform_bp)
 
 # Marshmallow schema for LegalForm resource
 class LegalFormSchema(ma.Schema):
+    """
+    Schema for validating and deserializing legal form data.
+    """
     forma = fields.String(
         required=True,
         error_messages={
@@ -90,9 +91,6 @@ class LegalForm(Resource):
                     f"User {identity} tried to "
                     f"create legal form {forma} but it generated {ex}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -106,9 +104,6 @@ class LegalForm(Resource):
                     f"User {identity} failed to "
                     f"create legal form {forma} with error: {str(ex)}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -120,9 +115,6 @@ class LegalForm(Resource):
         log(
             log_type="info",
             message=f"User {identity} created legal form {forma}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -168,9 +160,6 @@ class LegalForm(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted legal form {forma}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -232,9 +221,6 @@ class LegalForm(Resource):
         log(
             log_type="info",
             message=(f"User {identity} updated " f"legal form {forma} to {new_value}"),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -276,9 +262,6 @@ class LegalForm(Resource):
             log(
                 log_type="info",
                 message=f"User {identity} read all legal forms",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -293,9 +276,6 @@ class LegalForm(Resource):
                     f"User {identity} failed "
                     f"to read legal forms with error: {str(err)}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path} verb='{request.method}']",
             )
 

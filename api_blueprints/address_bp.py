@@ -3,7 +3,7 @@ This module defines the Address blueprint and its associated API endpoints.
 """
 
 from os.path import basename as os_path_basename
-from typing import Any, Dict
+from typing import List, Dict, Any
 
 from flask import Blueprint, Response, request
 from flask_restful import Api, Resource
@@ -12,8 +12,6 @@ from marshmallow.validate import Regexp
 from api_server import ma
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
 from .blueprints_utils import (
@@ -40,6 +38,10 @@ api = Api(address_bp)
 
 # Marshmallow schema for Address resource
 class AddressSchema(ma.Schema):
+    """
+    Marshmallow schema for validating and deserializing address data.
+    """
+
     stato = fields.String(
         required=True, error_messages={"required": "stato is required."}
     )
@@ -129,9 +131,6 @@ class Address(Resource):
         log(
             log_type="info",
             message=f"User {identity} created address {lastrowid}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -168,9 +167,6 @@ class Address(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted address {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -237,9 +233,6 @@ class Address(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated address {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -278,8 +271,9 @@ class Address(Resource):
 
         try:
             # Execute query
-            addresses = fetchall_query(
-                "SELECT id_indirizzo, stato, provincia, comune, cap, indirizzo FROM indirizzi WHERE id_azienda = %s",
+            addresses: List[Dict[str, Any]] = fetchall_query(
+                "SELECT id_indirizzo, stato, provincia, comune, cap, indirizzo "
+                "FROM indirizzi WHERE id_azienda = %s",
                 params=(id_,),
             )
 
@@ -287,9 +281,6 @@ class Address(Resource):
             log(
                 log_type="info",
                 message=f"User {identity} read all the addresses of company with id: {id_}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -305,9 +296,6 @@ class Address(Resource):
             log(
                 log_type="error",
                 message=f"error while retrieving address data with id {id_}: {err}",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 

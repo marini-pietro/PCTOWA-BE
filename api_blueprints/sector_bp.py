@@ -13,8 +13,6 @@ from mysql.connector import IntegrityError
 from api_server import ma
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
 
@@ -40,6 +38,9 @@ api = Api(sector_bp)
 
 # Marshmallow schema for Sector resource
 class SectorSchema(ma.Schema):
+    """
+    Schema for validating and deserializing sector data.
+    """
     settore = fields.String(
         required=True,
         error_messages={
@@ -103,9 +104,6 @@ class Sector(Resource):
                     f"User {identity} tried "
                     f"to create sector {settore} but it generated {ex}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -119,9 +117,6 @@ class Sector(Resource):
                     f"User {identity} failed to "
                     f"create sector {settore} with error: {str(ex)}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
             return create_response(
@@ -133,9 +128,6 @@ class Sector(Resource):
         log(
             log_type="info",
             message=f"User {identity} created sector {settore}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -187,9 +179,6 @@ class Sector(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted sector {settore}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -256,9 +245,6 @@ class Sector(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated sector {settore}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -300,9 +286,6 @@ class Sector(Resource):
             log(
                 log_type="info",
                 message=f"User {identity} read all sectors",
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 
@@ -316,9 +299,6 @@ class Sector(Resource):
                 message=(
                     f"User {identity} failed to " f"read sectors with error: {str(err)}"
                 ),
-                origin_name=API_SERVER_NAME_IN_LOG,
-                origin_host=API_SERVER_HOST,
-                message_id="UserAction",
                 structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
             )
 

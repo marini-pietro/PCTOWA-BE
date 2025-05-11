@@ -5,49 +5,50 @@ database connection handling, logging, and token validation.
 """
 
 import socket
-import json
-from time import time as epoch_time
-from requests import RequestException, post as requests_post
-from threading import Lock
 from datetime import datetime, timezone
-from os import getpid
-from sys import exit as sys_exit
-from queue import Queue
-from cachetools import TTLCache
-from inspect import isclass as inspect_isclass, signature as inspect_signature
-from typing import Dict, List, Tuple, Any, Union
 from functools import wraps
-from contextlib import contextmanager
-from flask import jsonify, make_response, Response, request
-from mysql.connector.pooling import MySQLConnectionPool
+from inspect import isclass as inspect_isclass, signature as inspect_signature
+from os import getpid
+from queue import Queue
+from sys import exit as sys_exit
 from threading import Lock, Thread
-import requests
+from typing import Any, Dict, List, Tuple, Union
+
+from contextlib import contextmanager
+from cachetools import TTLCache
+from flask import Response, jsonify, make_response, request
+from mysql.connector.pooling import MySQLConnectionPool
+from requests import post as requests_post
+from requests.exceptions import Timeout
+from requests.exceptions import RequestException
+
 from config import (
-    DB_HOST,
-    DB_USER,
-    DB_PASSWORD,
-    DB_NAME,
+    API_SERVER_HOST,
+    API_SERVER_NAME_IN_LOG,
+    API_SERVER_PORT,
+    API_SERVER_SSL,
+    AUTH_SERVER_HOST,
+    AUTH_SERVER_PORT,
+    AUTH_SERVER_SSL,
     CONNECTION_POOL_SIZE,
+    DB_HOST,
+    DB_NAME,
+    DB_PASSWORD,
+    DB_USER,
+    JWT_JSON_KEY,
+    JWT_QUERY_STRING_NAME,
+    JWT_VALIDATION_CACHE_SIZE,
+    JWT_VALIDATION_CACHE_TTL,
     LOG_SERVER_HOST,
     LOG_SERVER_PORT,
-    STATUS_CODES,
-    ROLES,
-    SYSLOG_SEVERITY_MAP,
-    API_SERVER_HOST,
-    API_SERVER_PORT,
-    API_SERVER_NAME_IN_LOG,
-    URL_PREFIX,
-    API_SERVER_SSL,
-    RATE_LIMIT_MAX_REQUESTS,
-    RATE_LIMIT_CACHE_TTL,
     NOT_AUTHORIZED_MESSAGE,
-    RATE_LIMIT_MAX_REQUESTS,
-    RATE_LIMIT_CACHE_TTL,
-    JWT_VALIDATION_CACHE_TTL,
-    JWT_VALIDATION_CACHE_SIZE,
-    AUTH_SERVER_SSL,
-    AUTH_SERVER_PORT,
     RATE_LIMIT_CACHE_SIZE,
+    RATE_LIMIT_CACHE_TTL,
+    RATE_LIMIT_MAX_REQUESTS,
+    ROLES,
+    STATUS_CODES,
+    SYSLOG_SEVERITY_MAP,
+    URL_PREFIX,
 )
 
 # Authentication related
@@ -67,52 +68,70 @@ def jwt_validation_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         # Extract the token from the Authorization header
-        auth_header = request.headers.get("Authorization", "")
+        auth_header = request.headers.get("Authorization", None)
         token = auth_header.replace("Bearer ", "")
 
+        # If the token is not in the Authorization header, check the query string
+        if token is None:
+            token = request.args.get(JWT_QUERY_STRING_NAME, "")
+
+        # If the token is not in the query string, check the JSON body
+        if token is None:
+            json_body = request.get_json(silent=True)  # Safely get JSON body
+            if json_body:  # Ensure it's not None
+                token = json_body.get(JWT_JSON_KEY, None)
+
         # Validate the token
-        if auth_header in ["", "Bearer ", "Bearer"]:
+        if token is None:
             return {"error": "missing token"}, STATUS_CODES["unauthorized"]
+
+        # Initialize identity and role
+        identity = None
+        role = None
 
         # Check if the token is already validated in the cache
         if token in token_validation_cache:
-            if token_validation_cache[token] is False:
-                return {"error": "invalid token"}, STATUS_CODES["unauthorized"]
+            identity, role = token_validation_cache[token]
         else:
             # Contact the authentication microservice to validate the token
             try:
-                protocol = "https" if AUTH_SERVER_SSL else "http"
-
                 # Send a request to the authentication server to validate the token
                 # Proper json body and headers are not needed
-                response: Response = requests.post(
-                    f"{protocol}://{API_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate",
+                response: Response = requests_post(
+                    f"{"https" if AUTH_SERVER_SSL else "http"}://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate",
                     headers={"Authorization": f"Bearer {token}"},
-                    timeout=5,
+                    timeout=5, # in seconds
                 )
 
-                # Check if the response status is OK
-                is_valid = response.status_code == STATUS_CODES["ok"]
-
+                # If the token is invalid, return a 401 Unauthorized response
+                if response.status_code != STATUS_CODES["ok"]:
+                    return {"error": "Invalid token"}, STATUS_CODES["unauthorized"]
+                else:
                 # Extract the identity from the response JSON if valid
-                if is_valid:
                     response_json = response.json()
                     identity = response_json.get("identity")
                     role = response_json.get("role")
-            except requests.RequestException as ex:
+
+                # Cache the result if the token is valid
+                token_validation_cache[token] = identity, role
+
+            except Timeout:
+                log(
+                    log_type="error",
+                    message="Request timed out while validating token",
+                    origin_name="JWTValidation",
+                    origin_host=API_SERVER_HOST,
+                )
+                return {"error": "Login request timed out"}, STATUS_CODES["gateway_timeout"]
+
+            except RequestException as ex:
                 log(
                     log_type="error",
                     message=f"Error validating token: {ex}",
                     origin_name="JWTValidation",
                     origin_host=API_SERVER_HOST,
                 )
-                is_valid = False
-
-            # Cache the result
-            token_validation_cache[token] = is_valid
-
-            if is_valid is False:
-                return {"error": "Invalid token"}, STATUS_CODES["unauthorized"]
+                return {"error": "internal server error while validating token"}, STATUS_CODES["internal_error"]
 
         # Pass the extracted identity to the wrapped function
         # Only if the function accepts it (OPTIONS endpoint do not use it)
@@ -294,7 +313,8 @@ def get_db_pool():
             _DB_POOL = MySQLConnectionPool(
                 pool_name="pctowa_connection_pool",
                 pool_size=max(1, CONNECTION_POOL_SIZE),
-                pool_reset_session=False,  # Session reset not needed for this application (no transactions)
+                # Session reset not needed for this application (no transactions)
+                pool_reset_session=False,
                 host=DB_HOST,
                 user=DB_USER,
                 password=DB_PASSWORD,
@@ -304,7 +324,8 @@ def get_db_pool():
             print(
                 f"Couldn't access database, see next line for full exception.\n{ex}\n"
                 f"host: {DB_HOST}, dbname: {DB_NAME}, user: {DB_USER}, password: {DB_PASSWORD}\n"
-                f"Make sure to shutdown all microservices with the provided kill_quick script, change the configuration and try again.\n"
+                f"Make sure to shutdown all microservices with the provided kill_quick script, "
+                f"change the configuration and try again.\n"
             )
             sys_exit(1)
     return _DB_POOL
@@ -380,7 +401,8 @@ def check_column_existence(
         to_modify - The list of columns to modify
 
     Returns:
-        Response or bool - An error response if there are invalid columns, or True if all columns are valid
+        Response or bool - An error response if there are invalid columns,
+                           or True if all columns are valid
     """
 
     error_columns = [field for field in to_modify if field not in modifiable_columns]
@@ -469,8 +491,9 @@ def log_worker():
         # Format the syslog message with the correct priority
         priority = (1 * 8) + severity  # Assuming facility=1 (user-level messages)
         syslog_message = (
-            f"<{priority}>1 "
-            f"{datetime.now(timezone.utc).isoformat()} "  # Timestamp in ISO 8601 format with timezone
+            f"<{priority}>1 "  #  # Priority
+            # Timestamp in ISO 8601 format with timezone
+            f"{datetime.now(timezone.utc).isoformat()} "
             f"{origin_host} "  # Hostname
             f"{origin_name} "  # App name
             f"{getpid()} "  # Process ID
@@ -495,10 +518,10 @@ log_thread.start()
 
 
 def log(
-    log_type: str,
     message: str,
-    origin_name: str,
-    origin_host: str,
+    log_type: str,
+    origin_name: str = API_SERVER_NAME_IN_LOG,
+    origin_host: str = API_SERVER_HOST,
     message_id: str = "UserAction",
     structured_data: Union[str, Dict[str, Any]] = "- -",
 ) -> None:
@@ -524,4 +547,3 @@ def shutdown_logging():
     Signal the log thread to exit and wait for it to finish.
     """
     log_queue.put(None)  # Send exit signal
-    log_thread.join()  # Wait for the thread to finish (even if it is a daemon thread so no logs are lost)

@@ -15,8 +15,6 @@ from marshmallow.validate import Regexp
 from api_server import ma
 
 from config import (
-    API_SERVER_HOST,
-    API_SERVER_NAME_IN_LOG,
     STATUS_CODES,
 )
 from .blueprints_utils import (
@@ -43,6 +41,10 @@ api = Api(class_bp)
 
 # Marshmallow schema for Class resource
 class ClassSchema(ma.Schema):
+    """
+    Marshmallow schema for validating and deserializing class data.
+    """
+
     sigla = fields.String(
         required=True,
         validate=Regexp(
@@ -114,9 +116,6 @@ class Class(Resource):
         log(
             log_type="info",
             message=f"User {identity} created class {lastrowid}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path} verb='{request.method}']",
         )
 
@@ -152,9 +151,6 @@ class Class(Resource):
         log(
             log_type="info",
             message=f"User {identity} deleted class {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -214,9 +210,6 @@ class Class(Resource):
         log(
             log_type="info",
             message=f"User {identity} updated class {id_}",
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -240,9 +233,6 @@ class Class(Resource):
                 f"User {identity} requested "
                 f"to read classes with string {class_year}"
             ),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -263,7 +253,8 @@ class Class(Resource):
         if not re_match(r"^[1-5][A-Za-z]{2}$", class_):
             return create_response(
                 message={
-                    "error": "class must be a digit from 1 to 5 followed by two letters (e.g. 4AI, 5BI)"
+                    "error": "class must be a digit from 1 to 5 followed by "
+                    "two letters (e.g. 4AI, 5BI)"
                 },
                 status_code=STATUS_CODES["bad_request"],
             )
@@ -333,9 +324,6 @@ class ClassFromResponsible(Resource):
                 f"User {identity} requested "
                 f"to read class with email {email_responsabile}"
             ),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
@@ -399,9 +387,6 @@ class ClassFuzzySearch(Resource):
                 f"User {identity} requested fuzzy "
                 f"search in classes with string {input_str}"
             ),
-            origin_name=API_SERVER_NAME_IN_LOG,
-            origin_host=API_SERVER_HOST,
-            message_id="UserAction",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
