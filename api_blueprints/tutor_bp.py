@@ -208,9 +208,9 @@ class Tutor(Resource):
 
         # Check if tutor exists using EXISTS keyword
         tutor_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM tutor WHERE id_tutor = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM tutor WHERE id_tutor = %s) AS ex",
             (id_,),
-        )["exists"]
+        )["ex"]
         if not tutor_exists:
             return create_response(
                 message={"outcome": "error, specified tutor does not exist"},
@@ -276,9 +276,9 @@ class Tutor(Resource):
 
         # Check that the specified company exists using EXISTS keyword
         company_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
             (id_,),
-        )["exists"]
+        )["ex"]
         if not company_exists:
             return create_response(
                 message={"outcome": "specified company not_found"},

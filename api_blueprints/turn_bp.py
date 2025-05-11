@@ -226,9 +226,9 @@ class Turn(Resource):
         # Check materie and settori existence
         for materia in materie:
             exists: bool = fetchone_query(
-                "SELECT EXISTS(SELECT 1 FROM materie WHERE materia = %s) AS exists",
+                "SELECT EXISTS(SELECT 1 FROM materie WHERE materia = %s) AS ex",
                 (materia,),
-            )["exists"]
+            )["ex"]
             if not exists:
                 return create_response(
                     message={
@@ -238,9 +238,9 @@ class Turn(Resource):
                 )
         for settore in settori:
             exists: bool = fetchone_query(
-                "SELECT EXISTS(SELECT 1 FROM settori WHERE settore = %s) AS exists",
+                "SELECT EXISTS(SELECT 1 FROM settori WHERE settore = %s) AS ex",
                 (settore,),
-            )["exists"]
+            )["ex"]
             if not exists:
                 return create_response(
                     message={
@@ -367,9 +367,9 @@ class Turn(Resource):
 
         # Check that the specified class exists using EXISTS keyword
         class_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM turni WHERE id_turno = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM turni WHERE id_turno = %s) AS ex",
             (id_,),
-        )["exists"]
+        )["ex"]
         if not class_exists:
             return create_response(
                 message={"outcome": "specified turn does not exist"},
@@ -443,9 +443,9 @@ class Turn(Resource):
 
         # Check that the specified company exists using EXISTS keyword
         company_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
             (id_,),
-        )["exists"]
+        )["ex"]
         if not company_exists:
             return create_response(
                 message={"outcome": "specified company not_found"},

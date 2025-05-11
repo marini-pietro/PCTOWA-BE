@@ -102,9 +102,9 @@ class Address(Resource):
 
         # Check if id_azienda exists using EXISTS keyword
         company_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) as exists",
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
             (data["id_azienda"],),
-        )["exists"]
+        )["ex"]
         if not company_exists:
             return create_response(
                 message={"outcome": "error, specified company does not exist"},
@@ -199,9 +199,9 @@ class Address(Resource):
 
         # Check if address exists using EXISTS keyword
         address_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM indirizzi WHERE id_indirizzo = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM indirizzi WHERE id_indirizzo = %s) AS ex",
             (id_,),
-        )["exists"]
+        )["ex"]
         if not address_exists:
             return create_response(
                 message={"outcome": "error, specified address does not exist"},
@@ -267,9 +267,9 @@ class Address(Resource):
 
         # Check that the company exists using EXISTS keyword
         company_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
             (id_,),
-        )["exists"]
+        )["ex"]
         if not company_exists:
             return create_response(
                 message={"error": "specified company does not exist"},

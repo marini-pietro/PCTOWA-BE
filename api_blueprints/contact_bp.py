@@ -84,9 +84,9 @@ class Contact(Resource):
 
         # Check if azienda exists using EXISTS keyword
         company_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
             (data["id_azienda"],),
-        )["exists"]
+        )["ex"]
         if not company_exists:
             return create_response(
                 message={"outcome": "specified company does not exist"},
@@ -182,9 +182,9 @@ class Contact(Resource):
 
         # Check that the specified contact exists using EXISTS keyword
         contact_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM contatti WHERE idContatto = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM contatti WHERE idContatto = %s) AS ex",
             (id_,),
-        )["exists"]
+        )["ex"]
         if not contact_exists:
             return create_response(
                 message={"outcome": "specified contact not_found"},
@@ -254,9 +254,9 @@ class Contact(Resource):
 
         # Check that the specified company exists using EXISTS keyword
         company_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
             (id_,),
-        )["exists"]
+        )["ex"]
         if not company_exists:
             return create_response(
                 message={"outcome": "specified company not_found"},

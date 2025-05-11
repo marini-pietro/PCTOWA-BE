@@ -241,9 +241,9 @@ class User(Resource):
 
         # Check if user exists using EXISTS keyword
         user_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM utente WHERE email_utente = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM utente WHERE email_utente = %s) AS ex",
             (email,),
-        )["exists"]
+        )["ex"]
         if not user_exists:
             return create_response(
                 message={"outcome": "error, user with provided email does not exist"},
@@ -535,9 +535,9 @@ class BindUserToCompany(Resource):
 
         # Check if user exists using EXISTS keyword
         user_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM utenti WHERE email_utente = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM utenti WHERE email_utente = %s) AS ex",
             (email,),
-        )["exists"]
+        )["ex"]
         if not user_exists:
             return create_response(
                 message={"outcome": "error, user with provided email does not exist"},
@@ -546,9 +546,9 @@ class BindUserToCompany(Resource):
 
         # Check if company exists using EXISTS keyword
         company_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
             (company_id,),
-        )["exists"]
+        )["ex"]
         if not company_exists:
             return create_response(
                 message={"outcome": "error, company with provided id_ does not exist"},
@@ -677,9 +677,9 @@ class ReadBindedUser(Resource):
         # Check that the specified resource exist
         if id_type == "company":
             company_exists: bool = fetchone_query(
-                "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS exists",
+                "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
                 (id_,),
-            )["exists"]
+            )["ex"]
             if not company_exists:
                 return create_response(
                     message={"outcome": "error, specified company does not exist"},
@@ -697,9 +697,9 @@ class ReadBindedUser(Resource):
         # Check that the specified resource exist
         elif id_type == "class":
             class_exists: bool = fetchone_query(
-                "SELECT EXISTS(SELECT 1 FROM classi WHERE id_classe = %s) AS exists",
+                "SELECT EXISTS(SELECT 1 FROM classi WHERE id_classe = %s) AS ex",
                 (id_,),
-            )["exists"]
+            )["ex"]
             if not class_exists:
                 return create_response(
                     message={"outcome": "error, specified class does not exist"},

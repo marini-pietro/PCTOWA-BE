@@ -223,9 +223,9 @@ class Student(Resource):
 
         # Check that the specified student exists using EXISTS keyword
         student_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM studenti WHERE matricola = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM studenti WHERE matricola = %s) AS ex",
             (matricola,),
-        )["exists"]
+        )["ex"]
         if not student_exists:
             return create_response(
                 message={"outcome": "error, specified student does not exist"},
@@ -340,9 +340,9 @@ class BindStudentToTurn(Resource):
 
         # Check that the student exists using EXISTS keyword
         student_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM studenti WHERE matricola = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM studenti WHERE matricola = %s) AS ex",
             (matricola,),
-        )["exists"]
+        )["ex"]
         if not student_exists:
             return create_response(
                 message={"error": "student not_found"},
@@ -351,9 +351,9 @@ class BindStudentToTurn(Resource):
 
         # Check that the turn exists using EXISTS keyword
         turn_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM turni WHERE id_turno = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM turni WHERE id_turno = %s) AS ex",
             (id_turno,),
-        )["exists"]
+        )["ex"]
         if not turn_exists:
             return create_response(
                 message={"error": "turn not_found"},
@@ -454,9 +454,9 @@ class StudentListFromClass(Resource):
 
         # Check if the class exists using EXISTS keyword
         class_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM classi WHERE id_classe = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM classi WHERE id_classe = %s) AS ex",
             (class_id,),
-        )["exists"]
+        )["ex"]
         if not class_exists:
             return create_response(
                 message={"outcome": "no class found with the provided id"},
@@ -565,9 +565,9 @@ class StudentListFromTurn(Resource):
 
         # Check if the turn exists using EXISTS keyword
         turn_exists: bool = fetchone_query(
-            "SELECT EXISTS(SELECT 1 FROM turni WHERE id_turno = %s) AS exists",
+            "SELECT EXISTS(SELECT 1 FROM turni WHERE id_turno = %s) AS ex",
             (turn_id,),
-        )["exists"]
+        )["ex"]
         if not turn_exists:
             return create_response(
                 message={"outcome": "no turn found with the provided id_"},
