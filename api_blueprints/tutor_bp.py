@@ -83,6 +83,14 @@ class TutorSchema(ma.Schema):
             "invalid": "ID Turno must be a positive integer.",
         },
     )
+    id_azienda = fields.Int(
+        required=True,
+        validate=Range(min=1, error="ID azienda must be a positive integer"),
+        error_messages={
+            "required": "ID azienda is required.",
+            "invalid": "ID azienda must be a positive integer.",
+        },
+    )
 
 
 tutor_schema = TutorSchema()
@@ -123,11 +131,12 @@ class Tutor(Resource):
         telefono: str = data["telefono"]
         email: str = data["email"]
         id_turno: int = data["id_turno"]
+        id_azienda: int = data["id_azienda"]
 
         # Insert the tutor
         lastrowid, _ = execute_query(
-            "INSERT INTO tutor (nome, cognome, telefonoTutor, email_tutor) VALUES (%s, %s, %s, %s)",
-            (nome, cognome, telefono, email),
+            "INSERT INTO tutor (nome, cognome, telefonoTutor, email_tutor, id_azienda) VALUES (%s, %s, %s, %s, %s)",
+            (nome, cognome, telefono, email, id_azienda),
         )
 
         # Insert the turno_tutor row

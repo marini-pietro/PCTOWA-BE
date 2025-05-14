@@ -110,11 +110,6 @@ class TurnSchema(ma.Schema):
         validate=Range(min=1, error="id_indirizzo must be a positive integer"),
         error_messages={"required": "id_indirizzo is required."},
     )
-    id_tutor = fields.Integer(
-        required=True,
-        validate=Range(min=1, error="id_tutor must be a positive integer"),
-        error_messages={"required": "id_tutor is required."},
-    )
     id_azienda = fields.Integer(
         required=True,
         validate=Range(min=1, error="id_azienda must be a positive integer"),
@@ -185,7 +180,6 @@ class Turn(Resource):
         posti = data["posti"]
         posti_confermati = data["posti_confermati"]
         id_indirizzo = data["id_indirizzo"]
-        id_tutor = data["id_tutor"]
         id_azienda = data["id_azienda"]
 
         # Validate days
@@ -214,7 +208,6 @@ class Turn(Resource):
         pk_to_check: Dict[str, List[Union[str, Any]]] = {
             "aziende": ["id_azienda", id_azienda],
             "indirizzi": ["id_indirizzo", id_indirizzo],
-            "tutor": ["id_tutor", id_tutor],
         }
         for table, (column, value) in pk_to_check.items():
             if value is not None:
@@ -260,9 +253,9 @@ class Turn(Resource):
         lastrowid, _ = execute_query(
             "INSERT INTO turni ("
             "data_inizio, data_fine, posti, ore, "
-            "id_azienda, id_indirizzo, id_tutor, ora_inizio, "
+            "id_azienda, id_indirizzo, ora_inizio, "
             "ora_fine, posti_confermati, giorno_inizio, giorno_fine) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 data_inizio,
                 data_fine,
@@ -270,7 +263,6 @@ class Turn(Resource):
                 ore,
                 id_azienda,
                 id_indirizzo,
-                id_tutor,
                 ora_inizio,
                 ora_fine,
                 posti_confermati,
