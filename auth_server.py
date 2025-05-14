@@ -5,10 +5,11 @@ This server provides endpoints for user authentication, token validation, and he
 
 import base64
 from typing import Dict, Union, List, Any
-from flask import Flask, request, jsonify
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from flask_jwt_extended import (
     JWTManager,
     create_access_token,
@@ -37,6 +38,7 @@ from config import (
     AUTH_SERVER_SSL_CERT,
     AUTH_SERVER_SSL_KEY,
     SQL_PATTERN,
+    AUTH_SERVER_PERMITTED_ORIGINS,
 )
 
 # Initialize Flask app
@@ -57,6 +59,8 @@ auth_api.config["JWT_ALGORITHM"] = JWT_ALGORITHM
 
 jwt = JWTManager(auth_api)
 
+# Enable CORS
+CORS(auth_api, resources={r"/*": {"origins": AUTH_SERVER_PERMITTED_ORIGINS}})
 
 def verify_password(stored_password: str, provided_password: str) -> bool:
     # Split the stored password into salt and hash

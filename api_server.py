@@ -13,6 +13,7 @@ from importlib import import_module
 from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager
 from flask_marshmallow import Marshmallow
+from flask_cors import CORS
 from api_blueprints import __all__  # Import all the blueprints
 from api_blueprints.blueprints_utils import log, is_rate_limited
 from config import (
@@ -34,6 +35,7 @@ from config import (
     API_SERVER_SSL,
     API_SERVER_SSL_CERT,
     API_SERVER_SSL_KEY,
+    API_SERVER_PERMITTED_ORIGINS,
     SQL_PATTERN,
 )
 
@@ -65,6 +67,8 @@ jwt = JWTManager(main_api)
 # Initialize Marshmallow
 ma = Marshmallow(main_api)
 
+# Enable CORS
+CORS(main_api, resources={r"/*": {"origins": API_SERVER_PERMITTED_ORIGINS}})
 
 def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
     """

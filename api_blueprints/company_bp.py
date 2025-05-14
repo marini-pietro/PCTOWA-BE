@@ -81,7 +81,7 @@ class CompanySchema(ma.Schema):
     indirizzo_logo = fields.String(
         allow_none=True,
         validate=Regexp(
-            r"^(\/|https?:\/\/)[\w\-.\/]+$",
+            r"^(\/|https?:\/\/)[\w\-.\/%]+$",
             error="indirizzo_logo must be a valid web URL or a file system path starting with '/'",
         ),
         error_messages={"invalid": "indirizzo_logo must be a string."},
