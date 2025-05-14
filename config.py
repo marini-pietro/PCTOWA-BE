@@ -9,12 +9,12 @@ This module contains the configuration settings for the API server, including:
 """
 
 from re import IGNORECASE as RE_IGNORECASE, compile as re_compile
-from typing import Dict, Set
+from typing import Dict, Set, List
 from datetime import timedelta
 
 # Authentication server related settings
 AUTH_SERVER_HOST: str = "localhost"  # The host of the authentication server
-AUTH_SERVER_PORT: int = 6002  # The port of the authentication server
+AUTH_SERVER_PORT: int = 5006  # The port of the authentication server
 AUTH_SERVER_NAME_IN_LOG: str = "auth-server"
 AUTH_SERVER_DEBUG_MODE: bool = True
 AUTH_SERVER_RATE_LIMIT: bool = (
@@ -22,6 +22,7 @@ AUTH_SERVER_RATE_LIMIT: bool = (
 )
 AUTH_SERVER_SSL_CERT: str = ""  # The path to the SSL/TLS certificate file
 AUTH_SERVER_SSL_KEY: str = ""  # The path to the SSL/TLS key file
+AUTH_SERVER_PERMITTED_ORIGINS: List[str] = ["*"]
 AUTH_SERVER_SSL: bool = not (
     AUTH_SERVER_SSL_CERT == "" and AUTH_SERVER_SSL_KEY == ""
 )  # Whether the authentication server uses SSL/TLS or not
@@ -33,7 +34,7 @@ JWT_VALIDATION_CACHE_TTL: int = (
 # Log server related settings
 LOG_SERVER_HOST: str = "localhost"  # The host of the log server
 LOG_SERVER_PORT: int = (
-    6014  # The port of the log server (default syslog port, can modified to open port for testing)
+    5007  # The port of the log server (default syslog port, can modified to open port for testing)
 )
 LOG_FILE_NAME: str = "pctowa_log.txt"
 LOGGER_NAME: str = "pctowa_logger"  # The name of the logger
@@ -55,13 +56,14 @@ SYSLOG_SEVERITY_MAP: Dict[str, int] = {  # Define a severity map for the syslog 
 
 # API server related settings
 # | API server settings
-API_SERVER_HOST: str = "localhost"
-API_SERVER_PORT: int = 6000
+API_SERVER_HOST: str = "172.16.1.98"
+API_SERVER_PORT: int = 5005
 API_SERVER_NAME_IN_LOG: str = "api-server"  # The name of the server in the log messages
 API_VERSION: str = "v1"  # The version of the API
 URL_PREFIX: str = f"/api/{API_VERSION}/"  # The prefix for all API endpoints
 API_SERVER_DEBUG_MODE: bool = True  # Whether the API server is in debug mode or not
 API_SERVER_RATE_LIMIT: bool = True  # Whether to enable rate limiting on the API server
+API_SERVER_PERMITTED_ORIGINS: List[str] = ["*"]
 LOGIN_AVAILABLE_THROUGH_API: bool = AUTH_SERVER_HOST in {
     "localhost",
     "127.0.0.1",
@@ -90,8 +92,8 @@ JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=3)  # Access token valid duration
 # | Database configuration
 DB_HOST: str = "localhost"
 DB_NAME: str = "pctowa"
-DB_USER: str = "root"
-DB_PASSWORD: str = ""
+DB_USER: str = "pctowa"
+DB_PASSWORD: str = "pctowa2025"
 CONNECTION_POOL_SIZE: int = 20  # The maximum number of connections in the pool
 
 
