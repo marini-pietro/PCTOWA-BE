@@ -1,10 +1,17 @@
-# Webapp-PCTO API
+# PCTOWA-BE
 
-Questo progetto è un'API RESTful basata su Flask per la gestione di dati relativi alla collaborazione scuola-azienda.
+Questo progetto è una architettura a microservizi basata su Flask per la gestione di dati relativi alla collaborazione scuola-azienda.
+È composta:
+
+- Microservizio RESTful per l'API
+- Microservizio per l' autenticazione tramite JWT
+- Server syslog per la gestione dei dati, integrabile in contesti più grandi con lo stesso scopo
+
+
 
 ## Documentazione  
 
-Questo file è inteso come una breve presentazione ed introduzione al progetto, se desideri leggere della documentazione più accurata puoi visitare la [wiki](https://github.com/marini-pietro/Webapp-PCTO/wiki) del progetto premendo sul bottone `Wiki` in alto, tra `Projects` e `Security`, o sulla parola wiki stessa in questo file.
+Questo file è inteso come una breve presentazione ed introduzione al progetto, se desideri leggere della documentazione più accurata puoi visitare la [wiki](https://github.com/marini-pietro/PCTOWA-BE/wiki) del progetto premendo sul bottone `Wiki` in alto, tra `Projects` e `Security`, o sulla parola wiki stessa in questo file.
 
 # Licenza
 
@@ -15,6 +22,6 @@ La modifica o l'implementazione di nuove funzionalità, se necessarie, sarà dir
 
 Realizzato nell' anno scolastico 2024-2025 dal gruppo Marini, Peretti, Rigo della 5BI, come progetto intermateria, con i seguenti ruoli:
 
-- Marini: DBA, Backend/API Developer e scrittore della Wiki.
+- Marini: DBA, Backend/API developer, scrittore della wiki e della documentazione.
 - Rigo: Frontend developer e project analyst
 - Peretti: Frontend developer e project analyst
