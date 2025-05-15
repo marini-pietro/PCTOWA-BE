@@ -294,10 +294,20 @@ class User(Resource):
         Get all users, can be filtered by role.
         """
 
-        # Gather parameters
+        # Gather query strings
         role: str = request.args.get("ruolo", type=str)
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
+            return create_response(
+                message={"error": "limit and offset must be positive integers"},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
-        # Validate parameters
+        # Validate query strings
         if role and role not in ROLES:
             return create_response(
                 message={"error": "unknown role value"},
@@ -306,14 +316,17 @@ class User(Resource):
 
         # Build query
         query = "SELECT * FROM utenti"
-        params = ()
+        params = []
 
         if role:
             query += " WHERE ruolo = %s"
-            params = (role,)
+            params.append(role)
+
+        query += " LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
 
         # Execute query
-        users: List[Dict[str, Any]] = fetchall_query(query, params)
+        users: List[Dict[str, Any]] = fetchall_query(query, tuple(params))
 
         # Handle empty results
         if users is None:

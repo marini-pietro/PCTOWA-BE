@@ -226,15 +226,17 @@ class Class(Resource):
         Get all the students that belong to a class in a given year (e.g. 5BI 24-25).
         """
 
-        # Log the read
-        log(
-            log_type="info",
-            message=(
-                f"User {identity} requested "
-                f"to read classes with string {class_year}"
-            ),
-            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
-        )
+        # Gather parameters
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
+            return create_response(
+                message={"error": "limit and offset must be positive integers"},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check if class_year is valid
         try:
@@ -264,26 +266,36 @@ class Class(Resource):
                 status_code=STATUS_CODES["bad_request"],
             )
 
-        # Get class data
-        id_class: Dict[str, Any] = fetchone_query(
-            "SELECT id_classe FROM classi WHERE sigla = %s AND anno = %s",
+        # Check if class exists using EXISTS
+        class_exists: bool = fetchone_query(
+            "SELECT EXISTS(SELECT 1 FROM classi WHERE sigla = %s AND anno = %s) AS class_exists",
             (class_, year),
-        )["id_classe"]
+        )["class_exists"]
 
-        # Check if class exists
-        if id_class is None:
+        if not class_exists:
             return create_response(
                 message={"error": "class not found"},
                 status_code=STATUS_CODES["not_found"],
             )
 
-        # Get students in the class
+        # Log the read
+        log(
+            log_type="info",
+            message=(
+                f"User {identity} requested "
+                f"to read classes with string {class_year}"
+            ),
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
+
+        # Get students in the class with limit and offset
         students: List[Dict[str, Any]] = fetchall_query(
             "SELECT matricola, nome, cognome, comune "
             "FROM studenti "
             "JOIN classi ON studenti.id_classe = classi.id_classe "
-            "WHERE classi.sigla = %s AND classi.anno = %s",
-            (class_, year),
+            "WHERE classi.sigla = %s AND classi.anno = %s "
+            "LIMIT %s OFFSET %s",
+            (class_, year, limit, offset),
         )
 
         # Return the data
@@ -379,6 +391,16 @@ class ClassFuzzySearch(Resource):
                 message={"error": "fnome cannot contain % or _ characters"},
                 status_code=STATUS_CODES["bad_request"],
             )
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
+            return create_response(
+                message={"error": "limit and offset must be positive integers"},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Log the operation
         log(
@@ -392,8 +414,8 @@ class ClassFuzzySearch(Resource):
 
         # Get the data
         data: List[Dict[str, Any]] = fetchall_query(
-            query="SELECT sigla FROM classi WHERE sigla LIKE %s ORDER BY sigla DESC",
-            params=(f"%{input_str}%",),
+            query="SELECT sigla FROM classi WHERE sigla LIKE %s ORDER BY sigla DESC LIMIT %s OFFSET %s",
+            params=(f"%{input_str}%", limit, offset),
         )
 
         # Return the data

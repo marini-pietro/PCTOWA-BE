@@ -260,7 +260,7 @@ class Student(Resource):
         )
 
         # Get student data
-        student: List[Dict[str, Any]] = fetchall_query(
+        student: List[Dict[str, Any]] = fetchone_query(
             """
             SELECT matricola, nome, cognome, comune, id_classe
             FROM studenti
@@ -418,16 +418,6 @@ class StudentListFromClass(Resource):
         to a class passed by its id_ as a path variable.
         """
 
-        # Log the request
-        log(
-            log_type="info",
-            message=(
-                f"User {identity} requested student list "
-                f"that are associated to class {class_id}"
-            ),
-            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
-        )
-
         # Check if the class exists using EXISTS keyword
         class_exists: bool = fetchone_query(
             "SELECT EXISTS(SELECT 1 FROM classi WHERE id_classe = %s) AS ex",
@@ -439,23 +429,46 @@ class StudentListFromClass(Resource):
                 status_code=STATUS_CODES["not_found"],
             )
 
+        # Gather query strings
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
+            return create_response(
+                message={"error": "limit and offset must be positive integers"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        # Log the request
+        log(
+            log_type="info",
+            message=(
+                f"User {identity} requested student list "
+                f"that are associated to class {class_id}"
+            ),
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
+
         # Get student data
         student_data: List[Dict[str, Any]] = fetchall_query(
             """
             SELECT S.matricola, S.nome, S.cognome, 
-                S.comune, T.id_turno, T.data_inizio, 
-                T.data_fine, T.giorno_inizio, T.giorno_fine, 
-                T.ora_inizio, T.ora_fine, T.ore,
-                A.ragione_sociale, I.stato, I.provincia, I.comune AS comuneAzienda,
-                I.cap, I.indirizzo AS indirizzoAzienda
+            S.comune, T.id_turno, T.data_inizio, 
+            T.data_fine, T.giorno_inizio, T.giorno_fine, 
+            T.ora_inizio, T.ora_fine, T.ore,
+            A.ragione_sociale, I.stato, I.provincia, I.comune AS comuneAzienda,
+            I.cap, I.indirizzo AS indirizzoAzienda
             FROM studenti AS S
             LEFT JOIN studente_turno AS ST ON S.matricola = ST.matricola
             LEFT JOIN turni AS T ON ST.id_turno = T.id_turno
             LEFT JOIN aziende AS A ON T.id_azienda = A.id_azienda
             LEFT JOIN indirizzi AS I ON T.id_indirizzo = I.id_indirizzo
             WHERE S.id_classe = %s
+            LIMIT %s OFFSET %s
             """,
-            (class_id,),
+            (class_id, limit, offset),
         )
 
         # Check if student_data is empty
@@ -528,15 +541,18 @@ class StudentListFromTurn(Resource):
         Get a list of all students that are associated
         to a turn passed by its id_ as a path variable.
         """
-        # Log the request
-        log(
-            log_type="info",
-            message=(
-                f"User {identity} requested student list "
-                f"that are associated to turn {turn_id}"
-            ),
-            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
-        )
+
+        # Gather query strings
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
+            return create_response(
+                message={"error": "limit and offset must be positive integers"},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # Check if the turn exists using EXISTS keyword
         turn_exists: bool = fetchone_query(
@@ -549,14 +565,27 @@ class StudentListFromTurn(Resource):
                 status_code=STATUS_CODES["not_found"],
             )
 
+        # Log the request
+        log(
+            log_type="info",
+            message=(
+                f"User {identity} requested student list "
+                f"that are associated to turn {turn_id}"
+            ),
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
+
         # Get all students
         students: List[Dict[str, Any]] = fetchall_query(
-            query="SELECT S.matricola, S.nome, S.cognome, S.comune "
-            "FROM studenti AS S "
-            "JOIN studenteTurno AS ST ON S.matricola = ST.matricola "
-            "JOIN turni AS T ON ST.id_turno = T.id_turno "
-            "WHERE T.id_turno = %s",
-            params=(turn_id,),
+            query=(
+                "SELECT S.matricola, S.nome, S.cognome, S.comune "
+                "FROM studenti AS S "
+                "JOIN studenteTurno AS ST ON S.matricola = ST.matricola "
+                "JOIN turni AS T ON ST.id_turno = T.id_turno "
+                "WHERE T.id_turno = %s "
+                "LIMIT %s OFFSET %s"
+            ),
+            params=(turn_id, limit, offset),
         )
 
         # Return the response

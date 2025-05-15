@@ -267,13 +267,6 @@ class Tutor(Resource):
         The company id must be provided as a path variable.
         """
 
-        # Log the read
-        log(
-            log_type="info",
-            message=(f"User {identity} requested " f"tutor list with company id {id_}"),
-            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
-        )
-
         # Check that the specified company exists using EXISTS keyword
         company_exists: bool = fetchone_query(
             "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
@@ -285,14 +278,34 @@ class Tutor(Resource):
                 status_code=STATUS_CODES["not_found"],
             )
 
+        # Gather query strings
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
+            return create_response(
+                message={"error": "limit and offset must be positive integers"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        # Log the read
+        log(
+            log_type="info",
+            message=(f"User {identity} requested " f"tutor list with company id {id_}"),
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
+
         # Get the data
         tutors: List[Dict[str, Any]] = fetchall_query(
             """
-            SELECT nome, cognome, email_tutor, telefono_tutor
+            SELECT nome, cognome, email_tutor, telefonoTutor
             FROM tutor
             WHERE id_azienda = %s
+            LIMIT %s OFFSET %s
             """,
-            (id_,),
+            (id_, limit, offset),
         )
 
         # Check if query returned any results

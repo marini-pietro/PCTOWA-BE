@@ -177,11 +177,6 @@ def process_syslog_message(message, addr):
             # Add the log to the delayed queue instead of dropping it
             with queue_lock:
                 delayed_logs.append((message, addr))
-            logger.log(
-                "warning",
-                f"Rate limit exceeded for {source_ip}. Delaying message: {message}",
-                f"Syslog-{source_ip}",
-            )
             return  # Do not process the message immediately
 
     # Process the syslog message as usual

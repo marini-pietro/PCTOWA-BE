@@ -392,10 +392,16 @@ class CompanyList(Resource):
         settore: str = request.args.get("settore")
         mese: str = request.args.get("mese")
         materia: str = request.args.get("materia")
-
-        # add limit and offset
-
-        # Gather data
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
+            return create_response(
+                message={"error": "limit and offset must be positive integers"},
+                status_code=STATUS_CODES["bad_request"],
+            )
 
         # If all the filters are empty, return all companies
         if not any([anno, comune, settore, mese, materia]):
@@ -517,9 +523,12 @@ class CompanyList(Resource):
                 "A.categoria, A.indirizzo_logo, A.sito_web, A.forma_giuridica, I.stato, "
                 "I.provincia, I.comune, I.cap, I.indirizzo "
                 "FROM aziende AS A JOIN indirizzi AS I ON A.id_azienda = I.id_azienda "
-                f"WHERE A.id_azienda IN ({placeholders})"
+                f"WHERE A.id_azienda IN ({placeholders}) "
+                "LIMIT %s OFFSET %s"
             )
-            companies: List[Dict[str, Any]] = fetchall_query(query, tuple(ids_batch))
+            companies: List[Dict[str, Any]] = fetchall_query(
+                query=query, params=tuple(ids_batch) + (limit, offset)
+            )
         else:
             return create_response(
                 message={"error": "no company matches filters"},

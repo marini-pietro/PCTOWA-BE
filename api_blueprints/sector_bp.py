@@ -263,17 +263,15 @@ class Sector(Resource):
         The request can include limit and offset as query parameters.
         """
 
-        # Gather URL parameters
+        # Gather query strings
         try:
-            limit: int = (
-                int(request.args.get("limit")) if request.args.get("limit") else 10
-            )  # Default to 10
-            offset: int = (
-                int(request.args.get("offset")) if request.args.get("offset") else 0
-            )  # Default to 0
-        except (ValueError, TypeError) as ex:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
             return create_response(
-                message={"error": f"invalid limit or offset parameter: {ex}"},
+                message={"error": "limit and offset must be positive integers"},
                 status_code=STATUS_CODES["bad_request"],
             )
 

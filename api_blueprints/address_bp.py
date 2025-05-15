@@ -251,10 +251,15 @@ class Address(Resource):
         The request must contain the id parameter in the URI as a path variable.
         """
 
-        # Validate id
-        if id_ < 0:
+        # Gather parameters
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
             return create_response(
-                message={"error": "id path variable must be positive integer"},
+                message={"error": "limit and offset must be positive integers"},
                 status_code=STATUS_CODES["bad_request"],
             )
 
@@ -270,11 +275,11 @@ class Address(Resource):
             )
 
         try:
-            # Execute query
+            # Execute query with limit and offset
             addresses: List[Dict[str, Any]] = fetchall_query(
                 "SELECT id_indirizzo, stato, provincia, comune, cap, indirizzo "
-                "FROM indirizzi WHERE id_azienda = %s",
-                params=(id_,),
+                "FROM indirizzi WHERE id_azienda = %s LIMIT %s OFFSET %s",
+                params=(id_, limit, offset),
             )
 
             # Log the read

@@ -267,14 +267,15 @@ class Subject(Resource):
         The request can include limit and offset as query parameters.
         """
 
-        # Gather parameters
-        limit: int = request.args.get("limit", default=10, type=int)
-        offset: int = request.args.get("offset", default=0, type=int)
-
-        # Validate parameters
-        if limit < 0 or offset < 0:
+        # Gather query strings
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
             return create_response(
-                message={"error": "limit and offset must be non-negative integers"},
+                message={"error": "limit and offset must be positive integers"},
                 status_code=STATUS_CODES["bad_request"],
             )
 

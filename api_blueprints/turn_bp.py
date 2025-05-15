@@ -422,13 +422,6 @@ class Turn(Resource):
         The request must include the turn ID as a path variable.
         """
 
-        # Log the read
-        log(
-            log_type="info",
-            message=(f"User {identity} requested " f"turn list with company id {id_}"),
-            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
-        )
-
         # Check that the specified company exists using EXISTS keyword
         company_exists: bool = fetchone_query(
             "SELECT EXISTS(SELECT 1 FROM aziende WHERE id_azienda = %s) AS ex",
@@ -440,14 +433,34 @@ class Turn(Resource):
                 status_code=STATUS_CODES["not_found"],
             )
 
+        # Gather query strings
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
+            return create_response(
+                message={"error": "limit and offset must be positive integers"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
+        # Log the read
+        log(
+            log_type="info",
+            message=(f"User {identity} requested " f"turn list with company id {id_}"),
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
+
         # Get the data
         turns: List[Dict[str, Any]] = fetchall_query(
             "SELECT data_inizio, data_fine, posti, "
             "posti_occupati, ore, id_azienda, "
-            "ora_inizio, posti_confermati,"
+            "ora_inizio, posti_confermati, "
             "ora_fine, giorno_inizio, giorno_fine "
-            "FROM turni WHERE id_azienda = %s",
-            (id_,),
+            "FROM turni WHERE id_azienda = %s "
+            "LIMIT %s OFFSET %s",
+            (id_, limit, offset),
         )
 
         # Check if query returned any results

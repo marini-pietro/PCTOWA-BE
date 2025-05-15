@@ -230,7 +230,7 @@ class Contact(Resource):
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])
     def get(self, id_, identity) -> Response:
         """
-        Get a contact by the ID of its company.
+        Get all the contacts of a company represented by its ID.
         The id is passed as a path variable.
         """
 
@@ -254,10 +254,22 @@ class Contact(Resource):
                 status_code=STATUS_CODES["not_found"],
             )
 
+        # Gather parameters
+        try:
+            limit: int = int(request.args.get("limit", 10))
+            offset: int = int(request.args.get("offset", 0))
+            if limit < 0 or offset < 0:
+                raise ValueError
+        except ValueError:
+            return create_response(
+                message={"error": "limit and offset must be positive integers"},
+                status_code=STATUS_CODES["bad_request"],
+            )
+
         # Get the data
         contact: List[Dict[str, Any]] = fetchall_query(
-            "SELECT nome, cognome, telefono, email, ruolo FROM contatti WHERE id_azienda = %s",
-            (id_,),  # Only fetch the name (select column could be any field)
+            "SELECT nome, cognome, telefono, email, ruolo FROM contatti WHERE id_azienda = %s LIMIT %s OFFSET %s",
+            (id_, limit, offset),
         )
 
         # Check if query returned any results
