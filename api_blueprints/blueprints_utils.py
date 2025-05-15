@@ -100,14 +100,14 @@ def jwt_validation_required(func):
                 response: Response = requests_post(
                     f"{'https' if AUTH_SERVER_SSL else 'http'}://{AUTH_SERVER_HOST}:{AUTH_SERVER_PORT}/auth/validate",
                     headers={"Authorization": f"Bearer {token}"},
-                    timeout=5, # in seconds
+                    timeout=5,  # in seconds
                 )
 
                 # If the token is invalid, return a 401 Unauthorized response
                 if response.status_code != STATUS_CODES["ok"]:
                     return {"error": "Invalid token"}, STATUS_CODES["unauthorized"]
                 else:
-                # Extract the identity from the response JSON if valid
+                    # Extract the identity from the response JSON if valid
                     response_json = response.json()
                     identity = response_json.get("identity")
                     role = response_json.get("role")
@@ -122,7 +122,9 @@ def jwt_validation_required(func):
                     origin_name="JWTValidation",
                     origin_host=API_SERVER_HOST,
                 )
-                return {"error": "Login request timed out"}, STATUS_CODES["gateway_timeout"]
+                return {"error": "Login request timed out"}, STATUS_CODES[
+                    "gateway_timeout"
+                ]
 
             except RequestException as ex:
                 log(
@@ -131,7 +133,9 @@ def jwt_validation_required(func):
                     origin_name="JWTValidation",
                     origin_host=API_SERVER_HOST,
                 )
-                return {"error": "internal server error while validating token"}, STATUS_CODES["internal_error"]
+                return {
+                    "error": "internal server error while validating token"
+                }, STATUS_CODES["internal_error"]
 
         # Pass the extracted identity to the wrapped function
         # Only if the function accepts it (OPTIONS endpoint do not use it)

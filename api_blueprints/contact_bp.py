@@ -40,6 +40,7 @@ class ContactSchema(ma.Schema):
     """
     Schema for validating and deserializing contact data.
     """
+
     nome = fields.String(required=True)
     cognome = fields.String(required=True)
     telefono = fields.String(

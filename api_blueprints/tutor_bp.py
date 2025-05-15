@@ -43,6 +43,7 @@ class TutorSchema(ma.Schema):
     Schema for validating and deserializing tutor data.
     This schema is used for both creating and updating tutor records.
     """
+
     nome = fields.Str(
         required=True,
         error_messages={

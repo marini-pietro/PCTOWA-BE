@@ -42,6 +42,7 @@ class StudentSchema(ma.Schema):
     """
     Schema for validating and deserializing student data.
     """
+
     matricola = fields.String(
         required=True,
         validate=Regexp(
@@ -292,6 +293,7 @@ class BindStudentToTurnSchema(ma.Schema):
     """
     Schema for validating and deserializing data for binding a student to a turn.
     """
+
     id_turno = fields.Integer(required=True)
 
 

@@ -41,6 +41,7 @@ class SectorSchema(ma.Schema):
     """
     Schema for validating and deserializing sector data.
     """
+
     settore = fields.String(
         required=True,
         error_messages={

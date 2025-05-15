@@ -44,6 +44,7 @@ class TurnSchema(ma.Schema):
     """
     Schema for validating and deserializing Turn data.
     """
+
     settori = fields.List(fields.String(), required=True)
     materie = fields.List(fields.String(), required=True)
     data_inizio = fields.Date(
@@ -81,7 +82,7 @@ class TurnSchema(ma.Schema):
         validate=Regexp(
             r"^(lunedì|martedì|mercoledì|giovedì|venerdì)$",
             error="giorno_inizio must be a valid weekday "
-                  "(lunedì, martedì, mercoledì, giovedì, venerdì)",
+            "(lunedì, martedì, mercoledì, giovedì, venerdì)",
         ),
         error_messages={"required": "giorno_inizio is required."},
     )
@@ -90,7 +91,7 @@ class TurnSchema(ma.Schema):
         validate=Regexp(
             r"^(lunedì|martedì|mercoledì|giovedì|venerdì)$",
             error="giorno_fine must be a valid weekday "
-                  "(lunedì, martedì, mercoledì, giovedì, venerdì)",
+            "(lunedì, martedì, mercoledì, giovedì, venerdì)",
         ),
         error_messages={"required": "giorno_fine is required."},
     )

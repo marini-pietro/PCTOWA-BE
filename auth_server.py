@@ -62,6 +62,7 @@ jwt = JWTManager(auth_api)
 # Enable CORS
 CORS(auth_api, resources={r"/*": {"origins": AUTH_SERVER_PERMITTED_ORIGINS}})
 
+
 def verify_password(stored_password: str, provided_password: str) -> bool:
     # Split the stored password into salt and hash
     salt, hashed_password = stored_password.split(":")
@@ -112,6 +113,89 @@ def is_input_safe(data: Union[str, List[str], Dict[Any, Any]]) -> bool:
         raise TypeError(
             "Input must be a string, list of strings, or dictionary with string keys and values."
         )
+
+
+@auth_api.before_request
+def validate_user_data():
+    """
+    Validate user data for all incoming requests by checking for SQL injection,
+    JSON presence for methods that use them and JSON format.
+    This function is called before each request to ensure
+    that the data is safe and valid.
+    This does check for any endpoint specific validation, which should be done in the respective blueprint.
+    """
+    # Validate JSON body for POST, PUT, PATCH methods
+    if request.method in ["POST", "PUT", "PATCH"]:
+        if not request.is_json or request.json is None:
+            return (
+                jsonify(
+                    "Request body must be valid JSON with Content-Type: application/json"
+                ),
+                STATUS_CODES["bad_request"],
+            )
+        try:
+            data = request.get_json(silent=False)
+            if data == {}:
+                return (
+                    jsonify("Request body must not be empty"),
+                    STATUS_CODES["bad_request"],
+                )
+        except ValueError:
+            return (jsonify("Invalid JSON format"), STATUS_CODES["bad_request"])
+
+        # Validate JSON keys and values for SQL injection
+        for key, value in data.items():
+            if not is_input_safe(key):
+                return (
+                    jsonify(
+                        {"error": f"Invalid JSON key: {key} suspected SQL injection"}
+                    ),
+                    STATUS_CODES["bad_request"],
+                )
+            if isinstance(value, str) and not is_input_safe(value):
+                return (
+                    jsonify(
+                        {
+                            "error": f"Invalid JSON value for key '{key}': suspected SQL injection"
+                        }
+                    ),
+                    STATUS_CODES["bad_request"],
+                )
+
+    # Validate query string parameters
+    if request.args:
+        for key, value in request.args.items():
+            if not is_input_safe(key):
+                return (
+                    jsonify(
+                        {
+                            "error": f"Invalid query parameter key: {key} suspected SQL injection"
+                        }
+                    ),
+                    STATUS_CODES["bad_request"],
+                )
+            if not is_input_safe(value):
+                return (
+                    jsonify(
+                        {
+                            "error": f"Invalid query parameter value for key '{key}': suspected SQL injection"
+                        }
+                    ),
+                    STATUS_CODES["bad_request"],
+                )
+
+    # Validate path variables (if needed)
+    if request.view_args:  # Check if view_args is not None
+        for key, value in request.view_args.items():
+            if not is_input_safe(value):
+                return (
+                    jsonify(
+                        {
+                            "error": f"Invalid path variable: {key} suspected SQL injection"
+                        }
+                    ),
+                    STATUS_CODES["bad_request"],
+                )
 
 
 @auth_api.before_request

@@ -43,6 +43,7 @@ class SubjectSchema(ma.Schema):
     """
     Schema for validating and deserializing subject data.
     """
+
     descrizione = fields.String(
         required=True, error_messages={"required": "descrizione is required."}
     )

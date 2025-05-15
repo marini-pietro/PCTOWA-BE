@@ -63,6 +63,7 @@ class UserSchema(ma.Schema):
     """
     Schema for validating and deserializing user data.
     """
+
     email = fields.Email(
         required=True,
         error_messages={
@@ -101,7 +102,7 @@ def hash_password(password: str) -> str:
     salt = os.urandom(16)  # 16 bytes (128 bits)
     # Use PBKDF2 to hash the password
     kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(), # 256 bits (32 byte)
+        algorithm=hashes.SHA256(),  # 256 bits (32 byte)
         length=32,
         salt=salt,
         iterations=100000,
@@ -346,6 +347,7 @@ class UserLoginSchema(ma.Schema):
     """
     Schema for validating and deserializing user login data.
     """
+
     email = fields.Email(required=True)
     password = fields.String(required=True)
 
@@ -483,6 +485,7 @@ class BindUserToCompanySchema(ma.Schema):
     """
     Schema for validating and deserializing user binding data.
     """
+
     id_azienda = fields.Integer(
         required=True,
         validate=lambda x: x > 0,

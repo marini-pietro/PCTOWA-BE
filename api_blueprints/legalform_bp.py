@@ -40,6 +40,7 @@ class LegalFormSchema(ma.Schema):
     """
     Schema for validating and deserializing legal form data.
     """
+
     forma = fields.String(
         required=True,
         error_messages={

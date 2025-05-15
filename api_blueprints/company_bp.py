@@ -41,6 +41,7 @@ class CompanySchema(ma.Schema):
     """
     Marshmallow schema for validating and deserializing company data.
     """
+
     ragione_sociale = fields.String(
         required=True, error_messages={"required": "ragione_sociale is required."}
     )

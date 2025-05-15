@@ -70,6 +70,7 @@ ma = Marshmallow(main_api)
 # Enable CORS
 CORS(main_api, resources={r"/*": {"origins": API_SERVER_PERMITTED_ORIGINS}})
 
+
 def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
     """
     Check if the input data (string, list, or dictionary) contains SQL instructions.
@@ -100,10 +101,10 @@ def is_input_safe(data: Union[str, List[Any], Dict[Any, Any]]) -> bool:
 @main_api.before_request
 def validate_user_data():
     """
-    Validate user data for all incoming requests by checking for SQL injection, 
-    JSON presence for methods that use them and JSON format.  
-    This function is called before each request to ensure 
-    that the data is safe and valid.  
+    Validate user data for all incoming requests by checking for SQL injection,
+    JSON presence for methods that use them and JSON format.
+    This function is called before each request to ensure
+    that the data is safe and valid.
     This does check for any endpoint specific validation, which should be done in the respective blueprint.
     """
     # Validate JSON body for POST, PUT, PATCH methods
@@ -144,13 +145,37 @@ def validate_user_data():
                     STATUS_CODES["bad_request"],
                 )
 
+    # Validate query string parameters
+    if request.args:
+        for key, value in request.args.items():
+            if not is_input_safe(key):
+                return (
+                    jsonify(
+                        {
+                            "error": f"Invalid query parameter key: {key} suspected SQL injection"
+                        }
+                    ),
+                    STATUS_CODES["bad_request"],
+                )
+            if not is_input_safe(value):
+                return (
+                    jsonify(
+                        {
+                            "error": f"Invalid query parameter value for key '{key}': suspected SQL injection"
+                        }
+                    ),
+                    STATUS_CODES["bad_request"],
+                )
+
     # Validate path variables (if needed)
     if request.view_args:  # Check if view_args is not None
         for key, value in request.view_args.items():
             if not is_input_safe(value):
                 return (
                     jsonify(
-                        {"error": f"Invalid path variable: {key} suspected SQL injection"}
+                        {
+                            "error": f"Invalid path variable: {key} suspected SQL injection"
+                        }
                     ),
                     STATUS_CODES["bad_request"],
                 )
