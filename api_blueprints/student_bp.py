@@ -180,7 +180,7 @@ class Student(Resource):
 
         # Return a success message
         return create_response(
-            message={"outcome": "student successfully deleted"},
+            message=None,
             status_code=STATUS_CODES["no_content"],
         )
 
@@ -238,10 +238,16 @@ class Student(Resource):
         # Update the student
         execute_query(query, params)
 
-        # Return a success message
+        # Log the update
+        log(
+            log_type="info",
+            message=f"User {identity} updated student {matricola}",
+            structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
+        )
+
         return create_response(
-            message={"outcome": "student successfully updated"},
-            status_code=STATUS_CODES["ok"],
+            message=None,
+            status_code=STATUS_CODES["no_content"],
         )
 
     @jwt_validation_required

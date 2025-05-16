@@ -199,7 +199,7 @@ class Company(Resource):
 
         # Return a success message
         return create_response(
-            message={"outcome": "company successfully deleted"},
+            message=None,
             status_code=STATUS_CODES["no_content"],
         )
 
@@ -270,10 +270,9 @@ class Company(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Return a success message
         return create_response(
-            message={"outcome": "company successfully updated"},
-            status_code=STATUS_CODES["ok"],
+            message=None,
+            status_code=STATUS_CODES["no_content"],
         )
 
     @jwt_validation_required

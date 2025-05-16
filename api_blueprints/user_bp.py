@@ -224,7 +224,7 @@ class User(Resource):
 
         # Return success message
         return create_response(
-            message={"outcome": "user successfully deleted"},
+            message=None,
             status_code=STATUS_CODES["no_content"],
         )
 
@@ -283,8 +283,8 @@ class User(Resource):
 
         # Return success message
         return create_response(
-            message={"outcome": "user successfully updated"},
-            status_code=STATUS_CODES["ok"],
+            message=None,
+            status_code=STATUS_CODES["no_content"],
         )
 
     @jwt_validation_required

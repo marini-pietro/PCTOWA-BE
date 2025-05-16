@@ -156,7 +156,7 @@ class Contact(Resource):
 
         # Return a success message
         return create_response(
-            message={"outcome": "contact successfully deleted"},
+            message=None,
             status_code=STATUS_CODES["no_content"],
         )
 
@@ -220,10 +220,9 @@ class Contact(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Return a success message
         return create_response(
-            message={"outcome": "contact successfully updated"},
-            status_code=STATUS_CODES["ok"],
+            message=None,
+            status_code=STATUS_CODES["no_content"],
         )
 
     @jwt_validation_required

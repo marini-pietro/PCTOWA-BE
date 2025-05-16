@@ -105,7 +105,7 @@ def jwt_validation_required(func):
 
                 # If the token is invalid, return a 401 Unauthorized response
                 if response.status_code != STATUS_CODES["ok"]:
-                    return {"error": "Invalid token"}, STATUS_CODES["unauthorized"]
+                    return ({"error": "invalid token"}, STATUS_CODES["unauthorized"])
                 else:
                     # Extract the identity from the response JSON if valid
                     response_json = response.json()
@@ -207,13 +207,25 @@ def create_response(message: Dict, status_code: int) -> Response:
         TypeError - If the message is not a dictionary or the status code is not an integer
     """
 
-    if not isinstance(message, dict) and not (
-        isinstance(message, list) and all(isinstance(item, dict) for item in message)
+    # Validate the input types
+    if (
+        message is not None
+        and not isinstance(message, dict)
+        and not (
+            isinstance(message, list)
+            and all(isinstance(item, dict) for item in message)
+        )
     ):
-        raise TypeError("Message must be a dictionary or a list of dictionaries")
+        raise TypeError("Message must be a dictionary, a list of dictionaries or None")
     if not isinstance(status_code, int):
         raise TypeError("Status code must be an integer")
 
+    # Create the response
+    # If the message is None, return an empty response with the status code
+    if message is None:
+        return make_response("", status_code)
+
+    # If the message is a list, return a JSON response with the list
     return make_response(jsonify(message), status_code)
 
 

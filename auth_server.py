@@ -124,6 +124,11 @@ def validate_user_data():
     that the data is safe and valid.
     This does check for any endpoint specific validation, which should be done in the respective blueprint.
     """
+
+    # Skip JSON validation for /auth/validate
+    if request.path == "/auth/validate":
+        return
+
     # Validate JSON body for POST, PUT, PATCH methods
     if request.method in ["POST", "PUT", "PATCH"]:
         if not request.is_json or request.json is None:
@@ -309,7 +314,7 @@ def login():
 
 @auth_api.route("/auth/validate", methods=["POST"])
 @jwt_required()  # Require a valid access token
-def validate_token():
+def validate():
     """
     Validate endpoint to check the validity of a JWT token.
     """

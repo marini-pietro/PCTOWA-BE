@@ -191,7 +191,7 @@ class Tutor(Resource):
 
         # Return a success message
         return create_response(
-            message={"outcome": "tutor successfully deleted"},
+            message=None,
             status_code=STATUS_CODES["no_content"],
         )
 
@@ -253,10 +253,9 @@ class Tutor(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Return a success message
         return create_response(
-            message={"outcome": "tutor successfully updated"},
-            status_code=STATUS_CODES["ok"],
+            message=None,
+            status_code=STATUS_CODES["no_content"],
         )
 
     @jwt_validation_required

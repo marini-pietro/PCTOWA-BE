@@ -155,9 +155,7 @@ class Class(Resource):
         )
 
         # Return a success message
-        return create_response(
-            message={"outcome": "class deleted"}, status_code=STATUS_CODES["no_content"]
-        )
+        return create_response(message=None, status_code=STATUS_CODES["no_content"])
 
     @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor"])
@@ -213,11 +211,7 @@ class Class(Resource):
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Return a success message
-        return create_response(
-            message={"outcome": "class successfully updated"},
-            status_code=STATUS_CODES["ok"],
-        )
+        return create_response(message=None, status_code=STATUS_CODES["no_content"])
 
     @jwt_validation_required
     @check_authorization(allowed_roles=["admin", "supertutor", "tutor", "teacher"])

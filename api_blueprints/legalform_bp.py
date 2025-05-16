@@ -166,7 +166,7 @@ class LegalForm(Resource):
 
         # Return a success message
         return create_response(
-            message={"outcome": "legal form successfully deleted"},
+            message=None,
             status_code=STATUS_CODES["no_content"],
         )
 
@@ -221,14 +221,13 @@ class LegalForm(Resource):
         # Log the update
         log(
             log_type="info",
-            message=(f"User {identity} updated " f"legal form {forma} to {new_value}"),
+            message=f"User {identity} updated legal form {forma}",
             structured_data=f"[endpoint='{request.path}' verb='{request.method}']",
         )
 
-        # Return a success message
         return create_response(
-            message={"outcome": "legal form successfully updated"},
-            status_code=STATUS_CODES["ok"],
+            message=None,
+            status_code=STATUS_CODES["no_content"],
         )
 
     @jwt_validation_required
